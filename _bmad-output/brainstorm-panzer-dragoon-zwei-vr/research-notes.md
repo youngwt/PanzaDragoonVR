@@ -99,3 +99,36 @@ Worked out directly from the disc image with the scripts in `tools/`. This super
 2. Find the 256-colour palettes for mode 4 textures.
 3. Decode `.MDB` geometry.
 4. Load an Episode 3 save state into Ghidra and identify what `EPISODE3.DAT` drives.
+
+## Save-state analysis (2026-10-06, later session)
+
+Supersedes the "Next" list above. From a Mednafen save state taken mid-forest in Episode 3, unpacked with `tools/mednafen_state.py` into `extracted/state_e03/`.
+
+### Floor and canopy: found in video memory
+
+- The forest floor and canopy are the two rotation-parameter planes of VDP2's RBG0 layer: plane A is the floor, plane B is the canopy. Confirmed by eye against the state's screenshot.
+- Each is one 512x512 page of 16x16-pixel cells in 256 colours, with one-word pattern names. Each looks like a 256x256 pattern repeated 2x2, so they tile.
+- VDP2 settings in the state: CHCTLB=0x1100, PNCR=0x8008, PLSZ=0, MPOFR=0x33, plane A map 0xC0 (VRAM 0x60000), plane B map 0xC1 (VRAM 0x60800), RPMD=3 (A and B switched by window), CRAM mode 1 (2048 colours, RGB555). NBG0 and NBG3 are also on.
+- **Not yet known:** which disc file holds the plane tiles, maps and palette. Until that is found, planes can only be extracted from a save state, not from the ISO.
+
+### Memory layout
+
+- `1ST_READ.PRG` loads at 0x06008000; `EPISODE3.PRG` at 0x06080000.
+- Mednafen stores RAM, VRAM and CRAM as host-endian 16-bit words, so bytes must be swapped in pairs to get Saturn byte order.
+- The state's CRAM (`VDP2_CRAM.bin`) is the likely source of colours for the mode 4 (256-colour) VDP1 textures. Not yet applied.
+
+### Ghidra project
+
+- `extracted/ghidra/zwei` holds the state imported through the Saturn loader, analysed. 938 functions found: 849 in the core engine, only 38 in the Episode 3 range, because level code is reached through address tables that auto-analysis does not follow. The Episode 3 region (0x06080000 onward, about 348 KB) needs disassembling directly.
+- Main SH-2 was at 0x0604829E when the state was taken.
+
+### Controller
+
+- Mednafen is bound to the DualSense over USB (ID 0x0003054c0ce681110008000d00000000). A=Cross, B=Circle, C=R1, X=Square, Y=Triangle, Z=L1, L=L2, R=R2, Start=Options, L3=save state. Untested button by button.
+
+### Next
+
+1. Colour the mode 4 textures using the state's CRAM.
+2. Find where on the disc the floor and canopy data is stored.
+3. Disassemble the whole Episode 3 region in Ghidra, then trace the code that reads `EPISODE3.DAT`'s motion tables.
+4. Decode `.MDB` geometry.
