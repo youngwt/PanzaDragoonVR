@@ -1,0 +1,7 @@
+# Original game disc images: copyrighted, never commit
+/rom/
+# Anything extracted or decoded from the disc: copyrighted, never commit
+/extracted/
+__pycache__/
+# Local emulator install, with firmware links and save states
+/tools/mednafen/
