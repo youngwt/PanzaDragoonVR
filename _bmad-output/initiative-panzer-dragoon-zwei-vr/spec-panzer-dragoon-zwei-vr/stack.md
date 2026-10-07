@@ -30,9 +30,14 @@ Git-ignored working folders: `rom/` (disc image), `extracted/` (all output), `to
 - Mednafen 1.32.1 in `tools/mednafen/`; `run.sh` boots the disc. Save states land in `tools/mednafen/home/mcs/`, gzip-compressed; unzip before loading into Ghidra. On the bound DualSense, L3 saves a state.
 - Ghidra project: `extracted/ghidra/zwei`.
 
-## Not yet installed
+## Build toolchain (local, not in git)
 
-Godot (.NET build), the .NET SDK, the Android SDK with `adb`, and Godot's export templates.
+Installed by `tools/setup-toolchain.sh` under `~/.local/opt`; `tools/toolchain-env.sh` sets the paths. See `tools/README.md`.
+
+- Godot 4.7.2-stable (.NET build), self-contained, with export templates: `godot-4.7.2-stable-mono`
+- .NET 9 SDK: `dotnet-9`
+- Temurin JDK 17: `jdk-17`
+- Android SDK with `adb` (`platform-tools`, `build-tools;36.1.0`, `platforms;android-36`): `android-sdk`
 
 ## References
 
