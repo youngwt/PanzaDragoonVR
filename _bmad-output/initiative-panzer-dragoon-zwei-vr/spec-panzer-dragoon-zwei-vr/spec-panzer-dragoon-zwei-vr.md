@@ -24,7 +24,7 @@ The work runs on two tracks. The **pipeline** track is a PC tool that turns the 
 
 - **CAP-1: VR scene on Quest 3**
   - **intent:** The player can look all around a 3D scene in the headset.
-  - **success:** A C# Godot APK runs on a Quest 3 at a steady frame rate, showing a ground plane, a sky and a grey cube flying around the player.
+  - **success:** A C# Godot APK runs on a Quest 3 at a steady 90 Hz, showing a ground plane, a sky and a grey cube flying around the player.
 - **CAP-2: External assets**
   - **intent:** The game ships with no assets, loads everything at runtime from a known folder on the headset, and checks that folder against a manifest at launch.
   - **success:** The ground and sky of the CAP-1 scene are textured from the user's own example images copied into the folder. A file the manifest lists but the folder lacks is reported at launch.
@@ -97,5 +97,4 @@ Build order and track for each capability are in `milestones.md`.
 - What do the `EPISODE3.DAT` motion matrices drive, and are enemy flight paths recorded data or an algorithm?
 - What is the reference for behaviour and timing before CAP-9, given that checking by eye only works for images?
 - What is the manifest format and folder layout? It is the contract between the tracks and is undefined.
-- What frame rate counts as steady on Quest 3: 72 or 90 Hz?
 - Does SideQuest accept a bring-your-own-ROM project?
