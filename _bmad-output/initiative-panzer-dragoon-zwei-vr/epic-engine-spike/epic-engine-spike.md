@@ -37,6 +37,12 @@ The Godot project and its build and deploy path. No Zwei content, no controllers
 ## Notes
 
 - Unknown: whether C# on Android holds up on Quest; the first story answers it.
+- Decision: eight stories. Story 1 is the tracer bullet: toolchain, scaffold, build-and-deploy command and a C# scene in the headset, settling C# on Quest first (user approved, 2026-10-07).
+- Decision: the Steam Deck is the build machine (user, 2026-10-07).
+- Decision: story 7, loading the grey cube from a model file, is in this epic, so the dragon epic inherits a model loader proven on the headset (user approved, 2026-10-07).
+- Decision: sequencing. Stories 2 and 6 are decisions on paper and can run beside story 1. Stories 3, 4, 5 and 7 are one lane in the same scene and loader code. Story 6 waits on story 2 because both write the one asset contract document.
+- Assumption: the home partition had 18 GB free on 2026-10-07; the toolchain is expected to fit.
+- The draft check was run in the planning conversation, not by an independent agent.
 
 ## References
 

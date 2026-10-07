@@ -1,0 +1,89 @@
+# The stories of this epic in build order. tickets.py reads this.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Toolchain and a C# VR scene on the headset"
+description = "Installs Godot 4.7 (.NET), the .NET SDK, the Android SDK and export templates on the Steam Deck, scaffolds the Godot C# project with its package name, and adds one command that builds and installs the APK, toward CAP-1."
+verify = "On the Quest 3, the installed APK shows a cube in stereo with head tracking, rotated each frame by C# code."
+covers = ["CAP-1"]
+after = []
+hitl = true                 # developer mode on the headset, USB connection and authorisation
+risk = "high"
+
+[[entry]]
+id = 2
+type = "story"
+title = "Decide the manifest format and folder layout"
+description = "Writes the manifest format and the layout of the app's files folder into one asset contract document, the CAP-2 contract the extraction tool and the game both follow."
+verify = "The contract document exists in the spec folder with a worked example manifest, and the author has agreed it."
+covers = ["CAP-2"]
+after = []
+hitl = true                 # the author's decision
+risk = "low"
+
+[[entry]]
+id = 3
+type = "story"
+title = "Test scene at 90 Hz"
+description = "Builds the CAP-1 scene in the story 1 project: a ground plane, a sky and a grey cube flying around the player."
+verify = "On the Quest 3, the scene holds 90 Hz on a frame-rate readout while the player looks all around for a minute."
+covers = ["CAP-1"]
+after = [1]
+hitl = true                 # headset check
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Textures from the app's files folder"
+description = "Adds the runtime asset loader: it reads the manifest in the app's files folder, as laid out by story 2, and textures the story 3 ground and sky from the images it lists, toward CAP-2."
+verify = "With the author's own images and a manifest copied onto the headset, the ground and sky show them, and the APK contains no images."
+covers = ["CAP-2"]
+after = [2, 3]
+hitl = true                 # copying files to the headset
+risk = "medium"
+
+[[entry]]
+id = 5
+type = "story"
+title = "Missing-file report at launch"
+description = "Extends the story 4 loader to check the folder against the manifest at launch and show any listed file that is absent, completing CAP-2."
+verify = "After deleting one listed image from the headset, launching the app shows a readable report in the headset naming that file."
+covers = ["CAP-2"]
+after = [4]
+hitl = true                 # headset check
+risk = "low"
+
+[[entry]]
+id = 6
+type = "story"
+title = "Decide the standard model format"
+description = "Adds the standard model format the extraction tool writes and the game reads to the story 2 contract document; glTF is the proposal."
+verify = "The contract document names the model format and how textures are referenced from it, and the author has agreed it."
+covers = ["CAP-2"]
+after = [2]
+hitl = true                 # the author's decision
+risk = "low"
+
+[[entry]]
+id = 7
+type = "story"
+title = "Grey cube loaded from a model file"
+description = "Extends the story 5 loader to load a model in the story 6 format from the files folder at runtime, and uses it for the flying grey cube in place of built-in geometry."
+verify = "With a cube model file copied onto the headset and listed in the manifest, the flying cube appears; with the file removed, the launch report names it."
+covers = ["CAP-2"]
+after = [5, 6]
+hitl = true                 # headset check
+risk = "medium"
+
+[[entry]]
+id = 8
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
+verify = "The epic's Done when checks still pass on the headset after the cleanup."
+covers = ["CAP-1", "CAP-2"]
+after = [1, 2, 3, 4, 5, 6, 7]
+hitl = false
+risk = "low"
