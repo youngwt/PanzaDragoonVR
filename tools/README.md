@@ -76,6 +76,53 @@ Remove one folder and run the script again to reinstall just that part. `~/.andr
 - Android Studio, the NDK and CMake are not installed.
 - The command-line tools file name and checksum are pinned in `setup-toolchain.sh`; update both from <https://developer.android.com/studio> when moving to a newer release.
 
+## Building and running on the Quest 3
+
+`build-quest.sh` builds the Godot project in `game/` into a debug APK, installs it on the connected headset and starts it.
+
+```sh
+tools/build-quest.sh                # build, install and launch
+tools/build-quest.sh --no-install   # build only; adb is not used
+```
+
+The APK is written to `game/build/PanzaDragoonVR.apk`, and each step's full output to `game/build/logs/`. When a step fails, the script prints one line saying what to do or which log to read.
+
+### One-time headset setup
+
+1. **Turn on developer mode.** Register as a developer at <https://developers.meta.com/horizon/> (creating an organisation is enough). Then, in the Meta Horizon phone app: Menu, Devices, pick the headset, Headset settings, Developer mode, and switch it on. Restart the headset.
+2. **Authorise USB debugging.** Connect the headset to this computer with a USB-C cable and put it on. Accept the "Allow USB debugging?" prompt, ticking "Always allow from this computer".
+
+If the script says no headset was found, check the cable and developer mode. If it says the headset has not authorised this computer, put the headset on and accept the prompt. In both cases the APK has still been built.
+
+### What to expect
+
+- The first run unpacks Godot's Android build template into `game/android/` and downloads Gradle and its libraries (about 2 minutes); later runs take about a minute. Gradle keeps its downloads in `~/.gradle`, outside `~/.local/opt`.
+- OpenXR needs Godot's Gradle build, so the prebuilt export template is not used. The OpenXR vendors plugin is not installed.
+- The APK is signed with Godot's debug keystore, which Godot creates in its `editor_data` folder. It is not a release build.
+- The headset holds the launch back with a "controller required" prompt when no controller is awake. Pick up a controller and the app starts. When the app has not started within 10 seconds the script says so and exits with status 2.
+- In the headset you should see an orange cube turning about a metre ahead, with a label beside it giving the .NET version.
+- Inside the VS Code Flatpak sandbox there is no USB access, so the script runs `adb` on the host through `flatpak-spawn --host`. Outside a sandbox it runs `adb` directly.
+- `game/.godot/`, `game/build/` and `game/android/` are generated and git-ignored.
+
+### Exit statuses
+
+| Status | Meaning |
+|--------|---------|
+| 0 | Built; and, unless `--no-install` was given, installed and still running 5 seconds after it started. |
+| 1 | Something failed. One line on stderr says what, and what to do or which log to read. |
+| 2 | Built and installed, but the app had not started within 10 seconds of the launch. The headset is usually asleep or asking for a controller. |
+
+### If the app crashes
+
+The script clears the headset's log before launching. If the app starts and then stops, it saves the log to `game/build/logs/logcat-crash.log` and exits with status 1. Read that file before changing anything.
+
+To capture the log by hand, use the host's `adb`, since the sandbox has no USB access (outside a sandbox, drop `flatpak-spawn --host`):
+
+```sh
+. tools/toolchain-env.sh
+flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d > game/build/logs/logcat.txt
+```
+
 ## Extraction scripts
 
 The Python scripts here (`saturn_disc.py`, `cgb_textures.py`, `png.py`, `mednafen_state.py`) read the game disc and emulator save states. `tools/mednafen/` is a local emulator install and is git-ignored.
