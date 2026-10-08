@@ -5,6 +5,7 @@ companions:
   - stack.md
   - zwei-disc-formats.md
   - later-ideas.md
+  - asset-contract.md
 sources:
   - ../../brainstorm-panzer-dragoon-zwei-vr/milestone-roadmap.md
   - ../../brainstorm-panzer-dragoon-zwei-vr/research-notes.md
@@ -26,8 +27,8 @@ The work runs on two tracks. The **pipeline** track is a PC tool that turns the 
   - **intent:** The player can look all around a 3D scene in the headset.
   - **success:** A C# Godot APK runs on a Quest 3 at a steady 90 Hz, showing a ground plane, a sky and a grey cube flying around the player.
 - **CAP-2: External assets**
-  - **intent:** The game ships with no assets, loads everything at runtime from a known folder on the headset, and checks that folder against a manifest at launch.
-  - **success:** The ground and sky of the CAP-1 scene are textured from the user's own example images copied into the folder. A file the manifest lists but the folder lacks is reported at launch.
+  - **intent:** The game ships with only the author's own placeholder assets and nothing copyrighted. At runtime it replaces them, ID by ID, with assets from a known folder on the headset, and checks that folder against a manifest at launch.
+  - **success:** The ground and sky of the CAP-1 scene are textured from the user's own example images copied into the folder. A file the manifest lists but the folder lacks is reported at launch. With an empty folder the scene still appears, on placeholders.
 - **CAP-3: Extraction tool**
   - **intent:** A user runs a PC tool on their own Zwei disc image and gets the demo's assets as ordinary files, plus the manifest.
   - **success:** One run writes the Episode 3 images, and they are recognisable by eye in a file explorer.
@@ -56,7 +57,7 @@ Build order and track for each capability are in `milestones.md`.
 
 - Nothing copyrighted goes into git or the APK: the disc image, extracted or decoded assets, BIOS files, the soundtrack.
 - All Saturn-format knowledge lives in the PC extraction tool. The game reads only standard formats (PNG and similar).
-- The two tracks share only the external asset folder and manifest. Flight work runs on own example images and grey cubes, so it never waits on extraction.
+- The two tracks share only the external asset folder and manifest, as defined in `asset-contract.md`. Flight work runs on own example images and grey cubes, so it never waits on extraction.
 - Extraction runs on the PC, once. Nothing is extracted on the headset.
 - Platform is standalone Quest 3, Godot 4.7, with C# from the first line (`stack.md`).
 - The known folder is the app's own `Android/data/<package>/files`. Quest's scoped storage rules out arbitrary `/sdcard` paths.
@@ -97,5 +98,4 @@ Build order and track for each capability are in `milestones.md`.
 - Where does the dragon's wing animation come from?
 - What do the `EPISODE3.DAT` motion matrices drive, and are enemy flight paths recorded data or an algorithm?
 - What is the reference for behaviour and timing before CAP-9, given that checking by eye only works for images?
-- What is the manifest format and folder layout? It is the contract between the tracks and is undefined.
 - Does SideQuest accept a bring-your-own-ROM project?
