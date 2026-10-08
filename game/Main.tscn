@@ -1,32 +1,61 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://Main.cs" id="1_main"]
+[ext_resource type="Script" path="res://FlyingCube.cs" id="2_cube"]
+[ext_resource type="Script" path="res://FrameRateReadout.cs" id="3_readout"]
+
+[sub_resource type="Environment" id="Environment_sky"]
+background_mode = 1
+background_color = Color(0.62, 0.75, 0.88, 1)
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.5
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(2000, 2000)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_sky"]
+size = Vector2(2000, 2000)
 
 [sub_resource type="BoxMesh" id="BoxMesh_cube"]
-size = Vector3(0.3, 0.3, 0.3)
+size = Vector3(0.5, 0.5, 0.5)
 
 [sub_resource type="StandardMaterial3D" id="Material_cube"]
-albedo_color = Color(0.9, 0.45, 0.1, 1)
+albedo_color = Color(0.5, 0.5, 0.5, 1)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_sky")
 
 [node name="XROrigin3D" type="XROrigin3D" parent="."]
 
 [node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
 
+[node name="FrameRateReadout" type="Label3D" parent="XROrigin3D/XRCamera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, -1.2)
+pixel_size = 0.0006
+no_depth_test = true
+render_priority = 10
+outline_render_priority = 9
+font_size = 48
+outline_size = 12
+script = ExtResource("3_readout")
+
 [node name="Light" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 3, 0)
 
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_ground")
+
+[node name="Sky" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 40, 0)
+mesh = SubResource("PlaneMesh_sky")
+
 [node name="Cube" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -4)
 mesh = SubResource("BoxMesh_cube")
 surface_material_override/0 = SubResource("Material_cube")
-
-[node name="RuntimeLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, -1)
-pixel_size = 0.002
-text = "C# has not run"
-font_size = 48
-outline_size = 8
+script = ExtResource("2_cube")

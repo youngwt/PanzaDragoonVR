@@ -12,3 +12,6 @@ __pycache__/
 /game/build/
 /game/android/
 *.apk
+# Unit test build output
+/tests/**/bin/
+/tests/**/obj/

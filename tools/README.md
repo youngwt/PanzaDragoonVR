@@ -100,7 +100,7 @@ If the script says no headset was found, check the cable and developer mode. If 
 - OpenXR needs Godot's Gradle build, so the prebuilt export template is not used. The OpenXR vendors plugin is not installed.
 - The APK is signed with Godot's debug keystore, which Godot creates in its `editor_data` folder. It is not a release build.
 - The headset holds the launch back with a "controller required" prompt when no controller is awake. Pick up a controller and the app starts. When the app has not started within 10 seconds the script says so and exits with status 2.
-- In the headset you should see an orange cube turning about a metre ahead, with a label beside it giving the .NET version.
+- In the headset you should see a green chequered ground underfoot, a blue patterned sky overhead and a grey cube flying in a circle right around you. A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
 - Inside the VS Code Flatpak sandbox there is no USB access, so the script runs `adb` on the host through `flatpak-spawn --host`. Outside a sandbox it runs `adb` directly.
 - `game/.godot/`, `game/build/` and `game/android/` are generated and git-ignored.
 
@@ -122,6 +122,58 @@ To capture the log by hand, use the host's `adb`, since the sandbox has no USB a
 . tools/toolchain-env.sh
 flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d > game/build/logs/logcat.txt
 ```
+
+### Reading the frame rate
+
+A debug build shows a readout fixed in front of the camera, and writes the same figures to the headset's log once a second under the tag `PDZ-FPS`. A release build shows and logs neither.
+
+The readout's first line says what happened when the game asked for 90 Hz:
+
+| First line | Meaning |
+|------------|---------|
+| `Target 90 Hz` | The headset offers 90 Hz and the game asked for it. |
+| `Running at 72 Hz; 90 Hz is not offered` | The headset's list of rates has no 90, so the rate was left alone. |
+| `Running at 72 Hz; 90 Hz could not be set` | The headset gave no list of rates, so the rate was left alone. |
+| `Not in VR` | OpenXR is not running; the scene is on a flat screen. |
+| `Waiting for the headset` | The headset's session has not begun yet. |
+
+Below it are the rate measured over the last second, the slow frames in that second and since the start, and the .NET version. A frame is slow when it lasts longer than 1.5 times the target interval: over 16.7 ms at 90 Hz.
+
+To read the log, after the app has run for a while (outside a sandbox, drop `flatpak-spawn --host`):
+
+```sh
+. tools/toolchain-env.sh
+flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d -s PDZ-FPS
+```
+
+Each second gives one line:
+
+```
+target=90 avg=90.0 slow=0 slow_total=3 frames_total=5400 slow_pct=0.06
+```
+
+| Field | Meaning |
+|-------|---------|
+| `target` | The rate frames are measured against: 90 when it was set, otherwise the rate in use. |
+| `avg` | Frames in the last second divided by that second's exact length. |
+| `slow` | Slow frames in the last second. |
+| `slow_total`, `frames_total` | Slow frames and all frames since counting started, which is when the headset's session began. |
+| `slow_pct` | `slow_total` as a percentage of `frames_total`. |
+
+A line beginning `status=` is written when the first line of the readout changes. The story's bar is `target=90`, every `avg` at least 89, and `slow_pct` under 1 after a minute of looking around. `build-quest.sh` clears the log at each launch, so the lines are all from the latest run.
+
+On a desktop the same lines go to Godot's own output, each starting with `PDZ-FPS`.
+
+## Unit tests
+
+`test.sh` runs the unit tests in `tests/GameLogic.Tests/` on this computer. No headset is needed, and it takes a few seconds.
+
+```sh
+tools/test.sh                         # run every test
+tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`
+```
+
+The tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
 
 ## Extraction scripts
 
