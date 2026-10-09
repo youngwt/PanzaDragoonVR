@@ -10,6 +10,7 @@ route_source: 'auto'
 risk: 'medium'
 review: 'quick'
 review_source: 'pinned'
+
 lenses_ran: ['quick']
 review_loop_iteration: 0
 context:
@@ -95,21 +96,6 @@ After seeing the scene in the headset: it ran at 72 Hz and the readout said 90 H
 ## Plan Change Log
 
 ## Review Triage Log
-
-Pass 1 (quick lens), 2026-10-08: high 0, medium 2, low 4, false 0, maybe-false 0. Patches were sent to the implementer but **not applied**: the author stopped for the night. Commit 6eb9854 holds the code as it ran on the headset. On resume, apply the rows routed to patch, then rebuild and re-verify.
-
-| # | Finding | Verdict | Route | Evidence |
-|---|---------|---------|-------|----------|
-| 1 | Acceptance criterion 2 unmet (72 Hz, not 90); follow-up bookkeeping missing | medium | patch (pending) and defer | Headset screenshot reads "Running at 72 Hz; 90 Hz could not be set", measured 72.1. The author accepted 72 Hz for now. Deferred-work entry added; README wording still to update. |
-| 2 | The 90 Hz request fails and the cause is undiagnosed; the list is asked for once | medium | patch (pending) and defer | The message comes only from the empty-list branch, while the current rate (72) was readable. Pending patch: ask again once the session is focused and show the number of rates offered. Cause still unknown. |
-| 3 | The sky shows one flat colour, no pattern | low | patch (pending) | Confirmed in the screenshot. Story 1.4 needs that plane to tile. |
-| 4 | A session that begins again counts the pause as one frame | low | patch (pending) | `Begin()` keeps `_lastFrameUsec` when the target is unchanged. |
-| 5 | `SessionHasBegun()` omits the `Ready` state | low | patch (pending) | Read from the code. |
-| 6 | Two log values use the current culture | low | patch (pending) | Read from the code. |
-
-Sky finding so far (implementer, stopped before a fix): the flat sky does not reproduce on the desktop, where the diamonds tile cleanly. On the headset the plane is drawn and the texture holds the pattern; the three flat bands in the screenshot match a texture sampled as clamped to its edge instead of repeating. Unproven, and unexplained given the ground uses the same code and repeats. Next: ask the author to look straight up; then make the sky identical to the ground's path (`flip_faces` in place of the 180-degree rotation, the ground's generator in blue) and vary one difference at a time on the device.
-
-Also found during the headset check, outside the review: no log line from the app's own process appeared in `adb logcat` (neither the `PDZ-FPS` tag nor Godot's output), so the minute of figures could not be read from the PC. Deferred.
 
 ## Design Notes
 

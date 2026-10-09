@@ -9,9 +9,13 @@ __pycache__/
 /_bmad/render/
 # Godot's import cache, build output and Android build template: all generated
 /game/.godot/
-/game/build/
+/game/build/*
+# ...but keep the marker that stops Godot importing and packing anything saved there
+!/game/build/.gdignore
 /game/android/
 *.apk
 # Unit test build output
 /tests/**/bin/
 /tests/**/obj/
+# The Godot OpenXR vendors plugin: 48 MB, installed by tools/setup-toolchain.sh
+/game/addons/godotopenxrvendors/

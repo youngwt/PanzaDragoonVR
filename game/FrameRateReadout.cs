@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Godot;
 using PanzaDragoonVR.Logic;
@@ -24,6 +25,7 @@ public partial class FrameRateReadout : Label3D
     private bool _androidLog;
     private string _summary = "";
     private FrameStats? _stats;
+    private bool _paused;
     private ulong _lastFrameUsec;
 
     public override void _Ready()
@@ -61,16 +63,55 @@ public partial class FrameRateReadout : Label3D
         if (_stats == null || _stats.TargetHz != choice.TargetHz)
         {
             _stats = new FrameStats(choice.TargetHz);
-            _lastFrameUsec = 0;
         }
 
-        Text = $"{_summary}\nMeasuring...\n{RuntimeLine}";
-        WriteLog($"status=\"{_summary}\" target={choice.TargetHz:0.#}");
+        // Restart the frame clock, so the pause before a session begins again is not counted as a frame.
+        _lastFrameUsec = 0;
+
+        ShowNotYetMeasured();
+        WriteLog(string.Create(CultureInfo.InvariantCulture, $"status=\"{_summary}\" target={choice.TargetHz:0.#}"));
+    }
+
+    /// <summary>
+    /// Stops counting frames. Called while the headset is not showing the app: the app then loops
+    /// without the headset pacing it, and those frames would be counted at a rate in the thousands.
+    /// </summary>
+    public void Pause()
+    {
+        if (!_enabled || _paused)
+        {
+            return;
+        }
+
+        _paused = true;
+        ShowNotYetMeasured();
+        WriteLog("status=\"paused\"");
+    }
+
+    /// <summary>Counts frames again, from the next frame on, keeping the totals so far.</summary>
+    public void Resume()
+    {
+        if (!_enabled || !_paused)
+        {
+            return;
+        }
+
+        _paused = false;
+        // Restart the frame clock, so the pause itself is not counted as a frame.
+        _lastFrameUsec = 0;
+        ShowNotYetMeasured();
+        WriteLog("status=\"resumed\"");
+    }
+
+    private void ShowNotYetMeasured()
+    {
+        string state = _paused ? "Paused: the headset is not showing the app" : "Measuring...";
+        Text = $"{_summary}\n{state}\n{RuntimeLine}";
     }
 
     public override void _Process(double delta)
     {
-        if (_stats == null)
+        if (_stats == null || _paused)
         {
             return;
         }

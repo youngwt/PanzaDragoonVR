@@ -18,11 +18,20 @@ public static class PlaceholderTextures
     private const int Size = 64;
 
     /// <summary>A tile of two greens in a chequer pattern, with a dark line round each square.</summary>
-    public static ImageTexture Ground()
+    public static ImageTexture Ground() => Chequer(
+        light: new Color(0.33f, 0.47f, 0.24f),
+        dark: new Color(0.26f, 0.39f, 0.20f),
+        line: new Color(0.17f, 0.27f, 0.14f));
+
+    /// <summary>The same pattern in a pale and a deeper blue, so the sky's tiling shows.</summary>
+    public static ImageTexture Sky() => Chequer(
+        light: new Color(0.80f, 0.88f, 0.96f),
+        dark: new Color(0.47f, 0.66f, 0.88f),
+        line: new Color(0.30f, 0.47f, 0.74f));
+
+    /// <summary>Two by two squares of alternating colours, each with a line along two of its sides.</summary>
+    private static ImageTexture Chequer(Color light, Color dark, Color line)
     {
-        var light = new Color(0.33f, 0.47f, 0.24f);
-        var dark = new Color(0.26f, 0.39f, 0.20f);
-        var line = new Color(0.17f, 0.27f, 0.14f);
         const int square = Size / 2;
 
         Image image = Image.CreateEmpty(Size, Size, false, Image.Format.Rgb8);
@@ -33,27 +42,6 @@ public static class PlaceholderTextures
                 bool onLine = x % square == 0 || y % square == 0;
                 bool lightSquare = (x / square + y / square) % 2 == 0;
                 image.SetPixel(x, y, onLine ? line : lightSquare ? light : dark);
-            }
-        }
-
-        return Finish(image);
-    }
-
-    /// <summary>A pale blue tile with a lighter diamond in the middle, so the sky's tiling shows.</summary>
-    public static ImageTexture Sky()
-    {
-        var blue = new Color(0.47f, 0.66f, 0.88f);
-        var pale = new Color(0.80f, 0.88f, 0.96f);
-        const int centre = Size / 2;
-        const int reach = Size / 3;
-
-        Image image = Image.CreateEmpty(Size, Size, false, Image.Format.Rgb8);
-        for (int y = 0; y < Size; y++)
-        {
-            for (int x = 0; x < Size; x++)
-            {
-                int distance = Mathf.Abs(x - centre) + Mathf.Abs(y - centre);
-                image.SetPixel(x, y, distance <= reach ? pale : blue);
             }
         }
 

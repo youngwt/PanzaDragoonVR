@@ -11,7 +11,7 @@
 #   0  built; and, unless --no-install, installed and still running after 5 seconds
 #   1  something failed; one line on stderr says what
 #   2  built and installed, but the app had not started within 10 seconds of the launch
-#      (the headset is usually asleep or asking for a controller)
+#      (the headset is usually asleep)
 
 set -u
 
@@ -126,7 +126,7 @@ app_pid() {
     host_adb -s "$serial" shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r\n'
 }
 
-# The headset can hold a launch back, for example while it asks for a controller.
+# The headset can hold a launch back, for example while it is asleep.
 started=0
 for _ in 1 2 3 4 5 6 7 8 9 10; do
     if [ -n "$(app_pid)" ]; then
@@ -136,7 +136,7 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
     sleep 1
 done
 if [ "$started" -eq 0 ]; then
-    echo "build-quest: installed and asked to launch, but the app has not started yet; put the headset on and answer any prompt it shows (it asks for a controller when none is awake)" >&2
+    echo "build-quest: installed and asked to launch, but the app has not started yet; wake the headset or put it on, and answer any prompt it shows" >&2
     exit 2
 fi
 
@@ -146,4 +146,4 @@ if [ -z "$(app_pid)" ]; then
     host_adb -s "$serial" logcat -d >"$logs/logcat-crash.log" 2>&1
     die "the app started and then stopped; the device log is in $logs/logcat-crash.log"
 fi
-say "running on the headset; put it on to see the cube"
+say "running on the headset; put it on to see the scene"
