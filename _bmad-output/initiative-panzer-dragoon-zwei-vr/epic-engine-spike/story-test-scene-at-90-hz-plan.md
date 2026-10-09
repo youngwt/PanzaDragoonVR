@@ -3,14 +3,13 @@ title: 'Test scene at 90 Hz'
 type: 'feature'
 ticket: '3'
 created: '2026-10-08'
-status: 'in-review'
+status: 'built'
 baseline_revision: '3d75c71394063689e4eaf884b6c3a5ce707dd708'
 route: 'full'
 route_source: 'auto'
 risk: 'medium'
 review: 'quick'
 review_source: 'pinned'
-
 lenses_ran: ['quick']
 review_loop_iteration: 0
 context:
@@ -53,6 +52,10 @@ context:
 
 After seeing the scene in the headset: it ran at 72 Hz and the readout said 90 Hz could not be set. The author accepted this for now ("will have to do for now"). The 90 Hz target and its acceptance criterion are not met by this story and carry forward as deferred work.
 
+## Renegotiated by the author, 2026-10-09
+
+The Meta OpenXR vendor plugin may be added. Without it the headset offered no refresh rates and the app's manifest did not declare Quest 3 support; the author approved adding the plugin to pursue 90 Hz and to remove the controller prompt at launch. Later the same day, with the plugin in and the display still at 72 Hz while worn, the author's reading was accepted as the result for this story.
+
 </frozen-after-approval>
 
 ## Code Map
@@ -93,9 +96,40 @@ After seeing the scene in the headset: it ran at 72 Hz and the readout said 90 H
 - **Verified off the headset:** `tools/test.sh` (25 tests pass); a desktop run with `--xr-mode off` shows the scene and the `Not in VR` readout and writes `PDZ-FPS` lines; `tools/build-quest.sh` built and installed, exit 2 (headset waiting for a controller); the APK holds no image files of the project's own (only Godot's launcher icons and AndroidX's notification drawables).
 - **Not yet verified:** everything that needs the headset worn: the two headset acceptance criteria, including that the `PDZ-FPS` tag reaches logcat.
 
+### 2026-10-09: second day
+
+- **Vendor plugin added** (author approved). godot_openxr_vendors 5.1.0 is downloaded by `tools/setup-toolchain.sh` into `game/addons/godotopenxrvendors/` (48 MB, git-ignored). The preset enables the Meta plugin, Quest 3 support and optional hand tracking. Result on the headset: no controller prompt at launch, four refresh rates offered, the request for 90 accepted.
+- **Still 72 Hz.** The display stays at 72 worn or not. The headset's own shell also asks for 90 and stays at 72, and the kernel log only ever sets `fps=72`. Battery saver is off. Cause unknown; the author accepted 72 Hz for now.
+- **Sky fixed.** On the Quest 3 a repeating texture on these planes came out clamped to its edge (one flat colour). Colouring the sky by its raw coordinates showed a correct grid, and sampling with hand-wrapped coordinates showed the pattern. Both planes now use a small shader that wraps coordinates itself with `textureGrad`. Verified on the headset by screen capture. Why the stock material fails on the device and not on the desktop is not known.
+- **Self-service device testing.** With the prompt gone, `adb shell am broadcast -a com.oculus.vrpowermanager.prox_close` keeps the headset awake, `tools/build-quest.sh` launches the app, and `adb exec-out screencap -p` captures the view (`automation_disable` restores the sensor). A Guardian boundary prompt can still block a launch.
+- **Logs.** The headset deletes an app's log lines soon after the app exits; read `adb logcat -s PDZ-FPS` while it runs. The `PDZ-FPS` tag works.
+- **Readout.** It now reports the rate in use, not the rate asked for ("Asked for 90 Hz; running at 72 Hz"), and stops counting while the headset is not showing the app (the log had shown `avg=1631.1` during a session restart).
+- **Build folder.** `game/build/.gdignore` stops Godot importing files saved there; diagnostic screenshots had been packed into the APK.
+- Godot 4.7.2 segfaults on the first headless import with the plugin unless `game/.godot/extension_list.cfg` already names it; the setup script writes that line.
+- 32 unit tests pass. The last round (read-back of the rate, pause and resume) is **not yet verified on the headset**: a Guardian prompt blocked the launch.
+
 ## Plan Change Log
 
+- 2026-10-09: Code Map said the refresh-rate extension works without the vendor plugin and that `tools/build-quest.sh` must not change. Both superseded: the plugin was needed for the headset to offer any rates (author approved), and the script's messages were reworded. Known-bad state avoided: an app the headset runs in original-Quest compatibility mode. KEEP: the engine-free `Logic/` classes and their tests, the placeholder generator, the readout's log format.
+
 ## Review Triage Log
+
+Pass 1 (quick lens, 2026-10-08) is not in this file; its table is in commit dfdd387. Its six patches were applied on 2026-10-09 before pass 2.
+
+Pass 2 (quick lens), 2026-10-09, after the pass 1 patches, the plugin and the sky fix: high 0, medium 2, low 8, false 0, maybe-false 0. Two rejected.
+
+| # | Finding | Verdict | Route | Evidence |
+|---|---------|---------|-------|----------|
+| 1 | Acceptance criterion 2 still unmet (72 Hz) | medium | defer | carried: the author accepted 72 Hz. New deferred-work entry with the current evidence. |
+| 2 | "90 requested" treated as "90 in use": wrong target, physics ticks and slow-frame threshold | medium | patch | Real; the log showed `target=90` at a measured 72. Now reads the rate back and reports the rate in use. Unit-tested; not yet seen on the headset. |
+| 3 | Diagnostic screenshots packed into the APK | low | patch | Real; caused by captures saved in `game/build/logs/`. Captures removed, `game/build/.gdignore` added, APK rebuilt and checked. |
+| 4 | `_rateSet` unused; comment disagrees with code | low | patch | Real. Field removed, comment corrected. |
+| 5 | README contradicts messages in `tools/build-quest.sh` | low | patch | Real. Script wording updated; no behaviour change. |
+| 6 | Plugin removal steps leave dangling references | low | patch | Plausible. README now says what else to remove. |
+| 7 | `Pause()`/`Resume()` can overwrite the waiting text before measuring starts | low | rejected | Needs a signal order that was not observed; the fix would guard an undemonstrated state. |
+| 8 | Static Godot `Shader` held for the assembly's life | low | patch | Real in the editor only. Now owned by the scene. |
+| 9 | The plan's unfrozen sections are stale | low | rejected | A finding whose fix is to edit this plan. Notes and change log were updated at finalisation. |
+| 10 | The 90 Hz deferred-work entry is out of date | low | patch | Real. A new entry was appended. |
 
 ## Design Notes
 
