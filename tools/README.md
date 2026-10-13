@@ -190,14 +190,71 @@ On a desktop the same lines go to Godot's own output, each starting with `PDZ-FP
 
 ## Unit tests
 
-`test.sh` runs the unit tests in `tests/GameLogic.Tests/` on this computer. No headset is needed, and it takes a few seconds.
+`test.sh` runs the unit tests on this computer: the Python tests in `tests/tools/`, then the C# tests in `tests/GameLogic.Tests/`. No headset is needed, and it takes a few seconds. It exits non-zero if either set fails.
 
 ```sh
-tools/test.sh                         # run every test
-tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`
+tools/test.sh                         # run every test, Python and C#
+tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`; only the C# tests run
 ```
 
-The tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+The Python tests cover the scripts in `tools/`, at present the manifest writer. They use `unittest` from the standard library and work in temporary folders.
+
+The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+
+## A manifest for your own files
+
+The game reads an asset folder only through its `manifest.json`, which must give every file's exact size. `write_manifest.py` writes that file for a folder of your own images and models, and checks a folder against it. The rules are those of the asset contract, `_bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/asset-contract.md`.
+
+### Naming files
+
+Name each file after the asset ID it supplies, followed by `.png` or `.glb`. The name without its extension is the ID. Subfolders are yours to choose and are not part of the ID.
+
+```
+my-assets/
+  images/
+    e03.floor.png      supplies e03.floor
+    e03.canopy.png     supplies e03.canopy
+```
+
+- An ID is lowercase letters, digits and underscores, in levels separated by single dots: `e03.floor`.
+- Folder names follow the contract's path rules: lowercase letters, digits, underscores, hyphens and dots.
+- A `.png` must be 8 bits per channel, RGB or RGBA. A `.glb` must be binary glTF version 2. Only the file's header is looked at.
+
+### Writing the manifest
+
+```sh
+python3 tools/write_manifest.py my-assets
+```
+
+```
+e03.canopy               image      204817  images/e03.canopy.png
+e03.floor                image      181234  images/e03.floor.png
+wrote my-assets/manifest.json with 2 assets
+```
+
+`manifest.json` is written at the top of the folder, with each file's size and SHA-256. Run the command again after changing any file; the manifest is replaced.
+
+A file that is not an asset, such as a text file or a PNG whose name is not a valid ID, is left out and named in a one-line notice. For a file not named after its ID, give `ID=path`, with the path relative to the folder. The rest of the folder is still scanned:
+
+```sh
+python3 tools/write_manifest.py my-assets e03.floor=images/grass.png
+```
+
+When anything is wrong, each problem is printed on its own line, nothing is written, an existing `manifest.json` is left as it was, and the exit status is 1. That covers a folder with no assets, two files giving the same ID, and a file whose contents do not match its extension.
+
+### Checking a folder
+
+```sh
+python3 tools/write_manifest.py --check my-assets
+```
+
+```
+2 assets checked in my-assets: no problems
+```
+
+This reads `manifest.json` and the files it lists and changes nothing. It reports every problem, not only the first, and exits with status 1 if there is one: a manifest that is absent, unreadable or of an unsupported `format`, a duplicate ID, an invalid ID or path, a missing file, a wrong size, a wrong checksum, or contents that are not of the stated kind. Files the manifest does not list are ignored, as the game ignores them. An entry of a kind this script does not know is not a problem: its path, size and checksum are still checked, and a one-line notice says its contents were not.
+
+The rules live in `tools/manifest.py`, which the extraction tool can import. Copying the folder to the headset is not part of this script.
 
 ## Extraction scripts
 
