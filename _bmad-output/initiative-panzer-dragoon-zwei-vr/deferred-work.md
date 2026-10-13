@@ -16,3 +16,9 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-test-scene-at-90-hz-plan.md`
   summary: The last changes to the frame-rate readout (reporting the rate in use, and pausing while the headset is not showing the app) have not been seen running on the Quest 3.
   evidence: They pass 32 unit tests and build cleanly, but on 2026-10-09 a Guardian boundary prompt blocked the launch that would have verified them. Check that the readout reads "Asked for 90 Hz; running at 72 Hz", that `target=72` appears in `adb logcat -s PDZ-FPS`, and that taking the headset off and on logs paused and resumed without a slow frame.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-decide-the-standard-model-format-plan.md`
+  summary: Story 1.7's model loader must switch off vertex colour as albedo on loaded materials, because the asset contract says the game ignores `COLOR_0` in format 1 and Godot turns it on automatically when a file carries it.
+  evidence: Read in the Godot 4.7.2 glTF importer source during ticket 1.6 research; not run. The contract's promise that `COLOR_0` can be added later without raising `format` depends on it. Story 1.7's entry does not mention it.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-decide-the-standard-model-format-plan.md`
+  summary: Nothing in the asset contract's Models section has been run in Godot or on the Quest 3; thirteen of its rules are marked provisional until model geometry is decoded.
+  evidence: The section was written from Godot's documentation and source and the glTF specification. Saturn VDP1 behaviour behind the transparency, shading and facing rules was stated from memory and not re-checked. Story 1.7 is the first load of a model; the dragon epic is where the provisional rules get confirmed or changed.

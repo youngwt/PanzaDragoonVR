@@ -93,7 +93,7 @@ Build order and track for each capability are in `milestones.md`.
 
 - Where on the disc are the floor and canopy tiles, maps and palette? Today they can only be taken from an emulator save state, which CAP-3 does not allow.
 - Is the save state's colour RAM the right palette for the 256-colour textures, and where is that palette on the disc?
-- `.MDB` geometry is undecoded, which blocks CAP-5 and CAP-9. Which standard model format does the extractor write?
+- `.MDB` geometry is undecoded, which blocks CAP-5 and CAP-9. The format the extractor writes is settled (binary glTF, see `asset-contract.md`); several of its conventions are provisional until the geometry is known.
 - Which of the ten dragon forms does the demo use? To be decided once the models are reconstructed and can be viewed, so it waits on `.MDB` geometry.
 - Where does the dragon's wing animation come from?
 - What do the `EPISODE3.DAT` motion matrices drive, and are enemy flight paths recorded data or an algorithm?

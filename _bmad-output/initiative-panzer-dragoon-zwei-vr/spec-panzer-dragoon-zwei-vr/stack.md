@@ -5,7 +5,8 @@
 - Godot 4.7 stable, C#. Godot has dedicated Quest 3 export on Horizon OS, and a universal OpenXR APK since 4.5.
 - C# on Android has been supported since 4.2 and is still labelled experimental in the 4.7 docs.
 - Frame rate target: 90 Hz.
-- Runtime images: `Image.load_from_file`, then `ImageTexture`. Call `generate_mipmaps()` for textures on 3D surfaces.
+- Runtime images: `Image.load_from_file`, then `ImageTexture`. Call `generate_mipmaps()` for the tiling floor and canopy images; model textures have no mipmaps (`asset-contract.md`).
+- Runtime models: binary glTF loaded with `GLTFDocument` and `GLTFState` (`append_from_file` or `append_from_buffer`, then `generate_scene`), no editor import. Not yet run on the headset; story 1.7 is the first test.
 - Asset folder: `/sdcard/Android/data/<package>/files`. SideQuest can copy into it. Quest moved to Android 12 scoped storage around OS v51; `MANAGE_EXTERNAL_STORAGE` is allowed only for file-manager apps.
 - Reticle: a 2D sprite at a fixed distance from the player, as if on a sphere around them.
 - Floor: one looping plane, moved by scrolling UVs, not geometry. Canopy: a backdrop at effective infinity.
