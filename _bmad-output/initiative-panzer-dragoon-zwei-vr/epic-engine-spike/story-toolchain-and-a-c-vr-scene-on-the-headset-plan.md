@@ -3,7 +3,7 @@ title: 'Toolchain for building Godot C# apps for Quest 3'
 type: 'chore'
 ticket: '1'
 created: '2026-10-07'
-status: 'built'
+status: done
 baseline_revision: 'b4c6709f5341a0e81f94a56752cfda3184d49ffe'
 route: 'full'
 route_source: 'auto'

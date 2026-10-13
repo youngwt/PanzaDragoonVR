@@ -3,7 +3,7 @@ title: 'Test scene at 90 Hz'
 type: 'feature'
 ticket: '3'
 created: '2026-10-08'
-status: 'built'
+status: done
 baseline_revision: '3d75c71394063689e4eaf884b6c3a5ce707dd708'
 route: 'full'
 route_source: 'auto'

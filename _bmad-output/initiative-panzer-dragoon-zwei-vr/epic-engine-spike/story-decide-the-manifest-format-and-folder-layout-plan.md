@@ -3,7 +3,7 @@ title: 'Decide the manifest format and folder layout'
 type: 'chore'
 ticket: '2'
 created: '2026-10-08'
-status: 'built'
+status: done
 baseline_revision: '63fae81e12715613c8b0d3f8a767be61bc9a81dc'
 route: 'oneshot'
 route_source: 'auto'
