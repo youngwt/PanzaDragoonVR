@@ -3,7 +3,7 @@ title: 'Decide the standard model format'
 type: 'chore'
 ticket: '6'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: 'dc00a183e12604fcb643a0fcb49d14e1f1a0a3d0'
 route: 'oneshot'
 route_source: 'auto'
