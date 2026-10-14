@@ -3,7 +3,7 @@ title: 'Launch report and fallback'
 type: 'feature'
 ticket: '5'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: '07fd277ceace4fcdbf9bf617869abb525fc5fead'
 route: 'full'
 route_source: 'auto'
