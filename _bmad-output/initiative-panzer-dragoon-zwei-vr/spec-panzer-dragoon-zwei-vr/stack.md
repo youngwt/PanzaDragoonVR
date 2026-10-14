@@ -11,9 +11,9 @@
 - Reticle: a 2D sprite at a fixed distance from the player, as if on a sphere around them.
 - Floor: one looping plane, moved by scrolling UVs, not geometry. Canopy: a backdrop at effective infinity.
 
-## Extraction tool (pipeline track)
+## Extraction (pipeline track)
 
-Python scripts in `tools/`, standard library only so far:
+The decoders become one C# library, run by the game on the headset at first launch and by a PC command for reverse engineering; not built yet. The Python scripts in `tools/` are the prototypes it is ported from, standard library only:
 
 | Script | Does |
 |--------|------|

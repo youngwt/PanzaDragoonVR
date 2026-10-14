@@ -1,6 +1,6 @@
 # Asset contract
 
-The extraction tool and the game share nothing except a folder of files and the manifest inside it. This document is that contract. The tool writes to it; the game reads from it. Neither may assume anything the contract does not state.
+Extraction and the game's loader share nothing except a folder of files and the manifest inside it. This document is that contract. Extraction writes to it, whether the game runs it on the headset or the PC command runs it; the loader reads from it. "The tool" below means either. Neither may assume anything the contract does not state.
 
 ## Placeholders and replacement
 
@@ -10,7 +10,7 @@ The game always runs, with or without the folder.
 - When the folder supplies a valid asset for an ID, the game uses it in place of the placeholder.
 - When the folder is empty or absent, the game runs entirely on placeholders and says so.
 
-So a player who has not run the extraction tool still sees a scene, and running the tool replaces the stand-ins with the real thing, one ID at a time.
+So a player who has not supplied a disc image still sees a scene, and extraction replaces the stand-ins with the real thing, one ID at a time.
 
 ## The folder
 
@@ -20,7 +20,7 @@ On the headset, the asset folder is the app's own external files folder:
 /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/
 ```
 
-SideQuest and `adb push` can both copy into it. On the PC, the tool writes an output folder of the user's choosing with exactly the layout below. The user copies what is inside that folder, not the folder itself, into `files/`, so that `manifest.json` ends up directly inside `files/`.
+The game fills it itself: on first launch it extracts the assets from the player's disc image and writes them and the manifest here. The player's own files can be copied in with SideQuest or `adb push` instead. On the PC, the same decoding library writes an output folder of the user's choosing with exactly the layout below. The user copies what is inside that folder, not the folder itself, into `files/`, so that `manifest.json` ends up directly inside `files/`.
 
 ```
 files/                 the asset folder (the output folder's contents on the PC)

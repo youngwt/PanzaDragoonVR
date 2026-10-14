@@ -19,7 +19,7 @@ sources:
 
 A vision to realize: riding the dragon through Panzer Dragoon Zwei's forest level (Episode 3) in VR, with a full 360-degree view. It is a solo passion project and the author's first VR project. The target is a playable demo on Quest 3 within a year of 2026-10-06, shared on SideQuest on a bring-your-own-ROM basis, with progress worth a short clip at every step.
 
-The work runs on two tracks. The **pipeline** track is a PC tool that turns the player's own disc image into ordinary files. The **flight** track is the game on the headset. They meet only at an external asset folder and its manifest.
+The work runs on two tracks. The **pipeline** track is a C# library that turns the player's own disc image into ordinary files: the game runs it once on the headset, and a PC command runs it for reverse engineering. The **flight** track is the game's scene and loader. They meet only at an external asset folder and its manifest.
 
 ## Capabilities
 
@@ -29,9 +29,9 @@ The work runs on two tracks. The **pipeline** track is a PC tool that turns the 
 - **CAP-2: External assets**
   - **intent:** The game ships with only the author's own placeholder assets and nothing copyrighted. At runtime it replaces them, ID by ID, with assets from a known folder on the headset, and checks that folder against a manifest at launch.
   - **success:** The ground and sky of the CAP-1 scene are textured from the user's own example images copied into the folder. A file the manifest lists but the folder lacks is reported at launch. With an empty folder the scene still appears, on placeholders.
-- **CAP-3: Extraction tool**
-  - **intent:** A user runs a PC tool on their own Zwei disc image and gets the demo's assets as ordinary files, plus the manifest.
-  - **success:** One run writes the Episode 3 images, and they are recognisable by eye in a file explorer.
+- **CAP-3: In-game extraction**
+  - **intent:** At launch the game finds the player's disc image in its folder and extracts the demo's assets, writing them and the manifest into the same folder: once in release builds, on every launch in development mode.
+  - **success:** With a disc image copied to the headset, the first launch extracts the Episode 3 images; in release mode later launches skip extraction, in development mode they extract again. The same images, written by the PC command, are recognisable by eye in a file explorer.
 - **CAP-4: Forest floor and canopy**
   - **intent:** The player flies through the Episode 3 forest between the extracted floor and canopy.
   - **success:** In the headset the floor loops endlessly beneath the player and the canopy sits overhead with no parallax.
@@ -56,9 +56,11 @@ Build order and track for each capability are in `milestones.md`.
 ## Constraints
 
 - Nothing copyrighted goes into git or the APK: the disc image, extracted or decoded assets, BIOS files, the soundtrack.
-- All Saturn-format knowledge lives in the PC extraction tool. The game reads only standard formats (PNG and similar).
+- All Saturn-format knowledge lives in one C# decoding library, used by the game on the headset and by the PC command. The game's scene and loader read only standard formats (PNG, glTF) from the asset folder.
 - The two tracks share only the external asset folder and manifest, as defined in `asset-contract.md`. Flight work runs on own example images and grey cubes, so it never waits on extraction.
-- Extraction runs on the PC, once. Nothing is extracted on the headset.
+- Extraction runs on the headset, at launch, from the player's own disc image.
+- Accepted disc images: bin/cue (one `.bin` for all tracks or one per track, read through the cue sheet) and plain 2048-byte-sector ISO.
+- One setting is development mode: it keeps the disc image and re-extracts on every launch, so improved decoders take effect at once. In release mode the disc image is deleted after a successful extraction and extraction does not run again.
 - Platform is standalone Quest 3, Godot 4.7, with C# from the first line (`stack.md`).
 - The known folder is the app's own `Android/data/<package>/files`. Quest's scoped storage rules out arbitrary `/sdcard` paths.
 - The game stays on rails as in the original: the dragon always moves forward.
@@ -75,16 +77,18 @@ Build order and track for each capability are in `milestones.md`.
 - Any episode other than Episode 3.
 - Everything in `later-ideas.md`: health, berserk, steering, view turns, building the radar, sound, real enemy flight paths, centipedes, the boss, a bundled release.
 - A custom asset viewer. The file explorer is the viewer.
+- Compressed disc images such as CHD.
 - Dates for individual milestones.
 
 ## Success signal
 
-- Within a year of 2026-10-06, a player who has run the extractor on their own disc rides the dragon through the Episode 3 forest on a Quest 3 and destroys four real Zwei enemies with one lock-on volley. The repository and the APK contain no copyrighted content.
+- Within a year of 2026-10-06, a player who has copied their own disc image to the headset rides the dragon through the Episode 3 forest on a Quest 3 and destroys four real Zwei enemies with one lock-on volley. The repository and the APK contain no copyrighted content.
 
 ## Assumptions
 
-- The scripts in `tools/` are the start of the shipping extraction tool, not throwaway prototypes.
-- Only the Japanese disc (GS-9049, V1.001) is supported.
+- The Python scripts in `tools/` are prototypes for format research; finished decoders move into the C# library.
+- The Japanese disc (GS-9049, V1.001) is the reference the decoders are built and checked against. Other discs are attempted, with unknown results.
+- The disc image goes in a subfolder of the app's files folder, such as `disc/`; the extraction epic fixes the name.
 - The aiming hand defaults to left; the left/right option is post-demo.
 - The no-HUD rule was the brainstorm coach's synthesis of the author's ideas and is treated as a constraint.
 - The demo ends at milestone 7.

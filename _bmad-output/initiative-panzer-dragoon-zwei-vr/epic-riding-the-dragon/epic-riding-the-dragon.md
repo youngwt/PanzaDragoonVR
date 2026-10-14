@@ -12,7 +12,7 @@ risk: medium
 
 ## Description
 
-The player sits mid-way along the back of the dragon taken from the disc. The tool gains model extraction; the game gains model loading.
+The player sits mid-way along the back of the dragon taken from the disc. The decoding library gains model extraction; the game gains model loading.
 
 ## Outcome
 
@@ -20,7 +20,7 @@ The author is on the dragon, shown by looking down and around at it in the heads
 
 ## Done when
 
-1. The extraction command writes the dragon as a textured model in the agreed standard format, and it opens in an ordinary viewer.
+1. Extraction writes the dragon as a textured model in the agreed standard format, and the PC command's copy opens in an ordinary viewer.
 2. The author has viewed the ten dragon forms and chosen one for the demo.
 3. In the headset the wings are on either side, the head in front and the tail behind.
 4. The dragon stays in place under the player while the forest scrolls.
@@ -35,7 +35,7 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 - Open question: which of the ten dragon forms the demo uses; decided once they can be viewed.
 - Open question: where the wing animation comes from (`.MTB` files are unexamined), and whether still wings are acceptable for the demo.
 - Waits on Engine spike because: it adopts the standard model format and uses the asset loader.
-- Waits on Extraction tool because: model extraction is added to that command, and it needs coloured textures.
+- Waits on In-game extraction because: model extraction is added to its decoding library, and it needs coloured textures.
 
 ## References
 

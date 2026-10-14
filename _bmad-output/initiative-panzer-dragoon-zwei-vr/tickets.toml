@@ -9,23 +9,23 @@ covers = ["CAP-1", "CAP-2"]
 [[epic]]
 id = 2
 slug = "epic-extraction-tool"
-title = "Extraction tool"
+title = "In-game extraction"
 covers = ["CAP-3"]
-after = [{ epic = 1, needs = "the manifest format and folder layout" }]
+after = [{ epic = 1, needs = "the manifest format and folder layout, and how the game reaches its asset folder (story 1.4)" }]
 
 [[epic]]
 id = 3
 slug = "epic-forest-floor-and-canopy"
 title = "Forest floor and canopy"
 covers = ["CAP-4", "CAP-3"]
-after = [{ epic = 1, needs = "the runtime asset loader and the VR scene" }, { epic = 2, needs = "the extraction command that writes files and the manifest" }]
+after = [{ epic = 1, needs = "the runtime asset loader and the VR scene" }, { epic = 2, needs = "extraction writing files and the manifest from the disc image" }]
 
 [[epic]]
 id = 4
 slug = "epic-riding-the-dragon"
 title = "Riding the dragon"
 covers = ["CAP-5", "CAP-3"]
-after = [{ epic = 1, needs = "the standard model format and the runtime asset loader" }, { epic = 2, needs = "the extraction command and coloured textures" }]
+after = [{ epic = 1, needs = "the standard model format and the runtime asset loader" }, { epic = 2, needs = "the decoding library and coloured textures" }]
 
 [[epic]]
 id = 5
@@ -39,4 +39,4 @@ id = 6
 slug = "epic-real-enemies"
 title = "Real enemies"
 covers = ["CAP-9", "CAP-3"]
-after = [{ epic = 4, needs = "model decoding in the tool and model loading in the game" }, { epic = 5, needs = "targets, lock-on and lasers" }]
+after = [{ epic = 4, needs = "model decoding in the library and model loading in the game" }, { epic = 5, needs = "targets, lock-on and lasers" }]
