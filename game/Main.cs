@@ -11,7 +11,8 @@ namespace PanzaDragoonVR;
 /// Engine spike, story 1.3: a ground, a sky and a flying cube to look all around at, held at 90 Hz.
 /// Starts OpenXR, asks the headset for 90 Hz and dresses the ground and sky in the images the asset
 /// folder supplies for them (story 1.4), or in their placeholders, and shows what the launch check
-/// found on a panel in front of the starting view (story 1.5).
+/// found on a panel in front of the starting view (story 1.5). A model the folder supplies for
+/// <c>e03.flyer</c> flies the cube's path in place of the grey cube (story 1.7).
 /// </summary>
 public partial class Main : Node3D
 {
@@ -36,6 +37,7 @@ public partial class Main : Node3D
         // The images the asset folder supplies, or the placeholders when it does not.
         ImageTexture? ground = null;
         ImageTexture? sky = null;
+        Node3D? flyer = null;
         LaunchReport report;
         AssetFolder? assets = null;
         try
@@ -43,6 +45,7 @@ public partial class Main : Node3D
             assets = AssetFolder.Open();
             ground = assets.Image(PlaceholderTextures.GroundAssetId);
             sky = assets.Image(PlaceholderTextures.SkyAssetId);
+            flyer = assets.Model(FlyingCube.AssetId);
             assets.LogSummary();
             report = assets.Report();
         }
@@ -51,6 +54,8 @@ public partial class Main : Node3D
             // Whatever goes wrong in loading, the scene and OpenXR still start.
             ground = null;
             sky = null;
+            flyer?.Free();
+            flyer = null;
             string reason = $"{e.GetType().Name}: {e.Message}";
             GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
             // The folder found and the problems found before the failure are kept on the board.
@@ -83,6 +88,22 @@ public partial class Main : Node3D
 
         Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
         Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
+        if (flyer != null)
+        {
+            try
+            {
+                GetNode<FlyingCube>("Cube").Carry(flyer);
+            }
+            catch (Exception e)
+            {
+                // The grey cube flies instead; the ground and sky keep what they loaded.
+                GD.PushWarning($"{AssetFolder.LogTag} {FlyingCube.AssetId}: the model could not be flown ({e.GetType().Name}: {e.Message}); using the placeholder");
+                if (IsInstanceValid(flyer))
+                {
+                    flyer.Free();
+                }
+            }
+        }
 
         _openXr = StartOpenXr();
         if (_openXr == null)

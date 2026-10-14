@@ -179,7 +179,8 @@ public sealed class AssetManifest
     /// <summary>
     /// Looks up <paramref name="id"/> for the game, which expects an asset of <paramref name="expectedKind"/>,
     /// and checks its file: present, a file, inside the folder, of the stated size and, for an image,
-    /// a PNG of 8 bits per channel, RGB or RGBA.
+    /// a PNG of 8 bits per channel, RGB or RGBA; for a model, a self-contained <c>.glb</c> of glTF 2.0
+    /// with a mesh and no required extensions (<see cref="GlbCheck"/>).
     /// </summary>
     public AssetLookup Find(string id, string expectedKind)
     {
@@ -236,6 +237,16 @@ public sealed class AssetManifest
                 if (notPng != null)
                 {
                     return AssetLookup.Fail($"{where}: unreadable image: {notPng}");
+                }
+            }
+            else if (expectedKind == ModelKind)
+            {
+                // Its header and JSON chunk, by the contract's "When a model is invalid" table.
+                // Nothing the model names is opened.
+                GlbCheckResult model = GlbCheck.Check(File.ReadAllBytes(full));
+                if (!model.IsUsable)
+                {
+                    return AssetLookup.Fail(model.Line(id, entry.Path)!);
                 }
             }
         }

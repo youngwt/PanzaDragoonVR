@@ -25,3 +25,9 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-launch-report-and-fallback-plan.md`
   summary: In debug builds the head-locked frame-rate readout covers the lower part of the launch report board in the starting view; move one of them.
   evidence: Seen in a headset screen capture on 2026-10-14. Release builds do not show the readout, so players are unaffected; it gets in the way while testing.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-grey-cube-loaded-from-a-model-file-plan.md`
+  summary: The earlier item asking story 1.7 to switch off vertex colour as albedo is dealt with - the game does switch it off - but Godot 4.7.2 turned out never to turn it on, so the switch is a guard only.
+  evidence: Ticket 1.7 loaded five models carrying `COLOR_0` (textured unlit, untextured unlit, untextured lit, no material, three-component colours) with the game's switch disabled; every one rendered without the vertex colours. The asset contract's rule that the game ignores `COLOR_0` in format 1 holds either way.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-grey-cube-loaded-from-a-model-file-plan.md`
+  summary: The earlier item that ticket 1.3's last readout changes had not been seen on the headset is closed; the 72 Hz item stays open.
+  evidence: Headset screen captures on 2026-10-15 show the readout reading "Asked for 90 Hz; running at 72 Hz (4 rates offered)" and "Measured 72.0 Hz".

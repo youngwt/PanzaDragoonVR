@@ -6,9 +6,14 @@ namespace PanzaDragoonVR;
 /// <summary>
 /// Flies its node round a circle centred on its parent's origin, rising and falling twice a lap.
 /// The path closes on itself and passes behind the player, so following it means turning right round.
+/// Its own mesh is the grey cube, the placeholder for <c>e03.flyer</c>; a model the asset folder
+/// supplies flies the same path in its place.
 /// </summary>
-public partial class FlyingCube : Node3D
+public partial class FlyingCube : MeshInstance3D
 {
+    /// <summary>The asset ID the grey cube stands in for.</summary>
+    public const string AssetId = "e03.flyer";
+
     /// <summary>Distance from the centre, in metres.</summary>
     [Export] public float Radius { get; set; } = 4.0f;
 
@@ -31,6 +36,13 @@ public partial class FlyingCube : Node3D
     public override void _Ready()
     {
         Position = PointOnPath(0.0);
+    }
+
+    /// <summary>Flies <paramref name="model"/> in place of the grey cube: the cube is no longer drawn.</summary>
+    public void Carry(Node3D model)
+    {
+        AddChild(model);
+        Mesh = null;
     }
 
     public override void _Process(double delta)

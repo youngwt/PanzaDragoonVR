@@ -116,7 +116,7 @@ If the script says no headset was found, check the cable and developer mode. If 
 - OpenXR needs Godot's Gradle build, so the prebuilt export template is not used. The build includes the Meta part of the OpenXR vendors plugin, which `setup-toolchain.sh` installs.
 - The APK is signed with Godot's debug keystore, which Godot creates in its `editor_data` folder. It is not a release build.
 - The headset no longer holds the launch back with a "controller required" prompt, because the app declares hand tracking as optional (the app itself does nothing with hands). So `build-quest.sh` can launch the app with nobody wearing the headset. When the app has not started within 10 seconds, usually because the headset is asleep, the script says so and exits with status 2.
-- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`) and a grey cube flying in a circle right around you. A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
+- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`) and a grey cube flying in a circle right around you (or the model the folder supplies for `e03.flyer`; see [Your own model in the headset](#your-own-model-in-the-headset)). A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
 - The ground and sky images are tiled by a small shader in `game/Main.cs` that wraps the texture coordinates itself. On the Quest 3 a texture set to repeat came out clamped to its edge on these planes, so each showed one flat colour; the same scene tiled correctly on a desktop. The cause was not found.
 - Inside the VS Code Flatpak sandbox there is no USB access, so the script runs `adb` on the host through `flatpak-spawn --host`. Outside a sandbox it runs `adb` directly.
 - `game/.godot/`, `game/build/` and `game/android/` are generated and git-ignored.
@@ -197,9 +197,9 @@ tools/test.sh                         # run every test, Python and C#
 tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`; only the C# tests run
 ```
 
-The Python tests cover the scripts in `tools/`, at present the manifest writer. They use `unittest` from the standard library and work in temporary folders.
+The Python tests cover the scripts in `tools/`, at present the manifest writer and the test model writer. They use `unittest` from the standard library and work in temporary folders.
 
-The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, with the same edge cases as the Python tests, so the two sides of the asset contract stay in step. The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, with the same edge cases as the Python tests, so the two sides of the asset contract stay in step, and its check of a model file (`game/Logic/GlbCheck.cs`). The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
 
 ## A manifest for your own files
 
@@ -214,6 +214,8 @@ my-assets/
   images/
     e03.floor.png      supplies e03.floor
     e03.canopy.png     supplies e03.canopy
+  models/
+    e03.flyer.glb      supplies e03.flyer
 ```
 
 - An ID is lowercase letters, digits and underscores, in levels separated by single dots: `e03.floor`.
@@ -278,7 +280,7 @@ PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
 
 ### What the game uses
 
-For now the game uses two images: `e03.floor` on the ground and `e03.canopy` on the sky. Each is tiled at the placeholder's tile size: one copy per 2 metres of ground and one per 20 metres of sky. Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and one model, `e03.flyer` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the placeholder's tile size: one copy per 2 metres of ground and one per 20 metres of sky. Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
 
 ### Copying a folder to the headset
 
@@ -308,14 +310,15 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep PDZ-ASS
 | `the manifest cannot be read: <reason>; running on placeholders` | Not JSON, a byte-order mark, or a required field absent or of the wrong type. A warning. |
 | `manifest.json: unsupported format <n>; ...` | Made by a newer or older tool; run the matching tool again. A warning. |
 | `<id>: using <file> (<w> x <h>)` | That image is in use. |
-| `<id>: <reason>; using the placeholder for <id>` | That image had a problem: missing, wrong size, invalid entry, duplicate ID, wrong kind, or not a PNG that can be decoded. A warning. |
-| `supplied: <ids>; placeholders: <ids>` or `no image was supplied: running on placeholders (...)` | The summary, last. |
+| `<id>: using <file>` | That model is in use. |
+| `<id>: <reason>; using the placeholder for <id>` | That image or model had a problem: missing, wrong size, invalid entry, duplicate ID, wrong kind, not a PNG that can be decoded, or a model problem from the table in [Your own model in the headset](#your-own-model-in-the-headset). A warning. |
+| `supplied: <ids>; placeholders: <ids>` or `no asset was supplied: running on placeholders (...)` | The summary, last. |
 
 An ID the manifest does not list gets its placeholder with no warning: that is the normal state before an image is supplied.
 
 ### The launch report in the headset
 
-When the game has something to say about the asset folder, a dark board stands about 2 metres in front of where you start, at eye height. It is part of the world, like a sign, and does not follow your head. It stays for as long as the app runs; dismissing it comes with controller input. When every image the folder lists loads, there is no board.
+When the game has something to say about the asset folder, a dark board stands about 2 metres in front of where you start, at eye height. It is part of the world, like a sign, and does not follow your head. It stays for as long as the app runs; dismissing it comes with controller input. When every image and model the folder lists loads, there is no board.
 
 Its wording follows the launch table in the asset contract:
 
@@ -324,7 +327,7 @@ Its wording follows the launch table in the asset contract:
 | `Running on placeholders` (pale blue) | There is no `manifest.json` in the folder (on a desktop: `PDZ_ASSETS` is unset). Not an error; the folder path is shown. |
 | `The asset manifest cannot be read` (amber) | Not JSON, not UTF-8, a byte-order mark, or a required field absent or of the wrong type. The reason is on the next line. Everything is a placeholder. |
 | `The assets were made by a newer or older tool than this build understands` (amber) | `format` is not 1. Run the matching tool again. Everything is a placeholder. |
-| `<n> problems with the assets` (amber) | One line per problem, each starting with its ID: missing, incomplete or changed (size differs from `bytes`), invalid entry, duplicate ID, wrong kind, or an image that cannot be decoded. Each affected ID shows its placeholder; the others load. |
+| `<n> problems with the assets` (amber) | One line per problem, each starting with its ID: missing, incomplete or changed (size differs from `bytes`), invalid entry, duplicate ID, wrong kind, an image that cannot be decoded, or a model problem (see [Your own model in the headset](#your-own-model-in-the-headset)). Each affected ID shows its placeholder; the others load. |
 | `The asset folder could not be loaded` (amber) | Something the checks did not foresee went wrong; the reason is shown and everything is a placeholder. |
 
 The board shows at most 6 problems, then `and <n> more; the full list is in the log under PDZ-ASSETS`. Every line of the report, with nothing left out, is also logged as `PDZ-ASSETS report: <line>`:
@@ -334,6 +337,42 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep "PDZ-AS
 ```
 
 The text is built in `game/Logic/LaunchReport.cs` and shown by `game/LaunchReportPanel.cs`.
+
+## Your own model in the headset
+
+The grey cube that flies round you is the placeholder for `e03.flyer`, a model. A `.glb` the folder lists as `e03.flyer` flies the same path in its place, tumbling as the cube does, at the size the file gives it in metres. The rules for the file are the Models section of the asset contract; a hand-made model need only be a readable, self-contained binary glTF 2.0 file with at least one mesh, no required extensions and images the game can decode. Animations, skins, cameras and lights in it are ignored, and so are vertex colours (`COLOR_0`).
+
+### A test model
+
+`make_test_model.py` writes a small model to try this with: a pyramid about half a metre across whose faces are red, yellow, green and white, with an orange base, from one 16 x 16 PNG stored inside the file. It needs only the standard library.
+
+```sh
+python3 tools/make_test_model.py my-assets/models/e03.flyer.glb
+python3 tools/write_manifest.py my-assets
+tools/push-assets.sh my-assets
+```
+
+Then start the app: the pyramid flies where the cube did. The test model also carries blue vertex colours (`COLOR_0`), so it shows that a file with them is accepted. It cannot show that they are ignored: Godot 4.7.2 does not apply them on its own, so the faces keep their texture colours whether or not the game switches vertex colour off. The game switches it off on every material anyway, in case a later Godot does. A model of your own, exported from Blender as `glTF Binary (.glb)`, is supplied the same way.
+
+### When a model is rejected
+
+The game reads the file's header and its JSON before the engine sees it, and never opens a file the model names. Any problem keeps the grey cube, and the board and the log say why, with one line starting with the ID:
+
+| Line | Meaning |
+|------|---------|
+| `e03.flyer: <path>: unreadable model: <reason>` | Not a `.glb` of glTF 2.0, cut short, JSON that cannot be read, or something the engine could not load. |
+| `e03.flyer: unreadable model: it could not be loaded (<error>)` | Loading failed in a way the checks did not foresee. The ground and sky keep what they loaded. |
+| `e03.flyer: <path>: not self-contained: buffer 0 names the file '<name>', which was not opened` | The model refers to a file outside itself; also for an external image (`image <n> names the file ...`). Re-export it as one `.glb`. |
+| `e03.flyer: <path>: not self-contained: image <n> has a data: URI` | Also for a buffer. The contract allows no `uri` of any kind. |
+| `e03.flyer: <path>: unsupported model: it requires the extension <name>` | The file lists the extension in `extensionsRequired`, such as mesh compression. Export without it. |
+| `e03.flyer: <path>: unreadable texture in model: image <n> could not be decoded` | An image inside the file is not one the game can decode. |
+| `e03.flyer: <path>: empty model: it has no mesh` | The file has no mesh. |
+| `e03.flyer: <path>: empty model: no node uses any of its meshes` | The file has meshes, but no node uses one. |
+| `e03.flyer: wrong kind: the manifest says 'image', the game needs 'model'` | The manifest lists `e03.flyer` with another kind. |
+
+Missing files, wrong sizes and the other manifest problems read as they do for images. The model checks are in `game/Logic/GlbCheck.cs`; loading it is in `game/AssetFolder.cs`.
+
+`write_manifest.py --check` only looks at a `.glb`'s header, so a model it passes can still be rejected by the game for the reasons above.
 
 ## Extraction scripts
 
