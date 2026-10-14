@@ -1,8 +1,9 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://Main.cs" id="1_main"]
 [ext_resource type="Script" path="res://FlyingCube.cs" id="2_cube"]
 [ext_resource type="Script" path="res://FrameRateReadout.cs" id="3_readout"]
+[ext_resource type="Script" path="res://LaunchReportPanel.cs" id="4_report"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
@@ -23,6 +24,13 @@ size = Vector3(0.5, 0.5, 0.5)
 
 [sub_resource type="StandardMaterial3D" id="Material_cube"]
 albedo_color = Color(0.5, 0.5, 0.5, 1)
+
+[sub_resource type="QuadMesh" id="QuadMesh_board"]
+size = Vector2(1.8, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="Material_board"]
+shading_mode = 0
+albedo_color = Color(0.08, 0.09, 0.12, 1)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -60,3 +68,21 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -4)
 mesh = SubResource("BoxMesh_cube")
 surface_material_override/0 = SubResource("Material_cube")
 script = ExtResource("2_cube")
+
+[node name="LaunchReport" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -2.2)
+script = ExtResource("4_report")
+
+[node name="Board" type="MeshInstance3D" parent="LaunchReport"]
+mesh = SubResource("QuadMesh_board")
+surface_material_override/0 = SubResource("Material_board")
+
+[node name="Text" type="Label3D" parent="LaunchReport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0, 0.01)
+pixel_size = 0.001
+double_sided = false
+font_size = 36
+outline_size = 0
+horizontal_alignment = 0
+autowrap_mode = 3
+width = 1600.0

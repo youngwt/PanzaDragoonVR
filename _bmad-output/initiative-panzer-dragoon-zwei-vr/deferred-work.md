@@ -22,3 +22,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-decide-the-standard-model-format-plan.md`
   summary: Nothing in the asset contract's Models section has been run in Godot or on the Quest 3; thirteen of its rules are marked provisional until model geometry is decoded.
   evidence: The section was written from Godot's documentation and source and the glTF specification. Saturn VDP1 behaviour behind the transparency, shading and facing rules was stated from memory and not re-checked. Story 1.7 is the first load of a model; the dragon epic is where the provisional rules get confirmed or changed.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-launch-report-and-fallback-plan.md`
+  summary: In debug builds the head-locked frame-rate readout covers the lower part of the launch report board in the starting view; move one of them.
+  evidence: Seen in a headset screen capture on 2026-10-14. Release builds do not show the readout, so players are unaffected; it gets in the way while testing.

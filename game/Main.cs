@@ -10,7 +10,8 @@ namespace PanzaDragoonVR;
 /// <summary>
 /// Engine spike, story 1.3: a ground, a sky and a flying cube to look all around at, held at 90 Hz.
 /// Starts OpenXR, asks the headset for 90 Hz and dresses the ground and sky in the images the asset
-/// folder supplies for them (story 1.4), or in their placeholders.
+/// folder supplies for them (story 1.4), or in their placeholders, and shows what the launch check
+/// found on a panel in front of the starting view (story 1.5).
 /// </summary>
 public partial class Main : Node3D
 {
@@ -35,19 +36,49 @@ public partial class Main : Node3D
         // The images the asset folder supplies, or the placeholders when it does not.
         ImageTexture? ground = null;
         ImageTexture? sky = null;
+        LaunchReport report;
+        AssetFolder? assets = null;
         try
         {
-            AssetFolder assets = AssetFolder.Open();
+            assets = AssetFolder.Open();
             ground = assets.Image(PlaceholderTextures.GroundAssetId);
             sky = assets.Image(PlaceholderTextures.SkyAssetId);
             assets.LogSummary();
+            report = assets.Report();
         }
         catch (Exception e)
         {
             // Whatever goes wrong in loading, the scene and OpenXR still start.
             ground = null;
             sky = null;
-            GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({e.GetType().Name}: {e.Message}); running on placeholders");
+            string reason = $"{e.GetType().Name}: {e.Message}";
+            GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
+            // The folder found and the problems found before the failure are kept on the board.
+            try
+            {
+                report = assets?.FailedReport(reason) ?? LaunchReport.Failed(null, reason);
+            }
+            catch (Exception)
+            {
+                report = LaunchReport.Failed(assets?.Path, reason);
+                AssetFolder.LogReport(report);
+            }
+
+            if (assets == null)
+            {
+                AssetFolder.LogReport(report);
+            }
+        }
+
+        // What the launch check found, readable in the headset; it stays for as long as the app runs.
+        // A panel that fails to show must not stop OpenXR from starting; the report is in the log already.
+        try
+        {
+            GetNode<LaunchReportPanel>("LaunchReport").Display(report);
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning($"{AssetFolder.LogTag} the launch report could not be shown ({e.GetType().Name}: {e.Message})");
         }
 
         Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);

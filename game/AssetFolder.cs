@@ -34,6 +34,8 @@ public sealed class AssetFolder
     private readonly ManifestRead _read;
     private readonly List<string> _supplied = new();
     private readonly List<string> _placeholders = new();
+    private readonly List<AssetLookup> _lookups = new();
+    private readonly List<string> _loadProblems = new();
 
     private AssetFolder(string? path, ManifestRead read)
     {
@@ -81,6 +83,7 @@ public sealed class AssetFolder
     public ImageTexture? Image(string id)
     {
         AssetLookup lookup = _read.Find(id, AssetManifest.ImageKind);
+        _lookups.Add(lookup);
         switch (lookup.Status)
         {
             case AssetLookupStatus.NotListed:
@@ -93,6 +96,8 @@ public sealed class AssetFolder
         }
 
         string full = lookup.FullPath!;
+        // The board names the path as the manifest lists it, as for every other problem; the log also gets the full path.
+        string listed = System.IO.Path.GetRelativePath(Path!, full);
         byte[] bytes;
         try
         {
@@ -100,7 +105,7 @@ public sealed class AssetFolder
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            Warn($"{id}: {full}: cannot be read: {e.Message}; using the placeholder for {id}");
+            LoadProblem(id, $"{id}: {listed}: cannot be read: {e.Message}", full);
             _placeholders.Add(id);
             return null;
         }
@@ -110,7 +115,7 @@ public sealed class AssetFolder
         Error error = image.LoadPngFromBuffer(bytes);
         if (error != Error.Ok || image.IsEmpty())
         {
-            Warn($"{id}: {full}: unreadable image: the PNG could not be decoded ({error}); using the placeholder for {id}");
+            LoadProblem(id, $"{id}: {listed}: unreadable image: the PNG could not be decoded ({error})", full);
             _placeholders.Add(id);
             return null;
         }
@@ -133,6 +138,44 @@ public sealed class AssetFolder
 
         string placeholders = _placeholders.Count == 0 ? "none" : string.Join(", ", _placeholders);
         Log($"supplied: {string.Join(", ", _supplied)}; placeholders: {placeholders}");
+    }
+
+    /// <summary>
+    /// What the launch check found, for the report in the headset: every lookup made so far and every
+    /// image that passed the checks but could not be loaded. Every line of it is logged too, in full.
+    /// </summary>
+    public LaunchReport Report()
+    {
+        LaunchReport report = LaunchReport.Build(Path, _read, _lookups, _loadProblems);
+        LogReport(report);
+        return report;
+    }
+
+    /// <summary>Logs every line of a launch report, none left out, so what the headset shows is also in the log.</summary>
+    public static void LogReport(LaunchReport report)
+    {
+        foreach (string line in report.AllLines)
+        {
+            Log($"report: {line}");
+        }
+    }
+
+    /// <summary>
+    /// The report when loading failed part way: the folder that was found, the problems found so far,
+    /// then <paramref name="reason"/>. Every line is logged.
+    /// </summary>
+    public LaunchReport FailedReport(string reason)
+    {
+        LaunchReport found = LaunchReport.Build(Path, _read, _lookups, _loadProblems);
+        LaunchReport report = LaunchReport.Failed(Path, reason, found.Problems);
+        LogReport(report);
+        return report;
+    }
+
+    private void LoadProblem(string id, string problem, string fullPath)
+    {
+        Warn($"{problem} (file {fullPath}); using the placeholder for {id}");
+        _loadProblems.Add(problem);
     }
 
     /// <summary>

@@ -278,7 +278,7 @@ PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
 
 ### What the game uses
 
-For now the game uses two images: `e03.floor` on the ground and `e03.canopy` on the sky. Each is tiled at the placeholder's tile size: one copy per 2 metres of ground and one per 20 metres of sky. Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead; the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+For now the game uses two images: `e03.floor` on the ground and `e03.canopy` on the sky. Each is tiled at the placeholder's tile size: one copy per 2 metres of ground and one per 20 metres of sky. Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
 
 ### Copying a folder to the headset
 
@@ -311,7 +311,29 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep PDZ-ASS
 | `<id>: <reason>; using the placeholder for <id>` | That image had a problem: missing, wrong size, invalid entry, duplicate ID, wrong kind, or not a PNG that can be decoded. A warning. |
 | `supplied: <ids>; placeholders: <ids>` or `no image was supplied: running on placeholders (...)` | The summary, last. |
 
-An ID the manifest does not list gets its placeholder with no warning: that is the normal state before an image is supplied. Problems are only in the log for now; a report readable in the headset is story 1.5.
+An ID the manifest does not list gets its placeholder with no warning: that is the normal state before an image is supplied.
+
+### The launch report in the headset
+
+When the game has something to say about the asset folder, a dark board stands about 2 metres in front of where you start, at eye height. It is part of the world, like a sign, and does not follow your head. It stays for as long as the app runs; dismissing it comes with controller input. When every image the folder lists loads, there is no board.
+
+Its wording follows the launch table in the asset contract:
+
+| Board | Meaning |
+|-------|---------|
+| `Running on placeholders` (pale blue) | There is no `manifest.json` in the folder (on a desktop: `PDZ_ASSETS` is unset). Not an error; the folder path is shown. |
+| `The asset manifest cannot be read` (amber) | Not JSON, not UTF-8, a byte-order mark, or a required field absent or of the wrong type. The reason is on the next line. Everything is a placeholder. |
+| `The assets were made by a newer or older tool than this build understands` (amber) | `format` is not 1. Run the matching tool again. Everything is a placeholder. |
+| `<n> problems with the assets` (amber) | One line per problem, each starting with its ID: missing, incomplete or changed (size differs from `bytes`), invalid entry, duplicate ID, wrong kind, or an image that cannot be decoded. Each affected ID shows its placeholder; the others load. |
+| `The asset folder could not be loaded` (amber) | Something the checks did not foresee went wrong; the reason is shown and everything is a placeholder. |
+
+The board shows at most 6 problems, then `and <n> more; the full list is in the log under PDZ-ASSETS`. Every line of the report, with nothing left out, is also logged as `PDZ-ASSETS report: <line>`:
+
+```sh
+flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep "PDZ-ASSETS report"
+```
+
+The text is built in `game/Logic/LaunchReport.cs` and shown by `game/LaunchReportPanel.cs`.
 
 ## Extraction scripts
 
