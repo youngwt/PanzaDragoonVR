@@ -3,7 +3,7 @@ title: 'Manifest writer for your own files'
 type: 'feature'
 ticket: '9'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: 'e0c8fba9cb2b5e9b164967b3fa09ef4d49c7811e'
 route: 'full'
 route_source: 'auto'

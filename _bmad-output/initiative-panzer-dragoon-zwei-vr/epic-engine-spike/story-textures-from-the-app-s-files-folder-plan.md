@@ -3,7 +3,7 @@ title: "Textures from the app's files folder"
 type: 'feature'
 ticket: '4'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: 'd5b3627cf6eabd2e44ebc0c1001da12259da32e2'
 route: 'full'
 route_source: 'auto'
