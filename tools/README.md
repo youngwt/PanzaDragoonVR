@@ -116,7 +116,7 @@ If the script says no headset was found, check the cable and developer mode. If 
 - OpenXR needs Godot's Gradle build, so the prebuilt export template is not used. The build includes the Meta part of the OpenXR vendors plugin, which `setup-toolchain.sh` installs.
 - The APK is signed with Godot's debug keystore, which Godot creates in its `editor_data` folder. It is not a release build.
 - The headset no longer holds the launch back with a "controller required" prompt, because the app declares hand tracking as optional (the app itself does nothing with hands). So `build-quest.sh` can launch the app with nobody wearing the headset. When the app has not started within 10 seconds, usually because the headset is asleep, the script says so and exits with status 2.
-- In the headset you should see a green chequered ground underfoot, a blue chequered sky overhead and a grey cube flying in a circle right around you. A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
+- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`) and a grey cube flying in a circle right around you. A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
 - The ground and sky images are tiled by a small shader in `game/Main.cs` that wraps the texture coordinates itself. On the Quest 3 a texture set to repeat came out clamped to its edge on these planes, so each showed one flat colour; the same scene tiled correctly on a desktop. The cause was not found.
 - Inside the VS Code Flatpak sandbox there is no USB access, so the script runs `adb` on the host through `flatpak-spawn --host`. Outside a sandbox it runs `adb` directly.
 - `game/.godot/`, `game/build/` and `game/android/` are generated and git-ignored.
@@ -199,7 +199,7 @@ tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`; onl
 
 The Python tests cover the scripts in `tools/`, at present the manifest writer. They use `unittest` from the standard library and work in temporary folders.
 
-The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, with the same edge cases as the Python tests, so the two sides of the asset contract stay in step. The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
 
 ## A manifest for your own files
 
@@ -254,7 +254,64 @@ python3 tools/write_manifest.py --check my-assets
 
 This reads `manifest.json` and the files it lists and changes nothing. It reports every problem, not only the first, and exits with status 1 if there is one: a manifest that is absent, unreadable or of an unsupported `format`, a duplicate ID, an invalid ID or path, a missing file, a wrong size, a wrong checksum, or contents that are not of the stated kind. Files the manifest does not list are ignored, as the game ignores them. An entry of a kind this script does not know is not a problem: its path, size and checksum are still checked, and a one-line notice says its contents were not.
 
-The rules live in `tools/manifest.py`, which the extraction tool can import. Copying the folder to the headset is not part of this script.
+The rules live in `tools/manifest.py`, which the extraction tool can import. Copying the folder to the headset is not part of this script; `push-assets.sh` does that.
+
+## Your own images in the headset
+
+### Where the game looks
+
+On the headset the asset folder is the app's external files folder:
+
+```
+/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/
+```
+
+`manifest.json` goes directly inside `files/`. The game reads the folder once, when it starts. Nothing in the folder is packed into the APK.
+
+How the game reaches it: it asks Android, through Godot's `AndroidRuntime` bridge, for `getApplicationContext().getExternalFilesDir(null)`, which also creates the folder if it is absent. If that cannot be asked or gives nothing, it uses the fixed path `/storage/emulated/0/Android/data/io.github.youngwt.panzadragoonvr/files` (the same folder; `/sdcard` links to `/storage/emulated/0`) and logs that it did. Extraction on the headset (epic 2) writes to this same folder. The code is in `game/AssetFolder.cs`; the manifest rules the game applies are in `game/Logic/AssetManifest.cs`, which follows the asset contract as `tools/manifest.py` does.
+
+On a desktop run the game reads the folder named by the `PDZ_ASSETS` environment variable, and runs on placeholders when it is unset:
+
+```sh
+PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
+```
+
+### What the game uses
+
+For now the game uses two images: `e03.floor` on the ground and `e03.canopy` on the sky. Each is tiled at the placeholder's tile size: one copy per 2 metres of ground and one per 20 metres of sky. Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead; the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+
+### Copying a folder to the headset
+
+```sh
+python3 tools/write_manifest.py my-assets   # write the manifest
+tools/push-assets.sh my-assets              # check it, then copy what is inside it to the headset
+tools/push-assets.sh --clear my-assets      # the same, emptying the headset's folder first
+tools/push-assets.sh --clear                # only empty it: the game runs on placeholders (also with a folder holding no files)
+```
+
+`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox.
+
+The app is not restarted. Start it again to see the change, with `tools/build-quest.sh` or from the headset's library.
+
+### Reading what the game made of the folder
+
+Every line the loader writes starts with `PDZ-ASSETS`, in Godot's log (tag `godot` on the headset). Read it while the app is running:
+
+```sh
+. tools/toolchain-env.sh
+flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep PDZ-ASSETS
+```
+
+| Line | Meaning |
+|------|---------|
+| `no manifest.json in <folder>: running on placeholders` | The folder is empty or has no manifest. Not an error. |
+| `the manifest cannot be read: <reason>; running on placeholders` | Not JSON, a byte-order mark, or a required field absent or of the wrong type. A warning. |
+| `manifest.json: unsupported format <n>; ...` | Made by a newer or older tool; run the matching tool again. A warning. |
+| `<id>: using <file> (<w> x <h>)` | That image is in use. |
+| `<id>: <reason>; using the placeholder for <id>` | That image had a problem: missing, wrong size, invalid entry, duplicate ID, wrong kind, or not a PNG that can be decoded. A warning. |
+| `supplied: <ids>; placeholders: <ids>` or `no image was supplied: running on placeholders (...)` | The summary, last. |
+
+An ID the manifest does not list gets its placeholder with no warning: that is the normal state before an image is supplied. Problems are only in the log for now; a report readable in the headset is story 1.5.
 
 ## Extraction scripts
 

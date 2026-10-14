@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Globalization;
 using System.Linq;
 using Godot;
@@ -8,7 +9,8 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// Engine spike, story 1.3: a ground, a sky and a flying cube to look all around at, held at 90 Hz.
-/// Starts OpenXR, asks the headset for 90 Hz and dresses the ground and sky in their placeholders.
+/// Starts OpenXR, asks the headset for 90 Hz and dresses the ground and sky in the images the asset
+/// folder supplies for them (story 1.4), or in their placeholders.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -30,8 +32,26 @@ public partial class Main : Node3D
         _readout = GetNode<FrameRateReadout>("XROrigin3D/XRCamera3D/FrameRateReadout");
 
         _tiling = new Shader { Code = TilingShader };
-        Dress(GetNode<MeshInstance3D>("Ground"), PlaceholderTextures.Ground(), GroundTileMetres);
-        Dress(GetNode<MeshInstance3D>("Sky"), PlaceholderTextures.Sky(), SkyTileMetres);
+        // The images the asset folder supplies, or the placeholders when it does not.
+        ImageTexture? ground = null;
+        ImageTexture? sky = null;
+        try
+        {
+            AssetFolder assets = AssetFolder.Open();
+            ground = assets.Image(PlaceholderTextures.GroundAssetId);
+            sky = assets.Image(PlaceholderTextures.SkyAssetId);
+            assets.LogSummary();
+        }
+        catch (Exception e)
+        {
+            // Whatever goes wrong in loading, the scene and OpenXR still start.
+            ground = null;
+            sky = null;
+            GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({e.GetType().Name}: {e.Message}); running on placeholders");
+        }
+
+        Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
+        Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
 
         _openXr = StartOpenXr();
         if (_openXr == null)
