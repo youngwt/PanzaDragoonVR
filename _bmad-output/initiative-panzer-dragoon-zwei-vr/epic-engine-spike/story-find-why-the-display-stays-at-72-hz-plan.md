@@ -3,7 +3,7 @@ title: 'Find why the display stays at 72 Hz'
 type: 'chore'
 ticket: '10'
 created: '2026-10-16'
-status: 'built'
+status: done
 baseline_revision: 'f152b6a8fd75ffc312b7d31e37f1f4afd213a46a'
 route: 'full'
 route_source: 'auto'
