@@ -3,7 +3,7 @@ title: 'Grey cube loaded from a model file'
 type: 'feature'
 ticket: '7'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: 'cb1b739b32a432001cdf9ff4932e56be9f732176'
 route: 'full'
 route_source: 'auto'
