@@ -144,7 +144,7 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d > game/build/l
 
 A debug build shows a readout fixed in front of the camera, and writes the same figures to the headset's log once a second under the tag `PDZ-FPS`. A release build shows and logs neither.
 
-**Where this stands on the Quest 3.** The display runs at 72 Hz, not 90. The headset offers four refresh rates and accepts the game's request for 90 Hz, but the display stays at 72 Hz, so the readout says `Asked for 90 Hz; running at 72 Hz (4 rates offered)` and the measured rate is 72. The cause is not known. Reaching 90 Hz is open work.
+**Where this stands on the Quest 3.** The game runs at 90 Hz. It ran at 72 until the headset's battery saving was turned off and the headset restarted (ticket 1.10, 2026-10-17): with battery saving on, the headset holds every app at 72 Hz and ignores requests for other rates. If the readout says "Asked for 90 Hz; running at 72 Hz", check Settings, Device, Power for battery saving or power saving, turn it off and restart the headset. While the headset shows a system prompt such as the Guardian boundary dialog, it runs at 72 Hz until the prompt is cleared.
 
 The readout's first line says what happened when the game asked for 90 Hz. After asking, the game reads back the rate the headset is running at, and frames are measured against that rate, not the rate asked for:
 

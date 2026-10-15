@@ -31,3 +31,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-grey-cube-loaded-from-a-model-file-plan.md`
   summary: The earlier item that ticket 1.3's last readout changes had not been seen on the headset is closed; the 72 Hz item stays open.
   evidence: Headset screen captures on 2026-10-15 show the readout reading "Asked for 90 Hz; running at 72 Hz (4 rates offered)" and "Measured 72.0 Hz".
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-find-why-the-display-stays-at-72-hz-plan.md`
+  summary: The 72 Hz item is closed - the cause was the headset's battery saving mode, which needed a restart after being turned off; the game now runs at 90 Hz.
+  evidence: Ticket 1.10, 2026-10-17 - with battery saving off and the headset restarted, the readout showed target 90 and the log averaged 89.9 to 90.3 Hz. Players with battery saving on will get 72 Hz; worth a line in any player instructions.
