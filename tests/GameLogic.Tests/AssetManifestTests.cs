@@ -538,6 +538,47 @@ public sealed class AssetManifestTests : IDisposable
         Assert.Equal(AssetLookupStatus.Found, read.Find(Floor, AssetManifest.ImageKind).Status);
     }
 
+    [Fact]
+    public void LoneSurrogateInAnId_IsAnInvalidEntryAndHidesNoOtherId()
+    {
+        Manifest(WithAssets(Entry("\\ud800", "x.png", 1), Image(Floor, "e03.floor.png")));
+
+        ManifestRead read = Load();
+
+        Assert.Equal(ManifestStatus.Read, read.Status);
+        Assert.Equal(new[] { "entry 1: invalid entry: field 'id' is not readable text: it holds a lone surrogate escape" }, read.Manifest!.Problems);
+        Assert.Equal(AssetLookupStatus.Found, read.Find(Floor, AssetManifest.ImageKind).Status);
+    }
+
+    [Fact]
+    public void LoneSurrogateInAPath_IsAnInvalidEntryForThatIdOnly()
+    {
+        Manifest(WithAssets(Entry(Floor, "\\ud800.png", 1), Image(Canopy, "e03.canopy.png")));
+
+        ManifestRead read = Load();
+
+        Assert.Equal(ManifestStatus.Read, read.Status);
+        Assert.Equal(
+            "e03.floor: invalid entry: field 'path' is not readable text: it holds a lone surrogate escape",
+            read.Find(Floor, AssetManifest.ImageKind).Problem);
+        Assert.Equal(AssetLookupStatus.Found, read.Find(Canopy, AssetManifest.ImageKind).Status);
+    }
+
+    [Fact]
+    public void LoneSurrogateInAKind_IsAKindTheGameDoesNotKnow()
+    {
+        Manifest(WithAssets(Entry(Floor, "e03.floor.png", 1, kind: "\\ud800"), Image(Canopy, "e03.canopy.png")));
+
+        ManifestRead read = Load();
+
+        Assert.Equal(ManifestStatus.Read, read.Status);
+        Assert.Empty(read.Manifest!.Problems);
+        Assert.Equal(
+            "e03.floor: wrong kind: the manifest says '\"\\ud800\"', the game needs 'image'",
+            read.Find(Floor, AssetManifest.ImageKind).Problem);
+        Assert.Equal(AssetLookupStatus.Found, read.Find(Canopy, AssetManifest.ImageKind).Status);
+    }
+
     [Theory]
     [InlineData("E03.floor")]
     [InlineData("e03..floor")]

@@ -344,12 +344,8 @@ public sealed class AssetManifest
                 continue;
             }
 
-            string? id = item.TryGetProperty("id", out JsonElement idElement) && idElement.ValueKind == JsonValueKind.String
-                ? idElement.GetString()
-                : null;
-            string? path = item.TryGetProperty("path", out JsonElement pathElement) && pathElement.ValueKind == JsonValueKind.String
-                ? pathElement.GetString()
-                : null;
+            string? id = item.TryGetProperty("id", out JsonElement idElement) ? Text(idElement) : null;
+            string? path = item.TryGetProperty("path", out JsonElement pathElement) ? Text(pathElement) : null;
 
             if (id != null)
             {
@@ -383,7 +379,7 @@ public sealed class AssetManifest
             }
 
             JsonElement bytes = item.GetProperty("bytes");
-            entries[id!] = new Entry(id!, item.GetProperty("kind").GetString()!, path!,
+            entries[id!] = new Entry(id!, KindText(item.GetProperty("kind")), path!,
                 bytes.TryGetInt64(out long size) ? size : null, bytes.GetRawText());
         }
 
@@ -398,6 +394,16 @@ public sealed class AssetManifest
         RequireField(item, "kind", e => e.ValueKind == JsonValueKind.String, "a string", reasons);
         RequireField(item, "path", e => e.ValueKind == JsonValueKind.String, "a string", reasons);
         RequireField(item, "bytes", e => IsInteger(e), "an integer", reasons);
+        // An unreadable kind is not checked here: like any kind the game does not know, it is only a
+        // problem when that ID is asked for, as the contract and tools/manifest.py have it.
+        foreach (string field in new[] { "id", "path" })
+        {
+            if (item.TryGetProperty(field, out JsonElement value) && value.ValueKind == JsonValueKind.String && Text(value) == null)
+            {
+                reasons.Add($"field '{field}' is not readable text: it holds a lone surrogate escape");
+            }
+        }
+
         if (reasons.Count > 0)
         {
             return string.Join("; ", reasons);
@@ -421,6 +427,30 @@ public sealed class AssetManifest
 
         return null;
     }
+
+    /// <summary>
+    /// A JSON string's text, or null when it is not a string or cannot be read: a lone surrogate
+    /// escape such as <c>"\ud800"</c> parses as JSON but throws when read.
+    /// </summary>
+    private static string? Text(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        try
+        {
+            return value.GetString();
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>A kind's text, or its JSON as written when it cannot be read, so it reads as a kind the game does not know.</summary>
+    private static string KindText(JsonElement kind) => Text(kind) ?? kind.GetRawText();
 
     private static void CheckTopField(JsonElement root, string field, Func<JsonElement, bool> good, string wanted, List<string> problems)
     {
