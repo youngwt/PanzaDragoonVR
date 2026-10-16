@@ -39,3 +39,4 @@ The call through Godot's `AndroidRuntime` singleton (`getApplicationContext().ge
 
 - Source: carried out of the engine spike epic at its close (author, 2026-10-16); kept in the backlog for a possible backlog epic later.
 - The fixed path works, so players are unaffected; the extraction tool epic writes to the same folder and should know which route is real.
+- Dropped: moved into the In-game extraction epic at its inception (user, 2026-10-16); see `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/tickets.toml`, entries 1 and 7 for the empty asset list, entry 8 for the folder lookup.

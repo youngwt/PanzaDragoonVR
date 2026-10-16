@@ -37,6 +37,17 @@ The C# decoding library, the in-game extraction step and the PC command, for tex
 - Waits on Engine spike because: it writes the manifest in the format agreed there, and story 1.4 settles how the game reaches its asset folder.
 - Unknown: how other discs than the Japanese GS-9049 V1.001 behave; they are attempted, not refused.
 - Decision: re-scoped on 2026-10-14 from a PC extraction tool to in-game extraction with a shared C# decoding library, following the spec update; Done when 4 (identical output on PC and headset) added so checking by eye on the PC holds for the headset (user approved, 2026-10-14).
+- Source conflict: Done when 1 — "textures ... with a manifest" vs the asset contract, which defines no per-texture IDs and says loose PNGs need no manifest entry; only `e03.floor`, `e03.canopy` and `e03.flyer` exist.
+- Source conflict: spec CAP-3 and Constraints — disc image location (assumed `disc/`), development and release modes, the "do not extract again" marker, and progress and failure reporting vs the asset contract, which defines none of them.
+- Decision: the 256-colour palette location is settled by an early hitl spike, right after the tracer bullet; the colour story waits on its answer (user, 2026-10-16).
+- Decision: extracted textures get per-texture IDs and are all listed in the manifest; a contract decision story defines the ID scheme (user, 2026-10-16).
+- Decision: the same contract story also fixes the disc image location, development and release modes, the extraction marker, and progress and failure reporting (user, 2026-10-16).
+- Decision: backlog tickets 1 (an empty asset list is an error) and 6 (the Android folder lookup returns nothing on the Quest 3) fold into this epic (user, 2026-10-16).
+- Decision: story 2 is the tracer bullet: the C# library reading `E03B0N0`'s mode 1 textures from a per-track bin/cue, run by the game at launch on the headset and by the PC command. The contract story (1) comes before it because the tracer needs the disc image location it fixes; the palette spike (3) can run beside both (proposed at inception, 2026-10-16).
+- Decision: breakdown of 12 entries approved (user, 2026-10-16).
+- Decision: if spike 3 finds no palette on the disc, whether Done when 2 moves to a later epic is decided then, on the spike's evidence; story 6 waits on the answer (user, 2026-10-16).
+- Decision: spike 3 also looks for the palette of the colour-bank (mode 0) textures (user, 2026-10-16).
+- Note: backlog ticket 7 (stack notes and asset contract) must not run alongside story 1; both edit the asset contract.
 
 ## References
 
