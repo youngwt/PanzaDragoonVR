@@ -1,5 +1,13 @@
 # Agent notes
 
+## Nothing copyrighted in git
+
+This is a hard rule. Never commit the disc image, anything extracted or decoded from it, BIOS files, or the soundtrack. The project is shared on a bring-your-own-disc basis: the game ships only the author's own placeholders, and the player's own disc supplies the real assets.
+
+- Keep `rom/`, `extracted/` and `tools/mednafen/` git-ignored, and write decoded output only under `extracted/`.
+- Before any commit, check the staged file list for game data.
+- Tool source code, format notes, and test files the project generates itself (such as `tests/fixtures/asset-rules/`) are fine to commit.
+
 ## Conventions
 
 These describe what the code does today. Follow them in new code. The exceptions listed are known and left as they are; do not copy them.
