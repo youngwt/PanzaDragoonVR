@@ -34,48 +34,76 @@ hitl = true                 # headset check
 risk = "medium"
 
 [[entry]]
+id = 9
+type = "story"
+title = "Manifest writer for your own files"
+description = "Adds a PC script in tools/ that writes a valid manifest.json for a folder of files, with exact byte sizes and checksums and IDs given on the command line, so the author's own images can stand in for extracted assets under CAP-2."
+verify = "Run on a folder holding two images, it writes a manifest that passes every rule in the asset contract, and its unit tests pass."
+covers = ["CAP-2"]
+after = [2]
+hitl = false
+risk = "low"
+references = ["../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
+
+[[entry]]
 id = 4
 type = "story"
 title = "Textures from the app's files folder"
-description = "Adds the runtime asset loader: it reads the manifest in the app's files folder, as laid out by story 2, and textures the story 3 ground and sky from the images it lists, toward CAP-2."
-verify = "With the author's own images and a manifest copied onto the headset, the ground and sky show them, and the APK contains no images."
+description = "Adds the runtime asset loader: it reads manifest.json in the app's external files folder as the asset contract defines, and replaces the story 3 placeholder textures for `e03.floor` and `e03.canopy` with the images the manifest lists; with no manifest the placeholders stay. Toward CAP-2."
+verify = "With the author's two images and a story 9 manifest copied onto the headset, the ground and sky show them; with the folder emptied the chequered placeholders return; the APK contains neither image."
 covers = ["CAP-2"]
-after = [2, 3]
+after = [2, 3, 9]
 hitl = true                 # copying files to the headset
 risk = "medium"
+references = ["../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
 
 [[entry]]
 id = 5
 type = "story"
-title = "Missing-file report at launch"
-description = "Extends the story 4 loader to check the folder against the manifest at launch and show any listed file that is absent, completing CAP-2."
-verify = "After deleting one listed image from the headset, launching the app shows a readable report in the headset naming that file."
+title = "Launch report and fallback"
+description = "Extends the story 4 loader with the full launch check in the asset contract: every problem is listed in a report readable in the headset, the placeholder is shown for each affected ID, and no path outside the folder is opened. Completes CAP-2."
+verify = "After deleting one listed image from the headset, the launch report names its ID and path, its placeholder is shown and the other image still loads; a truncated file is reported as incomplete."
 covers = ["CAP-2"]
 after = [4]
 hitl = true                 # headset check
 risk = "low"
+references = ["../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
 
 [[entry]]
 id = 6
 type = "story"
 title = "Decide the standard model format"
-description = "Adds the standard model format the extraction tool writes and the game reads to the story 2 contract document; glTF is the proposal."
-verify = "The contract document names the model format and how textures are referenced from it, and the author has agreed it."
+description = "Adds to the asset contract the standard model format the extraction tool writes and the game reads, and the asset ID the flying grey cube stands in for; glTF is the proposal."
+verify = "The contract's `model` kind names the format and how textures are referenced from it, the cube's ID is listed, and the author has agreed both."
 covers = ["CAP-2"]
 after = [2]
 hitl = true                 # the author's decision
 risk = "low"
+references = ["../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
 
 [[entry]]
 id = 7
 type = "story"
 title = "Grey cube loaded from a model file"
-description = "Extends the story 5 loader to load a model in the story 6 format from the files folder at runtime, and uses it for the flying grey cube in place of built-in geometry."
-verify = "With a cube model file copied onto the headset and listed in the manifest, the flying cube appears; with the file removed, the launch report names it."
+description = "Extends the story 5 loader to load the `model` kind in the story 6 format: when the folder supplies the cube's ID the flying cube uses that model, and otherwise the built-in grey cube remains as its placeholder."
+verify = "With a visibly different model file copied onto the headset and listed in the manifest, that model flies in place of the grey cube; with the file removed the grey cube returns and the launch report names it."
 covers = ["CAP-2"]
 after = [5, 6]
 hitl = true                 # headset check
 risk = "medium"
+references = ["../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
+
+[[entry]]
+id = 10
+type = "story"
+title = "Find why the display stays at 72 Hz"
+description = "Investigates why the Quest 3 display stays at 72 Hz although the app asks for 90 Hz and the headset accepts, starting with whether any store app reaches 90 on this headset, and applies the fix when it is a setting, manifest entry or export option. Toward the 90 Hz in CAP-1."
+verify = "Either the story 3 readout and `adb logcat -s PDZ-FPS` show 90 over a minute in the headset, or the cause is written down with evidence and the author decides what to do about the target."
+covers = ["CAP-1"]
+after = [3]
+hitl = true                 # checking other apps and settings in the headset
+risk = "medium"
+references = ["../deferred-work.md"]
 
 [[entry]]
 id = 8
@@ -84,6 +112,6 @@ title = "Refactor sweep"
 description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
 verify = "The epic's Done when checks still pass on the headset after the cleanup."
 covers = ["CAP-1", "CAP-2"]
-after = [1, 2, 3, 4, 5, 6, 7]
+after = [1, 2, 3, 4, 5, 6, 7, 9, 10]
 hitl = false
 risk = "low"

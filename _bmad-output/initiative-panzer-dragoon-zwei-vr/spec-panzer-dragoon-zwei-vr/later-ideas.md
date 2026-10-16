@@ -14,4 +14,4 @@ Out of scope for the demo (milestones 0 to 7). Recorded so they are not rebuilt 
 | Sound effects | Extracted from the disc if possible: gun firing, dragon hit, target hit. Each plays from its source: the gun in hand, the dragon beneath, the target's position |
 | Enemy motion | Real flight paths in place of corkscrews |
 | Enemies | Giant centipedes, then the final boss |
-| Release | The APK bundled with the extraction tool. The user sideloads the APK and copies extracted assets to the headset with SideQuest |
+| Release | The APK on its own. The player sideloads it, copies their disc image to the headset with SideQuest, and the game extracts on first launch |

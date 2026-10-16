@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.flyer: models/e03.flyer.glb: not self-contained: image 0 names the file '../../etc/passwd', which was not opened"
+  ]
+}

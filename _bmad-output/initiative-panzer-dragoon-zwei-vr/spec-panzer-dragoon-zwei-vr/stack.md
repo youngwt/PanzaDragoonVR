@@ -5,14 +5,15 @@
 - Godot 4.7 stable, C#. Godot has dedicated Quest 3 export on Horizon OS, and a universal OpenXR APK since 4.5.
 - C# on Android has been supported since 4.2 and is still labelled experimental in the 4.7 docs.
 - Frame rate target: 90 Hz.
-- Runtime images: `Image.load_from_file`, then `ImageTexture`. Call `generate_mipmaps()` for textures on 3D surfaces.
+- Runtime images: `Image.load_from_file`, then `ImageTexture`. Call `generate_mipmaps()` for the tiling floor and canopy images; model textures have no mipmaps (`asset-contract.md`).
+- Runtime models: binary glTF loaded with `GLTFDocument` and `GLTFState` (`append_from_file` or `append_from_buffer`, then `generate_scene`), no editor import. Not yet run on the headset; story 1.7 is the first test.
 - Asset folder: `/sdcard/Android/data/<package>/files`. SideQuest can copy into it. Quest moved to Android 12 scoped storage around OS v51; `MANAGE_EXTERNAL_STORAGE` is allowed only for file-manager apps.
 - Reticle: a 2D sprite at a fixed distance from the player, as if on a sphere around them.
 - Floor: one looping plane, moved by scrolling UVs, not geometry. Canopy: a backdrop at effective infinity.
 
-## Extraction tool (pipeline track)
+## Extraction (pipeline track)
 
-Python scripts in `tools/`, standard library only so far:
+The decoders become one C# library, run by the game on the headset at first launch and by a PC command for reverse engineering; not built yet. The Python scripts in `tools/` are the prototypes it is ported from, standard library only:
 
 | Script | Does |
 |--------|------|
@@ -30,9 +31,14 @@ Git-ignored working folders: `rom/` (disc image), `extracted/` (all output), `to
 - Mednafen 1.32.1 in `tools/mednafen/`; `run.sh` boots the disc. Save states land in `tools/mednafen/home/mcs/`, gzip-compressed; unzip before loading into Ghidra. On the bound DualSense, L3 saves a state.
 - Ghidra project: `extracted/ghidra/zwei`.
 
-## Not yet installed
+## Build toolchain (local, not in git)
 
-Godot (.NET build), the .NET SDK, the Android SDK with `adb`, and Godot's export templates.
+Installed by `tools/setup-toolchain.sh` under `~/.local/opt`; `tools/toolchain-env.sh` sets the paths. See `tools/README.md`.
+
+- Godot 4.7.2-stable (.NET build), self-contained, with export templates: `godot-4.7.2-stable-mono`
+- .NET 10 SDK: `dotnet-10`. Tests and the desktop build target `net10.0`; the Android build stays on `net9.0` (the APK runs .NET 9) until Godot 4.8 stable, which makes `net10.0` the minimum (godot#123738). The old `dotnet-9` folder is unused and can be deleted.
+- Temurin JDK 17: `jdk-17`
+- Android SDK with `adb` (`platform-tools`, `build-tools;36.1.0`, `platforms;android-36`): `android-sdk`
 
 ## References
 

@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.floor: invalid entry: field 'path' is not readable text: it holds a lone surrogate escape"
+  ]
+}

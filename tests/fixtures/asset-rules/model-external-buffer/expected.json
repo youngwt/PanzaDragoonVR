@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.flyer: models/e03.flyer.glb: not self-contained: buffer 0 names the file 'flyer.bin', which was not opened"
+  ]
+}

@@ -12,7 +12,7 @@ risk: medium
 
 ## Description
 
-The player flies through the Episode 3 forest between the floor and canopy taken from the disc. The tool gains plane extraction; the game gains a looping floor and a canopy backdrop.
+The player flies through the Episode 3 forest between the floor and canopy taken from the disc. The decoding library gains plane extraction; the game gains a looping floor and a canopy backdrop.
 
 ## Outcome
 
@@ -20,10 +20,10 @@ The first moment that looks like Zwei in the headset, shown by the forest scroll
 
 ## Done when
 
-1. The extraction command writes the floor and canopy images from the disc image.
+1. Extraction writes the floor and canopy images from the disc image.
 2. In the headset the floor loops endlessly beneath the player with no visible seam.
 3. The canopy sits overhead with no parallax.
-4. Floor depth, canopy height and scroll speed can be tuned without rebuilding the tool.
+4. Floor depth, canopy height and scroll speed can be tuned without changing the decoders.
 
 ## Boundaries
 
@@ -33,7 +33,7 @@ The two planes and their motion. For CAP-3 this epic delivers plane extraction o
 
 - Unknown: which disc file holds the plane tiles, maps and palette. They are only reachable through a save state today; every story here waits on it.
 - Waits on Engine spike because: it uses the VR scene and the asset loader.
-- Waits on Extraction tool because: plane extraction is added to that command and its manifest.
+- Waits on In-game extraction because: plane extraction is added to its decoding library and manifest.
 
 ## References
 

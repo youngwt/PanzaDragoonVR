@@ -20,7 +20,7 @@ The demo the spec describes, shown by a lock-on volley destroying four real Zwei
 
 ## Done when
 
-1. The extraction command writes the Episode 3 flying enemies as textured models.
+1. Extraction writes the Episode 3 flying enemies as textured models.
 2. In the headset those enemies replace the cubes.
 3. One lock-on volley destroys four of them.
 4. The full scene, with forest, dragon and enemies, holds 90 Hz.

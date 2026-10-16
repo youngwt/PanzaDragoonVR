@@ -1,0 +1,11 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Godot 4.7.2's Android export templates need exactly net9.0 (godot#118989); a net10.0
+         project fails to export. The APK stays on .NET 9, built by the .NET 10 SDK, until
+         Godot 4.8 stable, which makes net10.0 the minimum and moves Android to .NET 10 (godot#123738). -->
+    <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>PanzaDragoonVR</RootNamespace>
+  </PropertyGroup>
+</Project>

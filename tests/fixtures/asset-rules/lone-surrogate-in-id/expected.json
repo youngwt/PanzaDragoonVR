@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "entry 1: invalid entry: field 'id' is not readable text: it holds a lone surrogate escape"
+  ]
+}

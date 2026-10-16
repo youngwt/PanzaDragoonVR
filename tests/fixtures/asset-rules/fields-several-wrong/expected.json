@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.floor: invalid entry: field 'kind' must be a string; required field 'bytes' is absent"
+  ]
+}

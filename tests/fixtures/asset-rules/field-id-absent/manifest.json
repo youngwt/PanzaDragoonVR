@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "generator": "make_cases.py",
+  "source": null,
+  "assets": [
+    {
+      "kind": "image",
+      "path": "images/e03.floor.png",
+      "bytes": 76
+    }
+  ]
+}
