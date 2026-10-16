@@ -1,7 +1,6 @@
 ---
 title: 'A lone surrogate in a manifest entry is an invalid entry'
 type: 'bugfix'
-ticket: ''
 created: '2026-10-16'
 status: 'built'
 baseline_revision: '98e27a48c6f52c437c6668a8b51cc7131445df8f'

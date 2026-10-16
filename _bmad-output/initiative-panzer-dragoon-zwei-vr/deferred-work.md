@@ -34,3 +34,18 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/story-find-why-the-display-stays-at-72-hz-plan.md`
   summary: The 72 Hz item is closed - the cause was the headset's battery saving mode, which needed a restart after being turned off; the game now runs at 90 Hz.
   evidence: Ticket 1.10, 2026-10-17 - with battery saving off and the headset restarted, the readout showed target 90 and the log averaged 89.9 to 90.3 Hz. Players with battery saving on will get 72 Hz; worth a line in any player instructions.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md`
+  summary: The first item, the rest of ticket 1.1 (project, build command and a C# scene in the headset), is closed; it was built under `plan-1-1-csharp-vr-scene-on-headset.md`.
+  evidence: That plan records the launch confirmed in the headset; it was marked done when the epic closed on 2026-10-16.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md`
+  summary: The item asking for a pass over stories 1.3 to 1.7 and the epic's wording after the placeholder decision is closed.
+  evidence: The re-slice of 2026-10-13 reworded the epic and the stories (epic Notes); the epic file quotes the reworded CAP-2.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md`
+  summary: The item saying no log output from the app reaches `adb logcat` is closed.
+  evidence: Plan 1.3's notes of 2026-10-09 say the `PDZ-FPS` tag works; logcat showed `PDZ-FPS` and `PDZ-ASSETS` lines on the headset on 2026-10-16.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md`
+  summary: The item about the frame-rate readout covering the launch report board is closed.
+  evidence: Fixed in commit 0146440 (ticket 1.8); headset captures on 2026-10-16 show the readout below the board.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md`
+  summary: The epic's remaining open items moved to `_bmad-output/backlog/` as tickets 1 to 10, including the provisional Models rules (story 8) and the battery-saving line for players (story 9).
+  evidence: Engine spike closed on 2026-10-16; the author asked for the outstanding items in a backlog.

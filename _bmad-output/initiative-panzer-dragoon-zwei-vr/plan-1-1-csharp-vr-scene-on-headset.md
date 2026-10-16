@@ -2,7 +2,7 @@
 title: 'C# VR scene on the Quest 3, built and installed by one command'
 type: 'feature'
 created: '2026-10-08'
-status: 'built'
+status: done
 baseline_revision: '2bc34adec6aa80e7e3e963692a36fc38c6c439c8'
 route: 'full'
 route_source: 'auto'

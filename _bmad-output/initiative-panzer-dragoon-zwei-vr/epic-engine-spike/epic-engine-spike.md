@@ -6,7 +6,7 @@ covers: [CAP-1, CAP-2]
 after: []
 assignee: ""
 risk: medium
-status: in-progress
+status: done
 ---
 
 # Engine spike on Quest 3
@@ -38,7 +38,7 @@ The Godot project and its build and deploy path. No Zwei content, no controllers
 
 ## Notes
 
-- Unknown: whether C# on Android holds up on Quest; the first story answers it.
+- Settled: C# on Android holds up on Quest; story 1 showed it in the headset (2026-10-08).
 - Decision: eight stories. Story 1 is the tracer bullet: toolchain, scaffold, build-and-deploy command and a C# scene in the headset, settling C# on Quest first (user approved, 2026-10-07).
 - Decision: the Steam Deck is the build machine (user, 2026-10-07).
 - Decision: story 7, loading the grey cube from a model file, is in this epic, so the dragon epic inherits a model loader proven on the headset (user approved, 2026-10-07).
@@ -49,6 +49,8 @@ The Godot project and its build and deploy path. No Zwei content, no controllers
 - Decision: story 10 added to find why the display stays at 72 Hz, so Done when 1 keeps the spec's 90 Hz. It does not block stories 4 to 7 (user, 2026-10-13).
 - Decision: stories 1, 2 and 3 marked done at the user's word (2026-10-13). Story 3 was closed at 72 Hz with its last readout changes not yet seen on the headset; both are recorded in deferred-work.md and story 10 carries the 90 Hz question.
 - The re-slice check was run in the planning conversation, not by an independent agent.
+- The epic ended with ten stories: 9 and 10 were added at the re-slice of 2026-10-13, and story 8 was the refactor sweep.
+- Decision: epic closed (author, 2026-10-16). The closure check found CAP-1, CAP-2 and Done when 1 to 5 met. The retrospective verdict is accepted-with-open-items; the open items are tickets 1 to 10 in `_bmad-output/backlog/`, kept there for a possible backlog epic. The retrospective's action A2 was fixed in commit a414cc0.
 
 ## References
 
