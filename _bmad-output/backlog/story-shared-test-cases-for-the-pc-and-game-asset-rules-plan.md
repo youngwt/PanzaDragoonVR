@@ -3,7 +3,7 @@ title: 'Shared test cases for the PC and game asset rules'
 type: 'feature'
 ticket: '2'
 created: '2026-10-16'
-status: 'built'
+status: done
 baseline_revision: 'c01fc07d5125be66c1634256b8557b425e821cfa'
 route: 'full'
 route_source: 'auto'
