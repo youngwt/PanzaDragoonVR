@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.floor: invalid entry: invalid path: a path must be relative to the asset folder, with no leading slash"
+  ]
+}

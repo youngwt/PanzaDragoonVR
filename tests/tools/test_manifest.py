@@ -15,6 +15,7 @@ import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+import make_test_model
 import manifest
 import write_manifest
 
@@ -29,7 +30,25 @@ def png_bytes(depth=8, colour=6, fill=0):
 
 
 def glb_bytes(version=2):
+    """A .glb header and nothing more: enough to fail on its version, never a usable model."""
     return b"glTF" + struct.pack("<II", version, 12)
+
+
+def glb_of(gltf, binary=b""):
+    """A .glb holding this glTF JSON, given as a dict or as JSON text, and binary chunk."""
+    text = (gltf if isinstance(gltf, str) else json.dumps(gltf)).encode("utf-8")
+    text += b" " * (-len(text) % 4)
+    body = struct.pack("<II", len(text), 0x4E4F534A) + text
+    if binary:
+        body += struct.pack("<II", len(binary), 0x004E4942) + binary
+    return struct.pack("<III", 0x46546C67, 2, 12 + len(body)) + body
+
+
+def gltf(**changes):
+    """A model the game accepts, with these top-level fields set."""
+    document = {"asset": {"version": "2.0"}, "nodes": [{"mesh": 0}], "meshes": [{"primitives": []}]}
+    document.update(changes)
+    return document
 
 
 class FolderCase(unittest.TestCase):
@@ -125,7 +144,7 @@ class Writing(FolderCase):
         self.assertEqual(self.files(), ["images/e03.canopy.png", "images/e03.floor.png", "manifest.json"])
 
     def test_model_is_found(self):
-        self.put("models/e03.flyer.glb", glb_bytes())
+        self.put("models/e03.flyer.glb", make_test_model.build())
         self.assertEqual(self.run_command(self.folder)[0], 0)
         self.assertEqual(self.read_manifest()["assets"][0]["kind"], "model")
 
@@ -297,6 +316,13 @@ class Writing(FolderCase):
         self.put("models/e03.flyer.glb", glb_bytes(version=1))
         self.assert_fails(mentions=["models/e03.flyer.glb", "version 1"])
 
+    def test_model_the_game_rejects(self):
+        # The game's whole invalid-model table applies, not only the header; more in test_asset_rules.py.
+        self.put("models/e03.flyer.glb", glb_of(gltf(extensionsRequired=["EXT_x"])))
+        lines = self.assert_fails()
+        self.assertEqual(lines, ["write_manifest: error: e03.flyer: models/e03.flyer.glb: "
+                                 "unsupported model: it requires the extension EXT_x"])
+
     def test_every_problem_is_reported(self):
         self.put("images/e03.floor.png", b"nope")
         lines = self.assert_fails("E03=images/absent.png", "e03.sky=/etc/passwd")
@@ -395,7 +421,7 @@ class Checking(FolderCase):
 
     def test_replaced_by_a_file_of_another_size(self):
         self.put("images/e03.floor.png", png_bytes() + b"extra")
-        lines = self.check_fails("e03.floor", "images/e03.floor.png", "wrong size", count=2)
+        lines = self.check_fails("e03.floor", "images/e03.floor.png", "incomplete or changed", count=1)
         self.assertTrue(all("e03.canopy" not in line for line in lines))
 
     def test_wrong_checksum(self):
@@ -417,10 +443,11 @@ class Checking(FolderCase):
         del copy["bytes"]
         document["assets"].append(copy)
         self.write_manifest(document)
-        self.check_fails("duplicate ID", "'bytes' is absent", count=2)
+        # As in the game, the duplicate is reported and both entries dropped, whatever else is wrong.
+        self.check_fails("duplicate ID", copy["id"], count=1)
         document["assets"][2] = {"id": copy["id"]}
         self.write_manifest(document)
-        self.check_fails("duplicate ID", "entry 3", count=4)
+        self.check_fails("duplicate ID", "entry 3", count=1)
 
     def test_no_manifest(self):
         os.unlink(os.path.join(self.folder, "manifest.json"))
@@ -455,7 +482,8 @@ class Checking(FolderCase):
         document["source"] = "disc"
         document["format"] = True
         self.write_manifest(document)
-        self.check_fails("'generator'", "'source'", "'format'", count=3)
+        # One line, as the game gives one reason the manifest cannot be read.
+        self.check_fails("'generator'", "'source'", "'format'", count=1)
 
     def test_entry_fields_absent_or_of_the_wrong_type(self):
         document = self.read_manifest()
@@ -472,13 +500,13 @@ class Checking(FolderCase):
         floor["bytes"] = -1
         floor["sha256"] = "ABC"
         self.write_manifest(document)
-        self.check_fails("e03.canopy", "invalid path", "negative", "sha256", count=3)
+        self.check_fails("e03.canopy", "invalid entry: invalid path", "invalid entry: 'bytes' is negative", "sha256", count=3)
 
     def test_invalid_id(self):
         document = self.read_manifest()
         document["assets"][0]["id"] = "E03.Canopy"
         self.write_manifest(document)
-        self.check_fails("E03.Canopy", "not a valid ID")
+        self.check_fails("E03.Canopy: invalid entry: not a valid ID")
 
     def test_unknown_kind_is_a_notice_not_a_problem(self):
         document = self.read_manifest()
@@ -497,14 +525,17 @@ class Checking(FolderCase):
         document = self.read_manifest()
         document["assets"][1]["kind"] = "sound"
         self.write_manifest(document)
+        size = os.path.getsize(os.path.join(self.folder, "images/e03.floor.png"))
         self.put("images/e03.floor.png", b"RIFF, and a different size")
         status, _, err = self.run_command("--check", self.folder)
         self.assertNotEqual(status, 0)
         problems = manifest.check(self.folder)
-        self.assertEqual(len(problems), 2)
-        self.assertIn("wrong size", problems[0])
-        self.assertIn("wrong checksum", problems[1])
+        self.assertEqual(len(problems), 1)
+        self.assertIn("incomplete or changed", problems[0])
         self.assertIn("notice", err)
+        self.put("images/e03.floor.png", b"R" * size)
+        self.assertEqual(manifest.check(self.folder), [
+            "e03.floor: images/e03.floor.png: wrong checksum: the file's sha256 differs from the manifest's"])
         os.unlink(os.path.join(self.folder, "images/e03.floor.png"))
         self.assertIn("missing", manifest.check(self.folder)[0])
         document["assets"][1]["path"] = "../x.wav"
@@ -512,18 +543,135 @@ class Checking(FolderCase):
         self.assertIn("invalid path", manifest.check(self.folder)[0])
 
     def test_wrong_contents(self):
+        size = os.path.getsize(os.path.join(self.folder, "images/e03.floor.png"))
+        self.put("images/e03.floor.png", glb_bytes().ljust(size, b"\0"))
+        self.check_fails("e03.floor", "wrong checksum", "unreadable image: not a PNG", count=2)
+
+    def test_wrong_size_is_reported_alone(self):
+        # As in the game, a file of the wrong size is not looked into further.
         self.put("images/e03.floor.png", glb_bytes())
-        self.check_fails("e03.floor", "wrong size", "wrong checksum", "not a PNG", count=3)
+        self.check_fails("e03.floor: images/e03.floor.png: incomplete or changed", count=1)
 
     def test_every_problem_is_listed(self):
         os.unlink(os.path.join(self.folder, "images/e03.floor.png"))
         self.put("images/e03.canopy.png", b"short")
-        self.check_fails("e03.floor", "e03.canopy", "missing", "wrong size", count=4)
+        self.check_fails("e03.floor", "e03.canopy", "missing", "incomplete or changed", count=2)
+
+    def test_entry_problems_come_before_file_problems(self):
+        os.unlink(os.path.join(self.folder, "images/e03.floor.png"))
+        document = self.read_manifest()
+        document["assets"].append({"id": "e03.sky", "kind": "image", "path": "../sky.png", "bytes": 1})
+        self.write_manifest(document)
+        lines = self.check_fails(count=2)
+        self.assertIn("e03.sky: invalid entry", lines[0])
+        self.assertIn("e03.floor: images/e03.floor.png: missing", lines[1])
+
+    def test_manifest_with_nan_or_infinity(self):
+        raw = Path(self.folder, "manifest.json").read_bytes()
+        for constant in (b"NaN", b"Infinity", b"-Infinity"):
+            self.put("manifest.json", raw.replace(b'"source": null', b'"source": null, "x": ' + constant))
+            self.check_fails("manifest.json: is not valid JSON")
+
+    def test_manifest_nested_65_deep(self):
+        def nested(levels):
+            return "[" * levels + "]" * levels
+        document = self.read_manifest()
+        # The manifest, 'assets', the entry and 'meta' make four levels.
+        document["assets"][0]["meta"] = {"a": json.loads(nested(60))}
+        self.write_manifest(document)
+        self.assertEqual(manifest.check(self.folder), [])
+        document["assets"][0]["meta"] = {"a": json.loads(nested(61))}
+        self.write_manifest(document)
+        self.check_fails("manifest.json: is not valid JSON", "64")
+
+    def test_lone_surrogate(self):
+        raw = Path(self.folder, "manifest.json").read_bytes()
+        self.put("manifest.json", raw.replace(b'"id": "e03.canopy"', b'"id": "e03.\\ud800"'))
+        self.check_fails("entry 1: invalid entry: field 'id' is not readable text")
+        self.put("manifest.json", raw.replace(b'"path": "images/e03.canopy.png"', b'"path": "\\udfff.png"'))
+        self.check_fails("e03.canopy: invalid entry: field 'path' is not readable text")
+        self.put("manifest.json", raw.replace(b'"kind": "image"', b'"kind": "\\ud800"', 1))
+        status, _, err = self.run_command("--check", self.folder)
+        self.assertEqual(status, 0)
+        self.assertIn("unknown kind", err)
 
     def test_check_takes_exactly_one_folder(self):
         status, _, err = self.run_command("--check")
         self.assertNotEqual(status, 0)
         self.assertIn("--check <folder>", err)
+
+
+class GlbProblem(unittest.TestCase):
+    """The game's invalid-model table, as GlbCheckTests.cs has it, in tools/manifest.py."""
+
+    def problem(self, document, binary=b""):
+        return manifest.glb_problem(glb_of(document, binary))
+
+    def test_the_test_model_is_usable(self):
+        self.assertIsNone(manifest.glb_problem(make_test_model.build()))
+
+    def test_conventions_are_not_policed(self):
+        materials = [{"name": "shiny", "alphaMode": "BLEND"}]
+        self.assertIsNone(self.problem(gltf(materials=materials, extensionsUsed=["KHR_x"], extensionsRequired=[])))
+
+    def test_header(self):
+        self.assertEqual(manifest.glb_problem(b"glTF"), "unreadable model: not a .glb file: no glTF header")
+        self.assertEqual(manifest.glb_problem(glb_bytes()), "unreadable model: the file has no JSON chunk")
+        data = glb_of(gltf())
+        self.assertIn("the header gives a length of", manifest.glb_problem(data[:-4]))
+        wrong = data[:16] + b"BIN\0" + data[20:]
+        self.assertEqual(manifest.glb_problem(wrong), "unreadable model: the first chunk is not JSON")
+        past = data[:12] + struct.pack("<I", len(data)) + data[16:]
+        self.assertEqual(manifest.glb_problem(past), "unreadable model: the JSON chunk runs past the end of the file")
+
+    def test_json_chunk(self):
+        self.assertEqual(self.problem("{ not json"), "unreadable model: the JSON chunk is not valid JSON")
+        self.assertEqual(self.problem('{"asset": {"version": "2.0"}, "x": NaN}'), "unreadable model: the JSON chunk is not valid JSON")
+        self.assertEqual(self.problem("[]"), "unreadable model: the JSON chunk is not one JSON object")
+        self.assertEqual(self.problem({"meshes": []}), "unreadable model: it has no 'asset' object with a 'version'")
+        self.assertEqual(self.problem(gltf(asset={"version": "1.0"})), "unreadable model: glTF version '1.0'; it must be 2.0")
+
+    def test_lone_surrogate_cannot_be_read(self):
+        for extra in ('"asset": {"version": "\\ud800"}', '"extensionsRequired": ["\\ud800"]', '"images": [{"uri": "\\ud800.png"}]'):
+            text = '{"asset": {"version": "2.0"}, "nodes": [{"mesh": 0}], "meshes": [{}], %s}' % extra
+            self.assertEqual(self.problem(text), "unreadable model: the JSON chunk could not be read", extra)
+
+    def test_buffers(self):
+        self.assertEqual(self.problem(gltf(buffers=[{"byteLength": 4}])),
+                         "unreadable model: buffer 0 is the file's binary chunk, but the file has none")
+        self.assertEqual(self.problem(gltf(buffers=[{"byteLength": 4096}]), b"\0" * 4),
+                         "unreadable model: buffer 0 is 4096 bytes but the binary chunk holds 4")
+        self.assertEqual(self.problem(gltf(buffers=[{"byteLength": 4}, {"byteLength": 4}]), b"\0" * 4),
+                         "unreadable model: buffer 1 has no uri, and only buffer 0 can be the file's binary chunk")
+        for length in (None, -1, 1.5):
+            buffer = {} if length is None else {"byteLength": length}
+            self.assertEqual(self.problem(gltf(buffers=[buffer]), b"\0" * 4),
+                             "unreadable model: buffer 0 has no valid 'byteLength'", length)
+        self.assertEqual(self.problem(gltf(buffers=[{"byteLength": "4"}]), b"\0" * 4),
+                         "unreadable model: the JSON chunk could not be read")
+        self.assertIsNone(self.problem(gltf(buffers=[{"byteLength": 4}]), b"\0" * 4))
+
+    def test_references_outside(self):
+        self.assertEqual(self.problem(gltf(buffers=[{"uri": "data:application/octet-stream;base64,AAAA"}])),
+                         "not self-contained: buffer 0 has a data: URI")
+        self.assertEqual(self.problem(gltf(images=[{"bufferView": 0}, {"uri": "../../../secret.png"}])),
+                         "not self-contained: image 1 names the file '../../../secret.png', which was not opened")
+        self.assertEqual(self.problem(gltf(images=[{"uri": 3}])),
+                         "not self-contained: image 0 has a uri; nothing it names was opened")
+        long_name = self.problem(gltf(buffers=[{"uri": "a" * 200 + ".bin"}]))
+        self.assertEqual(long_name, "not self-contained: buffer 0 names the file '%s...', which was not opened" % ("a" * 57))
+        self.assertIn("'a b'", self.problem(gltf(images=[{"uri": "a\nb"}])))
+        # Found before a required extension.
+        self.assertIn("not self-contained", self.problem(gltf(images=[{"uri": "skin.png"}], extensionsRequired=["KHR_x"])))
+
+    def test_required_extensions(self):
+        self.assertEqual(self.problem(gltf(extensionsRequired=["KHR_materials_unlit", "EXT_meshopt_compression"])),
+                         "unsupported model: it requires the extensions KHR_materials_unlit, EXT_meshopt_compression")
+
+    def test_empty(self):
+        self.assertEqual(self.problem(gltf(meshes=[])), "empty model: it has no mesh")
+        self.assertEqual(self.problem({"asset": {"version": "2.0"}}), "empty model: it has no mesh")
+        self.assertEqual(self.problem(gltf(nodes=[{"name": "root"}])), "empty model: no node uses any of its meshes")
 
 
 if __name__ == "__main__":

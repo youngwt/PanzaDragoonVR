@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.flyer: models/e03.flyer.glb: empty model: no node uses any of its meshes"
+  ]
+}

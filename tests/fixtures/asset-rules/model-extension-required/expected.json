@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.flyer: models/e03.flyer.glb: unsupported model: it requires the extension KHR_draco_mesh_compression"
+  ]
+}

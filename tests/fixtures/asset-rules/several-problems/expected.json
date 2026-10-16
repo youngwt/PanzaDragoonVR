@@ -1,0 +1,8 @@
+{
+  "problems": [
+    "e03.sky: invalid entry: invalid path: a path must not contain '.' or '..' parts",
+    "e03.floor: images/e03.floor.png: missing",
+    "e03.canopy: images/e03.canopy.png: incomplete or changed: the file is 74 bytes, the manifest says 1",
+    "e03.flyer: models/e03.flyer.glb: empty model: it has no mesh"
+  ]
+}

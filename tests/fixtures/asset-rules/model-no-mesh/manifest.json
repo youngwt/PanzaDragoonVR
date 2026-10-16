@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "generator": "make_cases.py",
+  "source": null,
+  "assets": [
+    {
+      "id": "e03.flyer",
+      "kind": "model",
+      "path": "models/e03.flyer.glb",
+      "bytes": 100
+    }
+  ]
+}

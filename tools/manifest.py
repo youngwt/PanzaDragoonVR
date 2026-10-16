@@ -76,25 +76,209 @@ def _inside(folder, path):
     return real != root and os.path.commonpath([root, real]) == root
 
 
+def png_problem(head):
+    """Why the first bytes of a file are not an 8-bit RGB or RGBA PNG, or None. As the game words it."""
+    if len(head) < 26 or head[:8] != _PNG_SIGNATURE or head[12:16] != b"IHDR":
+        return "not a PNG file"
+    depth, colour = head[24], head[25]
+    if depth != 8 or colour not in (2, 6):
+        name = _PNG_COLOUR_TYPES.get(colour, "colour type %d" % colour)
+        return "a %d-bit %s PNG; it must be 8-bit RGB or RGBA" % (depth, name)
+    return None
+
+
 def contents_problem(file_path, kind):
-    """Why the file is not of `kind`, judged by its header alone, or None."""
-    with open(file_path, "rb") as f:
-        head = f.read(26)
+    """Why the file cannot be used as `kind`, as the game's launch report words it after
+    "<id>: <path>: ", or None. A model is checked by the contract's invalid-model table
+    (glb_problem); an image by its PNG header. Other kinds are not checked."""
     if kind == "image":
-        if head[:8] != _PNG_SIGNATURE or head[12:16] != b"IHDR" or len(head) < 26:
-            return "not a PNG file"
-        depth, colour = head[24], head[25]
-        if depth != 8 or colour not in (2, 6):
-            name = _PNG_COLOUR_TYPES.get(colour, "colour type %d" % colour)
-            return "a %d-bit %s PNG; it must be 8-bit RGB or RGBA" % (depth, name)
-        return None
+        with open(file_path, "rb") as f:
+            reason = png_problem(f.read(26))
+        return None if reason is None else "unreadable image: %s" % reason
     if kind == "model":
-        if head[:4] != b"glTF" or len(head) < 12:
-            return "not a .glb file: no glTF header"
-        version = struct.unpack("<I", head[4:8])[0]
-        if version != 2:
-            return "a .glb of glTF version %d; it must be version 2" % version
+        with open(file_path, "rb") as f:
+            return glb_problem(f.read())
+    return None
+
+
+# The game reads JSON with System.Text.Json's JsonDocument, which allows at most this many
+# nested arrays and objects and has no NaN or Infinity. Python's json allows both.
+MAX_JSON_DEPTH = 64
+
+
+def _no_constant(name):
+    raise ValueError("%s is not a JSON value" % name)
+
+
+def _depth(value):
+    """How many arrays and objects are nested in `value`, the outermost counting as 1."""
+    deepest = 0
+    pending = [(value, 1)]
+    while pending:
+        item, level = pending.pop()
+        if isinstance(item, dict):
+            children = item.values()
+        elif isinstance(item, list):
+            children = item
+        else:
+            continue
+        deepest = max(deepest, level)
+        pending.extend((child, level + 1) for child in children)
+    return deepest
+
+
+def loads_strict(text):
+    """json.loads, refusing what the game's JSON reader refuses: NaN, Infinity and -Infinity,
+    and nesting deeper than MAX_JSON_DEPTH. Raises ValueError, or RecursionError when nested
+    far too deeply to parse at all."""
+    value = json.loads(text, parse_constant=_no_constant)
+    if _depth(value) > MAX_JSON_DEPTH:
+        raise ValueError("it is nested more than %d levels deep" % MAX_JSON_DEPTH)
+    return value
+
+
+def readable(value):
+    """A JSON string's text, or None when it is not a string or holds a lone surrogate escape
+    such as "\\ud800", which the game cannot read as text."""
+    if not isinstance(value, str):
         return None
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return None
+    return value
+
+
+class _Unreadable(Exception):
+    """A string in a model's JSON that the game cannot read, as its GlbCheck finds it."""
+
+
+def _string(value):
+    text = readable(value)
+    if text is None:
+        raise _Unreadable()
+    return text
+
+
+def _array_of(root, field):
+    value = root.get(field)
+    return value if isinstance(value, list) else []
+
+
+def _is_control(c):
+    return ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F
+
+
+def _outside(item, what):
+    """What a buffer or image refers to outside the file, or None when it has no uri."""
+    if not isinstance(item, dict) or "uri" not in item:
+        return None
+    uri = item["uri"]
+    if not isinstance(uri, str):
+        return "%s has a uri; nothing it names was opened" % what
+    text = _string(uri)
+    if text[:5].isascii() and text[:5].lower() == "data:":
+        return "%s has a data: URI" % what
+    # Shortened as the game shortens it for the board, counting UTF-16 code units as C# does.
+    units = text.encode("utf-16-le")
+    shown = text if len(units) <= 120 else units[:114].decode("utf-16-le", "replace") + "..."
+    shown = "".join(" " if _is_control(c) else c for c in shown)
+    return "%s names the file '%s', which was not opened" % (what, shown)
+
+
+_GLB_MAGIC = 0x46546C67  # "glTF"
+_JSON_CHUNK = 0x4E4F534A  # "JSON"
+_BIN_CHUNK = 0x004E4942   # "BIN\0"
+
+
+def glb_problem(data):
+    """Why a .glb file's bytes fall under the asset contract's "When a model is invalid" table,
+    or None. The same checks, in the same order and words, as the game's GlbCheck
+    (game/Logic/GlbCheck.cs): "unreadable model: ...", "not self-contained: ...",
+    "unsupported model: ..." or "empty model: ...". Nothing the model names is opened."""
+    def unreadable(detail):
+        return "unreadable model: %s" % detail
+
+    if len(data) < 12 or struct.unpack_from("<I", data, 0)[0] != _GLB_MAGIC:
+        return unreadable("not a .glb file: no glTF header")
+    version, declared = struct.unpack_from("<II", data, 4)
+    if version != 2:
+        return unreadable("a .glb of glTF version %d; it must be version 2" % version)
+    if declared != len(data):
+        return unreadable("the header gives a length of %d bytes but the file is %d bytes" % (declared, len(data)))
+    if len(data) < 20:
+        return unreadable("the file has no JSON chunk")
+    json_length, json_type = struct.unpack_from("<II", data, 12)
+    if json_type != _JSON_CHUNK:
+        return unreadable("the first chunk is not JSON")
+    json_end = 20 + json_length
+    if json_end > len(data):
+        return unreadable("the JSON chunk runs past the end of the file")
+    bin_length = None
+    if len(data) - json_end >= 8:
+        length, kind = struct.unpack_from("<II", data, json_end)
+        if json_end + 8 + length > len(data):
+            return unreadable("the chunk after the JSON runs past the end of the file")
+        if kind == _BIN_CHUNK:
+            bin_length = length
+
+    try:
+        # Bytes that are not UTF-8 become lone surrogates, so a string holding them cannot be
+        # read, as in the game; outside a string they are not JSON.
+        root = loads_strict(data[20:json_end].decode("utf-8", "surrogateescape"))
+    except (ValueError, RecursionError):
+        return unreadable("the JSON chunk is not valid JSON")
+    try:
+        return _glb_json_problem(root, bin_length)
+    except _Unreadable:
+        return unreadable("the JSON chunk could not be read")
+
+
+def _glb_json_problem(root, bin_length):
+    if not isinstance(root, dict):
+        return "unreadable model: the JSON chunk is not one JSON object"
+    asset = root.get("asset")
+    if not isinstance(asset, dict) or not isinstance(asset.get("version"), str):
+        return "unreadable model: it has no 'asset' object with a 'version'"
+    version = _string(asset["version"])
+    if version.split(".")[0] != "2":
+        return "unreadable model: glTF version '%s'; it must be 2.0" % version
+
+    # A reference outside the file is found before anything else.
+    buffers, images = _array_of(root, "buffers"), _array_of(root, "images")
+    for what, items in (("buffer", buffers), ("image", images)):
+        for i, item in enumerate(items):
+            outside = _outside(item, "%s %d" % (what, i))
+            if outside:
+                return "not self-contained: %s" % outside
+
+    # With no uri, a buffer can only be the file's own binary chunk, and only the first buffer can be.
+    for i, buffer in enumerate(buffers):
+        if i > 0:
+            return "unreadable model: buffer %d has no uri, and only buffer 0 can be the file's binary chunk" % i
+        if bin_length is None:
+            return "unreadable model: buffer 0 is the file's binary chunk, but the file has none"
+        if not isinstance(buffer, dict):
+            raise _Unreadable()
+        length = buffer.get("byteLength")
+        if "byteLength" in buffer and (isinstance(length, bool) or not isinstance(length, (int, float))):
+            raise _Unreadable()  # the game cannot read a number from it at all
+        if not _is_int(length) or not 0 <= length < 2 ** 63:
+            return "unreadable model: buffer 0 has no valid 'byteLength'"
+        if length > bin_length:
+            return "unreadable model: buffer 0 is %d bytes but the binary chunk holds %d" % (length, bin_length)
+
+    required = root.get("extensionsRequired")
+    if isinstance(required, list) and required:
+        names = ", ".join(_string(name) if isinstance(name, str) else json.dumps(name, ensure_ascii=False)
+                          for name in required)
+        noun = "extension" if len(required) == 1 else "extensions"
+        return "unsupported model: it requires the %s %s" % (noun, names)
+
+    if not _array_of(root, "meshes"):
+        return "empty model: it has no mesh"
+    if not any(isinstance(node, dict) and "mesh" in node for node in _array_of(root, "nodes")):
+        return "empty model: no node uses any of its meshes"
     return None
 
 
@@ -204,7 +388,8 @@ def build(folder, pairs=(), skipped=None, generator=GENERATOR):
             try:
                 reason = contents_problem(full, kind)
                 if reason:
-                    problems.append("%s: %s" % (path, reason))
+                    # In the game's words, so a file is refused here for what the headset would say.
+                    problems.append("%s: %s: %s" % (asset_id, path, reason))
                     continue
                 assets.append({
                     "id": asset_id,
@@ -233,8 +418,47 @@ def _is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+_ENTRY_FIELDS = (
+    ("id", lambda v: isinstance(v, str), "a string"),
+    ("kind", lambda v: isinstance(v, str), "a string"),
+    ("path", lambda v: isinstance(v, str), "a string"),
+    ("bytes", _is_int, "an integer"),
+)
+
+
+def _entry_problem(entry, asset_id, path):
+    """Why an entry cannot be used whatever it is wanted for, or None: the game's EntryProblem."""
+    reasons = []
+    for field, good, wanted in _ENTRY_FIELDS:
+        if field not in entry:
+            reasons.append("required field '%s' is absent" % field)
+        elif not good(entry[field]):
+            reasons.append("field '%s' must be %s" % (field, wanted))
+    # An unreadable kind is not a problem here: it reads as a kind nobody knows, as in the game.
+    for field in ("id", "path"):
+        if isinstance(entry.get(field), str) and readable(entry[field]) is None:
+            reasons.append("field '%s' is not readable text: it holds a lone surrogate escape" % field)
+    if reasons:
+        return "; ".join(reasons)
+    if id_problem(asset_id):
+        return "not a valid ID: %s" % ID_RULE
+    if entry["bytes"] < 0:
+        return "'bytes' is negative"
+    reason = path_problem(path)
+    if reason:
+        return "invalid path: %s" % reason
+    return None
+
+
 def check_report(folder, notices=None):
     """Check `folder` against its manifest. Returns (assets listed, problems).
+
+    The rules the game also applies give the game's lines, in its order: first every problem
+    with the entries themselves (as game/Logic/AssetManifest.cs reads them), then each usable
+    entry's file problem, in manifest order (as its Find gives them). A duplicate ID drops every
+    entry with that ID. Rules only this tool applies add lines of their own: a missing
+    manifest.json, 'meta' that is not an object, 'sha256' and its value, and the files of
+    entries whose kind this tool does not know.
 
     If `notices` is a list, lines worth telling the user that are not problems,
     such as an entry of a kind this tool does not know, are appended to it.
@@ -252,7 +476,7 @@ def check_report(folder, notices=None):
     if raw.startswith(b"\xef\xbb\xbf"):
         return 0, ["%s: starts with a byte-order mark; it must be UTF-8 without one" % MANIFEST_NAME]
     try:
-        manifest = json.loads(raw.decode("utf-8"))
+        manifest = loads_strict(raw.decode("utf-8"))
     except UnicodeDecodeError:
         return 0, ["%s: is not UTF-8" % MANIFEST_NAME]
     except ValueError as e:
@@ -262,7 +486,7 @@ def check_report(folder, notices=None):
     if not isinstance(manifest, dict):
         return 0, ["%s: must be one JSON object" % MANIFEST_NAME]
 
-    problems = []
+    top_problems = []
     top = (
         ("format", _is_int, "an integer"),
         ("generator", lambda v: isinstance(v, str), "a string"),
@@ -271,85 +495,77 @@ def check_report(folder, notices=None):
     )
     for field, good, wanted in top:
         if field not in manifest:
-            problems.append("%s: required field '%s' is absent" % (MANIFEST_NAME, field))
+            top_problems.append("%s: required field '%s' is absent" % (MANIFEST_NAME, field))
         elif not good(manifest[field]):
-            problems.append("%s: field '%s' must be %s" % (MANIFEST_NAME, field, wanted))
-    if problems:
-        return 0, problems
+            top_problems.append("%s: field '%s' must be %s" % (MANIFEST_NAME, field, wanted))
+    if top_problems:
+        # One line, as the game gives the reason the manifest cannot be read.
+        return 0, ["; ".join(top_problems)]
     if manifest["format"] != FORMAT:
         return 0, ["%s: unsupported format %d; this tool understands format %d"
                    % (MANIFEST_NAME, manifest["format"], FORMAT)]
 
     assets = manifest["assets"]
-    first_path = {}
+    problems = []
+    usable = {}      # id -> (entry, whether its sha256 can be compared), in manifest order
+    first_path = {}  # id -> how its first entry was named
     for index, entry in enumerate(assets):
         label = "entry %d" % (index + 1)
         if not isinstance(entry, dict):
             problems.append("%s: must be an object" % label)
             continue
-        asset_id = entry.get("id")
-        if isinstance(asset_id, str):
-            shown = entry["path"] if isinstance(entry.get("path"), str) else label
+        asset_id, path = readable(entry.get("id")), readable(entry.get("path"))
+        if asset_id is not None:
+            shown = path if path is not None else label
             label = asset_id
-            if asset_id in first_path:
-                problems.append("%s: duplicate ID, listed for both %s and %s" % (asset_id, first_path[asset_id], shown))
-            else:
-                first_path[asset_id] = shown
-        fields = (
-            ("id", lambda v: isinstance(v, str), "a string"),
-            ("kind", lambda v: isinstance(v, str), "a string"),
-            ("path", lambda v: isinstance(v, str), "a string"),
-            ("bytes", _is_int, "an integer"),
-        )
-        bad = False
-        for field, good, wanted in fields:
-            if field not in entry:
-                problems.append("%s: required field '%s' is absent" % (label, field))
-                bad = True
-            elif not good(entry[field]):
-                problems.append("%s: field '%s' must be %s" % (label, field, wanted))
-                bad = True
         if "meta" in entry and not isinstance(entry["meta"], dict):
             problems.append("%s: field 'meta' must be an object" % label)
-        if bad:
+        sha_ok = "sha256" in entry
+        if sha_ok and not (isinstance(entry["sha256"], str) and _SHA256.fullmatch(entry["sha256"])):
+            where = "%s: %s" % (asset_id, path) if asset_id is not None and path is not None else label
+            problems.append("%s: 'sha256' must be 64 lowercase hex digits" % where)
+            sha_ok = False
+        if asset_id is not None:
+            if asset_id in first_path:
+                # Neither entry is used: the game cannot know which one was meant.
+                problems.append("%s: duplicate ID, listed for both %s and %s" % (asset_id, first_path[asset_id], shown))
+                usable.pop(asset_id, None)
+                continue
+            first_path[asset_id] = shown
+        invalid = _entry_problem(entry, asset_id, path)
+        if invalid:
+            problems.append("%s: invalid entry: %s" % (label, invalid))
             continue
+        usable[asset_id] = (entry, sha_ok)
 
+    for asset_id, (entry, sha_ok) in usable.items():
         path, kind, size = entry["path"], entry["kind"], entry["bytes"]
         where = "%s: %s" % (asset_id, path)
-        if id_problem(asset_id):
-            problems.append("%s: not a valid ID: %s" % (asset_id, ID_RULE))
         if kind not in KINDS.values() and notices is not None:
             # Not a problem: the contract lets kinds be added without a new format.
-            notices.append("%s: unknown kind '%s'; its contents were not checked" % (where, kind))
-        if size < 0:
-            problems.append("%s: 'bytes' is negative" % where)
-        sha = entry.get("sha256")
-        if "sha256" in entry and not (isinstance(sha, str) and _SHA256.fullmatch(sha)):
-            problems.append("%s: 'sha256' must be 64 lowercase hex digits" % where)
-            sha = None
-        reason = path_problem(path)
-        if reason:
-            problems.append("%s: invalid path: %s" % (where, reason))
-            continue
+            shown_kind = readable(kind) if readable(kind) is not None else json.dumps(kind)
+            notices.append("%s: unknown kind '%s'; its contents were not checked" % (where, shown_kind))
         full = os.path.join(folder, path)
         if not _inside(folder, path):
-            problems.append("%s: invalid path: it leaves the asset folder" % where)
+            problems.append("%s: invalid entry: its path leaves the asset folder" % asset_id)
+            continue
+        if os.path.exists(full) and not os.path.isfile(full):
+            problems.append("%s: missing: the path is not a file" % where)
             continue
         if not os.path.exists(full):
             problems.append("%s: missing" % where)
             continue
-        if not os.path.isfile(full):
-            problems.append("%s: not a file" % where)
-            continue
         try:
             actual = os.path.getsize(full)
-            if size >= 0 and actual != size:
-                problems.append("%s: wrong size: the file is %d bytes, the manifest says %d" % (where, actual, size))
-            if sha is not None and sha256_of(full) != sha:
+            if actual != size:
+                problems.append("%s: incomplete or changed: the file is %d bytes, the manifest says %d"
+                                % (where, actual, size))
+                continue
+            if sha_ok and sha256_of(full) != entry["sha256"]:
                 problems.append("%s: wrong checksum: the file's sha256 differs from the manifest's" % where)
             reason = contents_problem(full, kind)
             if reason:
-                problems.append("%s: wrong contents for kind '%s': %s" % (where, kind, reason))
+                problems.append("%s: %s" % (where, reason))
         except OSError as e:
             problems.append("%s: cannot be read: %s" % (where, e.strerror or e))
     return len(assets), problems

@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "generator": "make_cases.py",
+  "source": null,
+  "assets": [
+    {
+      "id": "e03.floor",
+      "kind": "image",
+      "path": "images/e03.floor.png",
+      "bytes": 76
+    },
+    {
+      "id": "e03.canopy",
+      "kind": "image",
+      "path": "images/e03.canopy.png",
+      "bytes": 74
+    },
+    {
+      "id": "e03.flyer",
+      "kind": "model",
+      "path": "models/e03.flyer.glb",
+      "bytes": 2088
+    }
+  ]
+}

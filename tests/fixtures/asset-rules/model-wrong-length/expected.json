@@ -1,0 +1,5 @@
+{
+  "problems": [
+    "e03.flyer: models/e03.flyer.glb: unreadable model: the header gives a length of 192 bytes but the file is 184 bytes"
+  ]
+}

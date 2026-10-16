@@ -200,7 +200,22 @@ tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`; onl
 
 The Python tests cover the scripts in `tools/`, at present the manifest writer and the test model writer. They use `unittest` from the standard library and work in temporary folders.
 
-The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, with the same edge cases as the Python tests, so the two sides of the asset contract stay in step, and its check of a model file (`game/Logic/GlbCheck.cs`). The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest and its check of a model file (`game/Logic/GlbCheck.cs`). The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+
+### Shared asset-rule cases
+
+`tools/manifest.py` and the game's `AssetManifest` apply the same asset contract in two languages. So that they cannot drift apart unseen, both suites run one set of cases on disk, in `tests/fixtures/asset-rules/`. Each case is a small asset folder: a `manifest.json`, the files it lists, and `expected.json` with the problem lines, in order, that the game's launch report gives for it and `write_manifest.py --check` must give too. For a manifest that cannot be read at all, `expected.json` says `"unreadable_manifest": true` and only the start of the one line, `manifest.json: is not valid JSON`, is compared, since the two JSON readers word the detail differently. `"pc_notices"` lists notices only the PC gives.
+
+`tests/tools/test_asset_rules.py` runs every case through `check_report`, runs the model cases through `write_manifest.py --check` and through write mode, checks that the good case's model is `make_test_model.py`'s output byte for byte, and checks that the folders are exactly what `make_cases.py` writes. `tests/GameLogic.Tests/AssetRulesTests.cs` reads every case with `AssetManifest.Load`, looks each entry up with its own kind when that is `image` or `model`, and merges the lines as `LaunchReport.Build` does.
+
+Every file in the cases is written by `tests/fixtures/asset-rules/make_cases.py` and is the author's own; nothing comes from the disc. To change a case or add one, edit `cases()` in that script, run it, and commit the folders it writes:
+
+```sh
+python3 tests/fixtures/asset-rules/make_cases.py   # rewrites the case folders; running it twice changes nothing
+tools/test.sh                                      # both suites run the new case
+```
+
+Where `tools/manifest.py` and the game word a shared rule differently, the game's wording is the reference, since its lines are what players read. The asset contract stays the authority on the rules themselves: a case that shows the game breaking the contract is a question for the author, not a case to copy. Rules that need a symbolic link stay in each suite's own tests, as git cannot keep links portably.
 
 ## A manifest for your own files
 
@@ -221,7 +236,7 @@ my-assets/
 
 - An ID is lowercase letters, digits and underscores, in levels separated by single dots: `e03.floor`.
 - Folder names follow the contract's path rules: lowercase letters, digits, underscores, hyphens and dots.
-- A `.png` must be 8 bits per channel, RGB or RGBA. A `.glb` must be binary glTF version 2. Only the file's header is looked at.
+- A `.png` must be 8 bits per channel, RGB or RGBA; only its header is looked at. A `.glb` must pass the game's model checks: see [When a model is rejected](#when-a-model-is-rejected).
 
 ### Writing the manifest
 
@@ -243,7 +258,7 @@ A file that is not an asset, such as a text file or a PNG whose name is not a va
 python3 tools/write_manifest.py my-assets e03.floor=images/grass.png
 ```
 
-When anything is wrong, each problem is printed on its own line, nothing is written, an existing `manifest.json` is left as it was, and the exit status is 1. That covers a folder with no assets, two files giving the same ID, and a file whose contents do not match its extension.
+When anything is wrong, each problem is printed on its own line, nothing is written, an existing `manifest.json` is left as it was, and the exit status is 1. That covers a folder with no assets, two files giving the same ID, and a file whose contents do not match its extension. A file the game would reject is named with its ID and path, in the game's own words, such as `e03.flyer: models/e03.flyer.glb: not self-contained: image 0 names the file 'skin.png', which was not opened`.
 
 ### Checking a folder
 
@@ -255,7 +270,15 @@ python3 tools/write_manifest.py --check my-assets
 2 assets checked in my-assets: no problems
 ```
 
-This reads `manifest.json` and the files it lists and changes nothing. It reports every problem, not only the first, and exits with status 1 if there is one: a manifest that is absent, unreadable or of an unsupported `format`, a duplicate ID, an invalid ID or path, a missing file, a wrong size, a wrong checksum, or contents that are not of the stated kind. Files the manifest does not list are ignored, as the game ignores them. An entry of a kind this script does not know is not a problem: its path, size and checksum are still checked, and a one-line notice says its contents were not.
+This reads `manifest.json` and the files it lists and changes nothing. It is a preview of the launch report: where the game applies a rule too, the line is the one the game shows in the headset, and the lines come in the game's order, first the problems with the entries themselves, then each file's. It reports every problem, not only the first, and exits with status 1 if there is one:
+
+- a manifest that is absent, unreadable or of an unsupported `format`. As in the game, `NaN`, `Infinity` and nesting deeper than 64 arrays and objects make it unreadable, and absent or mistyped top-level fields are reported on one line;
+- an invalid entry: a field absent or of the wrong type, an invalid ID or path, a negative `bytes`, or an `id` or `path` holding a lone surrogate escape such as `"\ud800"`. All of an entry's field problems share one line;
+- a duplicate ID, which drops every entry with that ID, as the game does;
+- a file that is missing, not a file, of another size (`incomplete or changed`), or not of its kind: an image that is not an 8-bit RGB or RGBA PNG (`unreadable image`), or a model the game rejects, by the whole table in [When a model is rejected](#when-a-model-is-rejected);
+- and, on the PC only, a `sha256` that is malformed or does not match, and a `meta` that is not an object.
+
+Files the manifest does not list are ignored, as the game ignores them. An entry of a kind this script does not know is not a problem: its path, size and checksum are still checked, and a one-line notice says its contents were not.
 
 The rules live in `tools/manifest.py`, which the extraction tool can import. Copying the folder to the headset is not part of this script; `push-assets.sh` does that.
 
@@ -373,7 +396,7 @@ The game reads the file's header and its JSON before the engine sees it, and nev
 
 Missing files, wrong sizes and the other manifest problems read as they do for images. The model checks are in `game/Logic/GlbCheck.cs`; loading it is in `game/AssetFolder.cs`.
 
-`write_manifest.py --check` only looks at a `.glb`'s header, so a model it passes can still be rejected by the game for the reasons above.
+`write_manifest.py` applies the same checks, in the same order and words, when it writes a manifest and with `--check`, so a model it passes is not rejected for any reason above except two it cannot see: an image inside the file that the engine cannot decode, and a load that fails in the engine.
 
 ## Extraction scripts
 
