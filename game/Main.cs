@@ -8,11 +8,11 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// Engine spike, story 1.3: a ground, a sky and a flying cube to look all around at, held at 90 Hz.
-/// Starts OpenXR, asks the headset for 90 Hz and dresses the ground and sky in the images the asset
-/// folder supplies for them (story 1.4), or in their placeholders, and shows what the launch check
-/// found on a panel in front of the starting view (story 1.5). A model the folder supplies for
-/// <c>e03.flyer</c> flies the cube's path in place of the grey cube (story 1.7).
+/// The scene: a ground, a sky and a flyer circling the player, to look all around at. Loads what the
+/// asset folder supplies for them, dressing the ground and sky in its images and flying its model in
+/// place of the grey cube, with each one's placeholder for whatever it does not supply; shows what the
+/// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
+/// 90 Hz and tells the frame-rate readout the rate it is running at.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -34,46 +34,7 @@ public partial class Main : Node3D
         _readout = GetNode<FrameRateReadout>("XROrigin3D/XRCamera3D/FrameRateReadout");
 
         _tiling = new Shader { Code = TilingShader };
-        // The images the asset folder supplies, or the placeholders when it does not.
-        ImageTexture? ground = null;
-        ImageTexture? sky = null;
-        Node3D? flyer = null;
-        LaunchReport report;
-        AssetFolder? assets = null;
-        try
-        {
-            assets = AssetFolder.Open();
-            ground = assets.Image(PlaceholderTextures.GroundAssetId);
-            sky = assets.Image(PlaceholderTextures.SkyAssetId);
-            flyer = assets.Model(FlyingCube.AssetId);
-            assets.LogSummary();
-            report = assets.Report();
-        }
-        catch (Exception e)
-        {
-            // Whatever goes wrong in loading, the scene and OpenXR still start.
-            ground = null;
-            sky = null;
-            flyer?.Free();
-            flyer = null;
-            string reason = $"{e.GetType().Name}: {e.Message}";
-            GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
-            // The folder found and the problems found before the failure are kept on the board.
-            try
-            {
-                report = assets?.FailedReport(reason) ?? LaunchReport.Failed(null, reason);
-            }
-            catch (Exception)
-            {
-                report = LaunchReport.Failed(assets?.Path, reason);
-                AssetFolder.LogReport(report);
-            }
-
-            if (assets == null)
-            {
-                AssetFolder.LogReport(report);
-            }
-        }
+        (ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report) = LoadAssets();
 
         // What the launch check found, readable in the headset; it stays for as long as the app runs.
         // A panel that fails to show must not stop OpenXR from starting; the report is in the log already.
@@ -97,7 +58,7 @@ public partial class Main : Node3D
             catch (Exception e)
             {
                 // The grey cube flies instead; the ground and sky keep what they loaded.
-                GD.PushWarning($"{AssetFolder.LogTag} {FlyingCube.AssetId}: the model could not be flown ({e.GetType().Name}: {e.Message}); using the placeholder");
+                GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({e.GetType().Name}: {e.Message}); using the placeholder");
                 if (IsInstanceValid(flyer))
                 {
                     flyer.Free();
@@ -130,6 +91,63 @@ public partial class Main : Node3D
         else
         {
             _readout.ShowWaiting("Waiting for the headset");
+        }
+    }
+
+    /// <summary>
+    /// The images and model the asset folder supplies, null for each placeholder, and the launch
+    /// report, which is logged here once. Whatever goes wrong in loading, the scene and OpenXR still
+    /// start: everything is a placeholder and the report says loading failed.
+    /// </summary>
+    private static (ImageTexture? Ground, ImageTexture? Sky, Node3D? Flyer, LaunchReport Report) LoadAssets()
+    {
+        AssetFolder? assets = null;
+        ImageTexture? ground = null;
+        ImageTexture? sky = null;
+        Node3D? flyer = null;
+        LaunchReport report;
+        try
+        {
+            assets = AssetFolder.Open();
+            ground = assets.Image(AssetIds.E03Floor);
+            sky = assets.Image(AssetIds.E03Canopy);
+            flyer = assets.Model(AssetIds.E03Flyer);
+            assets.LogSummary();
+            report = assets.Report();
+        }
+        catch (Exception e)
+        {
+            ground = null;
+            sky = null;
+            flyer?.Free();
+            flyer = null;
+            string reason = $"{e.GetType().Name}: {e.Message}";
+            GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
+            report = FailedReport(assets, reason);
+        }
+
+        AssetFolder.LogReport(report);
+        return (ground, sky, flyer, report);
+    }
+
+    /// <summary>
+    /// The report when loading threw: the folder found and the problems found before the failure are
+    /// kept on the board when they can still be had.
+    /// </summary>
+    private static LaunchReport FailedReport(AssetFolder? assets, string reason)
+    {
+        if (assets == null)
+        {
+            return LaunchReport.Failed(null, reason);
+        }
+
+        try
+        {
+            return assets.FailedReport(reason);
+        }
+        catch (Exception)
+        {
+            return LaunchReport.Failed(assets.Path, reason);
         }
     }
 

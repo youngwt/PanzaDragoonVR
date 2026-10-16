@@ -142,7 +142,7 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d > game/build/l
 
 ### Reading the frame rate
 
-A debug build shows a readout fixed in front of the camera, and writes the same figures to the headset's log once a second under the tag `PDZ-FPS`. A release build shows and logs neither.
+A debug build shows a readout fixed in front of the camera, a little below the middle of the view so that it stays clear of the launch report board, and writes the same figures to the headset's log once a second under the tag `PDZ-FPS`. A release build shows and logs neither.
 
 **Where this stands on the Quest 3.** The game runs at 90 Hz. It ran at 72 until the headset's battery saving was turned off and the headset restarted (ticket 1.10, 2026-10-17): with battery saving on, the headset holds every app at 72 Hz and ignores requests for other rates. If the readout says "Asked for 90 Hz; running at 72 Hz", check Settings, Device, Power for battery saving or power saving, turn it off and restart the headset. While the headset shows a system prompt such as the Guardian boundary dialog, it runs at 72 Hz until the prompt is cleared.
 
@@ -173,7 +173,7 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d -s PDZ-FPS
 Each second gives one line:
 
 ```
-target=72 avg=72.0 slow=0 slow_total=7 frames_total=934 slow_pct=0.75
+target=90 avg=90.3 slow=0 slow_total=6 frames_total=2604 slow_pct=0.23
 ```
 
 | Field | Meaning |
@@ -184,7 +184,7 @@ target=72 avg=72.0 slow=0 slow_total=7 frames_total=934 slow_pct=0.75
 | `slow_total`, `frames_total` | Slow frames and all frames counted since the headset first showed the app. |
 | `slow_pct` | `slow_total` as a percentage of `frames_total`. |
 
-A line beginning `status=` is written when the first line of the readout changes, and when counting is paused or resumed. The story's bar is `target=90`, every `avg` at least 89, and `slow_pct` under 1 after a minute of looking around. The Quest 3 does not meet it yet: `target` and `avg` are both 72, as said above. `build-quest.sh` clears the log at each launch, so the lines are all from the latest run.
+A line beginning `status=` is written when the first line of the readout changes, and when counting is paused or resumed. The story's bar is `target=90`, every `avg` at least 89, and `slow_pct` under 1 after a minute of looking around. The Quest 3 meets it with battery saving off (ticket 1.10): `target=90` with averages of about 90. `build-quest.sh` clears the log at each launch, so the lines are all from the latest run.
 
 On a desktop the same lines go to Godot's own output, each starting with `PDZ-FPS`.
 
@@ -291,7 +291,7 @@ tools/push-assets.sh --clear my-assets      # the same, emptying the headset's f
 tools/push-assets.sh --clear                # only empty it: the game runs on placeholders (also with a folder holding no files)
 ```
 
-`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox.
+`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the two scripts share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
 
 The app is not restarted. Start it again to see the change, with `tools/build-quest.sh` or from the headset's library.
 

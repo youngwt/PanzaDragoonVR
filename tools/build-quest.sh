@@ -18,9 +18,10 @@ set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=toolchain-env.sh
 . "$here/toolchain-env.sh"
+# shellcheck source=quest-adb.sh
+. "$here/quest-adb.sh"
 
 PRESET="Quest 3"
-PACKAGE="io.github.youngwt.panzadragoonvr"
 APK_NAME="PanzaDragoonVR.apk"
 ASSEMBLY="PanzaDragoonVR.dll"
 
@@ -44,15 +45,6 @@ step() {
     shift 2
     say "$what"
     "$@" >"$log" 2>&1 </dev/null || die "$what failed; see $log"
-}
-
-# adb runs on the host when this shell is inside the Flatpak sandbox, which has no USB access.
-host_adb() {
-    if command -v flatpak-spawn >/dev/null 2>&1 && flatpak-spawn --host true >/dev/null 2>&1; then
-        flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" "$@"
-    else
-        "$ANDROID_HOME/platform-tools/adb" "$@"
-    fi
 }
 
 install=1
@@ -100,15 +92,7 @@ say "built $apk"
 
 # ---------------------------------------------------------------- install and launch
 
-devices="$(host_adb devices 2>/dev/null)" \
-    || die "adb could not run on the host; check that $ANDROID_HOME/platform-tools/adb exists there"
-serial="$(printf '%s\n' "$devices" | awk 'NR > 1 && $2 == "device" { print $1; exit }')"
-if [ -z "$serial" ]; then
-    if printf '%s\n' "$devices" | awk 'NR > 1 && $2 == "unauthorized" { found = 1 } END { exit !found }'; then
-        die "the headset has not authorised this computer; put it on and accept the USB debugging prompt, then run this again (the APK is in $apk)"
-    fi
-    die "no headset found; connect the Quest 3 by USB and enable developer mode, then run this again (the APK is in $apk)"
-fi
+find_headset ", then run this again (the APK is in $apk)"
 
 say "installing on $serial"
 host_adb -s "$serial" install -r "$apk" >"$logs/install.log" 2>&1 \

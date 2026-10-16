@@ -80,52 +80,7 @@ public sealed class AssetFolder
     /// The image the folder supplies for <paramref name="id"/>, ready to tile, or null for the
     /// placeholder. A fallback for any reason other than the ID not being listed is logged.
     /// </summary>
-    public ImageTexture? Image(string id)
-    {
-        AssetLookup lookup = _read.Find(id, AssetManifest.ImageKind);
-        _lookups.Add(lookup);
-        switch (lookup.Status)
-        {
-            case AssetLookupStatus.NotListed:
-                _placeholders.Add(id);
-                return null;
-            case AssetLookupStatus.Problem:
-                Warn($"{lookup.Problem}; using the placeholder for {id}");
-                _placeholders.Add(id);
-                return null;
-        }
-
-        string full = lookup.FullPath!;
-        // The board names the path as the manifest lists it, as for every other problem; the log also gets the full path.
-        string listed = System.IO.Path.GetRelativePath(Path!, full);
-        byte[] bytes;
-        try
-        {
-            bytes = File.ReadAllBytes(full);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            LoadProblem(id, $"{id}: {listed}: cannot be read: {e.Message}", full);
-            _placeholders.Add(id);
-            return null;
-        }
-
-        // Decoded as a PNG whatever the file's name, since the image kind is PNG.
-        var image = new Godot.Image();
-        Error error = image.LoadPngFromBuffer(bytes);
-        if (error != Error.Ok || image.IsEmpty())
-        {
-            LoadProblem(id, $"{id}: {listed}: unreadable image: the PNG could not be decoded ({error})", full);
-            _placeholders.Add(id);
-            return null;
-        }
-
-        // Smaller copies for the distance, as for the placeholders, so far tiles do not shimmer.
-        image.GenerateMipmaps();
-        Log($"{id}: using {full} ({image.GetWidth()} x {image.GetHeight()})");
-        _supplied.Add(id);
-        return ImageTexture.CreateFromImage(image);
-    }
+    public ImageTexture? Image(string id) => Load(id, AssetManifest.ImageKind, Decode);
 
     /// <summary>
     /// The model the folder supplies for <paramref name="id"/>, built and ready to add to the scene, or
@@ -139,7 +94,7 @@ public sealed class AssetFolder
         // A failure nothing here foresaw keeps the placeholder for this ID only; the images are unaffected.
         try
         {
-            return LoadModel(id);
+            return Load(id, AssetManifest.ModelKind, BuildModel);
         }
         catch (Exception e)
         {
@@ -156,53 +111,86 @@ public sealed class AssetFolder
         }
     }
 
-    private Node3D? LoadModel(string id)
+    /// <summary>A listed file's bytes, with the path as the manifest lists it and in full.</summary>
+    private readonly record struct AssetFile(string Id, string Listed, string Full, byte[] Bytes);
+
+    /// <summary>
+    /// Looks <paramref name="id"/> up as <paramref name="kind"/>, reads its file and hands it to
+    /// <paramref name="use"/>. The ID is recorded as supplied when that gives an asset, else as a placeholder.
+    /// </summary>
+    private T? Load<T>(string id, string kind, Func<AssetFile, T?> use) where T : class
     {
-        AssetLookup lookup = _read.Find(id, AssetManifest.ModelKind);
+        T? asset = Read(id, kind) is AssetFile file ? use(file) : null;
+        (asset == null ? _placeholders : _supplied).Add(id);
+        return asset;
+    }
+
+    /// <summary>
+    /// The file the manifest lists for <paramref name="id"/>, read whole; null when it is not listed,
+    /// has a problem in the manifest or cannot be read, every reason but the first logged.
+    /// </summary>
+    private AssetFile? Read(string id, string kind)
+    {
+        AssetLookup lookup = _read.Find(id, kind);
         _lookups.Add(lookup);
         switch (lookup.Status)
         {
             case AssetLookupStatus.NotListed:
-                _placeholders.Add(id);
                 return null;
             case AssetLookupStatus.Problem:
                 Warn($"{lookup.Problem}; using the placeholder for {id}");
-                _placeholders.Add(id);
                 return null;
         }
 
         string full = lookup.FullPath!;
+        // The board names the path as the manifest lists it, as for every other problem; the log also gets the full path.
         string listed = System.IO.Path.GetRelativePath(Path!, full);
-        byte[] bytes;
         try
         {
-            bytes = File.ReadAllBytes(full);
+            return new AssetFile(id, listed, full, File.ReadAllBytes(full));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             LoadProblem(id, $"{id}: {listed}: cannot be read: {e.Message}", full);
-            _placeholders.Add(id);
+            return null;
+        }
+    }
+
+    /// <summary>Decodes an image file; null, with the problem recorded, when it is not a PNG that decodes.</summary>
+    private ImageTexture? Decode(AssetFile file)
+    {
+        // Decoded as a PNG whatever the file's name, since the image kind is PNG.
+        var image = new Godot.Image();
+        Error error = image.LoadPngFromBuffer(file.Bytes);
+        if (error != Error.Ok || image.IsEmpty())
+        {
+            LoadProblem(file.Id, $"{file.Id}: {file.Listed}: unreadable image: the PNG could not be decoded ({error})", file.Full);
             return null;
         }
 
+        // Smaller copies for the distance, as for the placeholders, so far tiles do not shimmer.
+        image.GenerateMipmaps();
+        Log($"{file.Id}: using {file.Full} ({image.GetWidth()} x {image.GetHeight()})");
+        return ImageTexture.CreateFromImage(image);
+    }
+
+    /// <summary>Checks a model file and builds it; null, with the problem recorded, when it cannot be used.</summary>
+    private Node3D? BuildModel(AssetFile file)
+    {
         // Checked again on the very bytes the engine gets, in case the file changed after the lookup.
-        GlbCheckResult check = GlbCheck.Check(bytes);
+        GlbCheckResult check = GlbCheck.Check(file.Bytes);
         if (!check.IsUsable)
         {
-            LoadProblem(id, check.Line(id, listed)!, full);
-            _placeholders.Add(id);
+            LoadProblem(file.Id, check.Line(file.Id, file.Listed)!, file.Full);
             return null;
         }
 
-        Node3D? model = Build(id, listed, full, bytes, check.ImageCount);
-        if (model == null)
+        Node3D? model = Build(file.Id, file.Listed, file.Full, file.Bytes, check.ImageCount);
+        if (model != null)
         {
-            _placeholders.Add(id);
-            return null;
+            Log($"{file.Id}: using {file.Full}");
         }
 
-        Log($"{id}: using {full}");
-        _supplied.Add(id);
         return model;
     }
 
@@ -317,14 +305,9 @@ public sealed class AssetFolder
 
     /// <summary>
     /// What the launch check found, for the report in the headset: every lookup made so far and every
-    /// image or model that passed the checks but could not be loaded. Every line of it is logged too, in full.
+    /// image or model that passed the checks but could not be loaded. Log it with <see cref="LogReport"/>.
     /// </summary>
-    public LaunchReport Report()
-    {
-        LaunchReport report = LaunchReport.Build(Path, _read, _lookups, _loadProblems);
-        LogReport(report);
-        return report;
-    }
+    public LaunchReport Report() => LaunchReport.Build(Path, _read, _lookups, _loadProblems);
 
     /// <summary>Logs every line of a launch report, none left out, so what the headset shows is also in the log.</summary>
     public static void LogReport(LaunchReport report)
@@ -337,15 +320,10 @@ public sealed class AssetFolder
 
     /// <summary>
     /// The report when loading failed part way: the folder that was found, the problems found so far,
-    /// then <paramref name="reason"/>. Every line is logged.
+    /// then <paramref name="reason"/>. Log it with <see cref="LogReport"/>.
     /// </summary>
-    public LaunchReport FailedReport(string reason)
-    {
-        LaunchReport found = LaunchReport.Build(Path, _read, _lookups, _loadProblems);
-        LaunchReport report = LaunchReport.Failed(Path, reason, found.Problems);
-        LogReport(report);
-        return report;
-    }
+    public LaunchReport FailedReport(string reason) =>
+        LaunchReport.Failed(Path, reason, Report().Problems);
 
     private void LoadProblem(string id, string problem, string fullPath)
     {

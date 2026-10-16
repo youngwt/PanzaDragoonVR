@@ -4,17 +4,12 @@ using Godot;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The built-in placeholders for the ground and the sky, drawn in code.
+/// The built-in placeholders for the ground and the sky, drawn in code: they stand in for
+/// <see cref="AssetIds.E03Floor"/> and <see cref="AssetIds.E03Canopy"/>.
 /// They are the author's own work: no image file, and nothing from the disc.
 /// </summary>
 public static class PlaceholderTextures
 {
-    /// <summary>The asset ID the ground placeholder stands in for.</summary>
-    public const string GroundAssetId = "e03.floor";
-
-    /// <summary>The asset ID the sky placeholder stands in for.</summary>
-    public const string SkyAssetId = "e03.canopy";
-
     private const int Size = 64;
 
     /// <summary>A tile of two greens in a chequer pattern, with a dark line round each square.</summary>

@@ -18,8 +18,9 @@ set -u -o pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=toolchain-env.sh
 . "$here/toolchain-env.sh"
+# shellcheck source=quest-adb.sh
+. "$here/quest-adb.sh"
 
-PACKAGE="io.github.youngwt.panzadragoonvr"
 REMOTE="/sdcard/Android/data/$PACKAGE/files"
 USAGE="usage: push-assets.sh [--clear] [<folder>]"
 
@@ -30,15 +31,6 @@ die() {
 
 say() {
     echo "push-assets: $*"
-}
-
-# adb runs on the host when this shell is inside the Flatpak sandbox, which has no USB access.
-host_adb() {
-    if command -v flatpak-spawn >/dev/null 2>&1 && flatpak-spawn --host true >/dev/null 2>&1; then
-        flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" "$@"
-    else
-        "$ANDROID_HOME/platform-tools/adb" "$@"
-    fi
 }
 
 clear=0
@@ -70,15 +62,7 @@ if [ -n "$folder" ]; then
         || die "the folder has problems, listed above; fix them (or run tools/write_manifest.py $folder again) and nothing was pushed"
 fi
 
-devices="$(host_adb devices 2>/dev/null)" \
-    || die "adb could not run on the host; check that $ANDROID_HOME/platform-tools/adb exists there"
-serial="$(printf '%s\n' "$devices" | awk 'NR > 1 && $2 == "device" { print $1; exit }')"
-if [ -z "$serial" ]; then
-    if printf '%s\n' "$devices" | awk 'NR > 1 && $2 == "unauthorized" { found = 1 } END { exit !found }'; then
-        die "the headset has not authorised this computer; put it on and accept the USB debugging prompt"
-    fi
-    die "no headset found; connect the Quest 3 by USB and enable developer mode"
-fi
+find_headset
 
 if [ "$clear" -eq 1 ]; then
     say "emptying $REMOTE on $serial"
