@@ -36,7 +36,7 @@ Git-ignored working folders: `rom/` (disc image), `extracted/` (all output), `to
 Installed by `tools/setup-toolchain.sh` under `~/.local/opt`; `tools/toolchain-env.sh` sets the paths. See `tools/README.md`.
 
 - Godot 4.7.2-stable (.NET build), self-contained, with export templates: `godot-4.7.2-stable-mono`
-- .NET 9 SDK: `dotnet-9`
+- .NET 10 SDK: `dotnet-10`. Tests and the desktop build target `net10.0`; the Android build stays on `net9.0` (the APK runs .NET 9) until Godot 4.8 stable, which makes `net10.0` the minimum (godot#123738). The old `dotnet-9` folder is unused and can be deleted.
 - Temurin JDK 17: `jdk-17`
 - Android SDK with `adb` (`platform-tools`, `build-tools;36.1.0`, `platforms;android-36`): `android-sdk`
 

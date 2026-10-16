@@ -2,8 +2,8 @@
   <!-- Unit tests for the game's engine-free logic. The sources in game/Logic are compiled
        straight into this project, so nothing here references Godot and the tests run on the PC. -->
   <PropertyGroup>
-    <!-- The toolchain installs the .NET 9 SDK only. -->
-    <TargetFramework>net9.0</TargetFramework>
+    <!-- The toolchain installs the .NET 10 SDK only. -->
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>

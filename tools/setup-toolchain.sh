@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs everything needed to build a Godot C# app for the Quest 3:
-# Godot 4.7.2 (.NET build) with export templates, the .NET 9 SDK, JDK 17,
+# Godot 4.7.2 (.NET build) with export templates, the .NET 10 SDK, JDK 17,
 # the Android SDK packages and the Godot OpenXR vendors plugin. See tools/README.md.
 #
 #   tools/setup-toolchain.sh           install whatever is missing
@@ -22,7 +22,7 @@ GODOT_BASE_URL="https://github.com/godotengine/godot/releases/download/${GODOT_R
 GODOT_ZIP="Godot_v${GODOT_RELEASE}_mono_linux_x86_64.zip"
 GODOT_TEMPLATES="Godot_v${GODOT_RELEASE}_mono_export_templates.tpz"
 
-DOTNET_CHANNEL="9.0"
+DOTNET_CHANNEL="10.0"
 DOTNET_INSTALL_URL="https://dot.net/v1/dotnet-install.sh"
 
 JDK_API_URL="https://api.adoptium.net/v3/assets/latest/17/hotspot?architecture=x64&image_type=jdk&os=linux&vendor=eclipse"
@@ -302,10 +302,10 @@ check() {
         missing=1
     fi
 
-    if installed "$DOTNET_ROOT" && v="$(cd / && "$DOTNET_ROOT/dotnet" --version 2>/dev/null)" && [[ "$v" == 9.* ]]; then
-        echo ".NET:    SDK $v"
+    if installed "$DOTNET_ROOT" && v="$(cd / && "$DOTNET_ROOT/dotnet" --version 2>/dev/null)" && [[ "$v" == 10.* ]]; then
+        echo ".NET:    SDK $v in $DOTNET_ROOT"
     else
-        echo ".NET:    MISSING (expected a .NET 9 SDK in $DOTNET_ROOT)"
+        echo ".NET:    MISSING (expected a .NET 10 SDK in $DOTNET_ROOT)"
         missing=1
     fi
 

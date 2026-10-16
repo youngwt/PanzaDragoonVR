@@ -22,7 +22,7 @@ Everything except the OpenXR vendors plugin goes under `~/.local/opt`; set the `
 | Part | Folder in `~/.local/opt` | Size | Source | Verified against |
 |------|--------------------------|------|--------|------------------|
 | Godot 4.7.2-stable, .NET build, with export templates | `godot-4.7.2-stable-mono` | 2.1 GB | Godot's GitHub release | the release's `SHA512-SUMS.txt` |
-| .NET 9 SDK | `dotnet-9` | 580 MB | Microsoft's `dotnet-install.sh`, channel 9.0 | no published checksum for the install script |
+| .NET 10 SDK | `dotnet-10` | 620 MB | Microsoft's `dotnet-install.sh`, channel 10.0 | no published checksum for the install script |
 | Temurin JDK 17 | `jdk-17` | 320 MB | Adoptium API, latest 17 | the SHA-256 the API gives |
 | Android SDK: command-line tools, `platform-tools` (`adb`), `build-tools;36.1.0`, `platforms;android-36` | `android-sdk` | 490 MB | Google | the SHA-256 on developer.android.com for the command-line tools; `sdkmanager` checks the packages it fetches |
 
@@ -66,14 +66,14 @@ Each part is built in the temporary folder and moved into place only when comple
 
 Two consequences to be aware of:
 
-- An existing folder at one of the five install paths (`godot-4.7.2-stable-mono`, `dotnet-9`, `jdk-17`, `android-sdk` and `game/addons/godotopenxrvendors`) that has no `.installed` file is **deleted** and rebuilt, whatever it contains.
+- An existing folder at one of the five install paths (`godot-4.7.2-stable-mono`, `dotnet-10`, `jdk-17`, `android-sdk` and `game/addons/godotopenxrvendors`) that has no `.installed` file is **deleted** and rebuilt, whatever it contains.
 - The `android-sdk` marker records the pinned command-line tools and package list. Changing either in `setup-toolchain.sh` rebuilds `android-sdk` from scratch, which drops any packages you added by hand with `sdkmanager`.
 
 ### Removing it
 
 ```sh
 rm -rf ~/.local/opt/godot-4.7.2-stable-mono \
-       ~/.local/opt/dotnet-9 \
+       ~/.local/opt/dotnet-10 \
        ~/.local/opt/jdk-17 \
        ~/.local/opt/android-sdk \
        ~/.local/opt/.toolchain-setup-tmp
@@ -86,7 +86,8 @@ The plugin is needed to build this project, so only remove it for good if the pr
 
 ### Notes
 
-- .NET 9 leaves support on 2026-11-10, and Godot plans .NET 10 export templates for 4.8. Godot 4.7.2's Android export needs the .NET 9 SDK, so 9 is what is installed.
+- The .NET 10 SDK (LTS, supported to November 2028) is installed, because .NET 9 leaves support on 2026-11-10. The unit tests and the desktop build target `net10.0`. The Android build still targets `net9.0`, because Godot 4.7.2's prebuilt Android export templates need exactly `net9.0` and a `net10.0` project fails to export ([godot#118989](https://github.com/godotengine/godot/issues/118989)); the .NET 10 SDK builds it, and the APK carries a .NET 9 runtime (9.0.21 on 2026-10-16). The APK moves to .NET 10 with Godot 4.8 stable, which makes `net10.0` the minimum and moves Android to .NET 10 ([godot#123738](https://github.com/godotengine/godot/pull/123738)); 4.8 beta 1 came out on 2026-10-15 and stable may land after 2026-11-10. Until then the APK's runtime gets no .NET security fixes after 2026-11-10.
+- An older toolchain installed .NET 9 in `~/.local/opt/dotnet-9`. Nothing uses it any more; delete it with `rm -rf ~/.local/opt/dotnet-9`.
 - Godot's documentation lists `build-tools;35.0.1` and `platforms;android-35`, but the 4.7.2 source targets 36, so the 36 set is installed.
 - Android Studio, the NDK and CMake are not installed.
 - The command-line tools file name and checksum are pinned in `setup-toolchain.sh`; update both from <https://developer.android.com/studio> when moving to a newer release.

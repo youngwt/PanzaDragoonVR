@@ -49,3 +49,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md`
   summary: The epic's remaining open items moved to `_bmad-output/backlog/` as tickets 1 to 10, including the provisional Models rules (story 8) and the battery-saving line for players (story 9).
   evidence: Engine spike closed on 2026-10-16; the author asked for the outstanding items in a backlog.
+- source_plan: `_bmad-output/backlog/spike-move-off-net-9-before-its-support-ends-plan.md`
+  summary: Move to Godot 4.8 stable and target `net10.0` on Android, so the APK leaves .NET 9, which gets no security fixes after 2026-11-10. The toolchain, the unit tests and the desktop build are already on .NET 10.
+  evidence: Godot 4.7.2's prebuilt Android export templates need exactly `net9.0`; a `net10.0` project fails to export (godot#118989). The fix, godot#123738, merged to master on 2026-09-26 for 4.8, makes `net10.0` the minimum and moves Android to .NET 10; nothing shows it backported to 4.7.x. Godot 4.8 beta 1 came out on 2026-10-15; stable is expected in Q4 2026 and may land after 2026-11-10. Microsoft ends .NET 9 support on 2026-11-10. Unknown - whether the Meta vendor plugin 5.1.0 works with Godot 4.8. On 2026-10-16 the APK built by the .NET 10 SDK showed ".NET 9.0.21" in the headset.
