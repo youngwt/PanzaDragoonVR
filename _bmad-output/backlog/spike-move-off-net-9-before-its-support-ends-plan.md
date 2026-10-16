@@ -3,7 +3,7 @@ title: 'Move the build off .NET 9 to .NET 10'
 type: 'chore'
 ticket: '4'
 created: '2026-10-16'
-status: 'built'
+status: done
 baseline_revision: 'f5a1e9d2a20a646e3e6a8e3e172c029971157aa8'
 route: 'full'
 route_source: 'auto'

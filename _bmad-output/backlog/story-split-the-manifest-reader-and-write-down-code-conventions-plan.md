@@ -3,7 +3,7 @@ title: 'Split the manifest reader and write down the code conventions'
 type: 'refactor'
 ticket: '3'
 created: '2026-10-16'
-status: 'built'
+status: done
 baseline_revision: 'f3022fd1b82e767b83304aeba2649e8ee5cfee70'
 route: 'full'
 route_source: 'auto'
