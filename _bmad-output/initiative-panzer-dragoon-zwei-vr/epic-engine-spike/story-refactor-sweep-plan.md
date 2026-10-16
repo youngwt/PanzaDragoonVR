@@ -86,13 +86,21 @@ context:
 - Verified on the desktop: the `PDZ-ASSETS` log lines for no folder, own files, one file missing, a bad image and model, and an empty folder are identical before and after (headless runs with `PDZ_ASSETS`). Not yet verified: the headset checks (no headset was connected) and the "loading throws" path, which cannot be triggered without changing code.
 - "Loading throws" row, 2026-10-16: a temporary `throw` after the sky lookup, desktop run with one image listed and missing. The log read `loading the asset folder failed (InvalidOperationException: injected); running on placeholders`, then the report once: "The asset folder could not be loaded", the folder, `e03.canopy: images/e03.canopy.png: missing` and the exception. The throw was removed and the solution rebuilt.
 
+- **Headset checks, 2026-10-16** (the author wore the headset and cleared a Guardian prompt; `tools/build-quest.sh` and `tools/push-assets.sh` built, installed and pushed through `quest-adb.sh`):
+  - Done when 1: `PDZ-FPS` read `target=90`, averages 90.0 after the first second (84.4 to 86.2 while starting), `slow_pct` under 1 within about ten seconds; readout "Target 90 Hz (4 rates offered)", "Measured 90.0 Hz". Each run was read for about 15 seconds, not a full minute; ticket 1.10 had already shown a minute at 90.
+  - Done when 2: with two generated images and the test model pushed, the log read `supplied: e03.floor, e03.canopy, e03.flyer; placeholders: none` and a capture showed the striped floor.
+  - Done when 3: with `e03.canopy.png` deleted on the headset, the board read "1 problem with the assets" and `e03.canopy: images/e03.canopy.png: missing`; the sky showed its chequer placeholder and the floor its supplied image.
+  - Done when 4: after `push-assets.sh --clear`, the board read "Running on placeholders" with the folder path, and a capture showed the green ground, the blue sky and the grey cube.
+  - Readout and board: in the captures of both board states, the readout sits below the board's lower edge in both eyes, with the head tilted.
+  - The headset's asset folder was left empty and the proximity sensor restored.
+
 ## Plan Change Log
 
 ## Review Triage Log
 
 Pass 1 (quick lens), 2026-10-16: high 0, medium 1, low 0, false 0, maybe-false 0. One carried.
 
-- medium, carried: the headset criteria (readout clear of the board; Done when checks 1 to 4) are unverified, because no headset was connected. There's no code to fix: the reviewer re-checked the geometry, tests, build, script messages, `AssetFolder` order and single report logging, and found nothing else. These checks wait for the headset.
+- medium, carried: the headset criteria (readout clear of the board; Done when checks 1 to 4) are unverified, because no headset was connected. There's no code to fix: the reviewer re-checked the geometry, tests, build, script messages, `AssetFolder` order and single report logging, and found nothing else. These checks wait for the headset. Since met: see the headset checks in Implementation Notes.
 
 ## Design Notes
 
