@@ -173,6 +173,11 @@ Your decision overrides this verdict. The epic file's `status` is still `in-prog
 
 ## Open questions
 
-1. Should an empty `assets` list be an error on the PC (as `manifest.py` has it) or allowed (as the contract has it)? And should the board show a notice for one, as it does for a missing manifest? (S4)
-2. Is the about-29-second run at 90 Hz enough for ticket 1.3's "one minute", or do you want a full minute recorded? (S6)
-3. Should A2 be fixed now, before the extraction tool epic starts, or wait for A1?
+All answered by the author on 2026-10-16. The answers are recorded under Decisions.
+
+## Decisions (author, 2026-10-16)
+
+- **Verdict: accepted-with-open-items**, the machine verdict, accepted by the author.
+- **An empty `assets` list is an error.** `tools/manifest.py` already treats it so. The asset contract (`asset-contract.md:76`, which allows it) and the game, which shows no board for one, are to follow. This joins A5 as a contract change, plus a small game change for the next build.
+- **The 90 Hz evidence is enough** for Done when 1 and for ticket 1.3: about 29 seconds in 1.10 and the 15-second runs in 1.8, all at 89.9 to 90.3. S6 is closed.
+- **A2 (the lone surrogate in a manifest) is fixed now**, as its own build, ahead of the extraction tool epic.
