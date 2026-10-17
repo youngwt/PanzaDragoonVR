@@ -3,7 +3,7 @@ title: 'One texture file extracted on the headset by the C# library'
 type: 'feature'
 ticket: '2'
 created: '2026-10-17'
-status: 'in-review'
+status: 'built'
 baseline_revision: 'f70902f4e1a21c1bbb60866d0e84d2dd96115fe8'
 route: 'full'
 route_source: 'auto'
@@ -89,6 +89,8 @@ context:
 - **Disc folder.** `DiscFolder.Find` looks only for `.cue` sheets in `disc/`; more than one is a warning and nothing is extracted, as the contract says. An `.iso` is ignored until story 4.
 - **Not done here: the headset.** No headset was connected, so the first two acceptance criteria (extraction on the headset, PC files identical to those pulled from it) and the author's look at the PNGs are still to be run. Desktop Godot runs covered the disc present, no disc and bad image rows.
 
+- **Headset checks, 2026-10-17.** The author's disc image (the `.cue` and four `.bin` files, 475 MB) was pushed into `files/disc/` with host `adb`, which needed `adb kill-server` and `start-server` before it saw the headset. After `tools/build-quest.sh`, the log read `extracted 28 textures from E03B0N0 of GS-9049 V1.001 ... in 0.1 s`, and `files/images/e03/e03b0n0/` held 28 PNGs. Pulled back, they compared identical to `pdz-extract`'s output (`diff -r`), so stored deflate holds on the device's .NET 9. The author looked at a contact sheet of all 28 and judged them right ("looks like it could be from an enemy"). The disc image is left in `files/disc/` on the headset for the next stories.
+
 ## Plan Change Log
 
 ## Review Triage Log
@@ -101,7 +103,7 @@ Quick lens, 2026-10-17: high 0, medium 1, low 5, false 0, maybe-false 0. Five pa
 - low, patched: the docs said a disc that cannot be read writes nothing, which reads as covering write failures. Now: decoding errors write nothing; a write failing part way may leave files until story 9's staging.
 - low, patched: the APK check's "no `.bin`" failed on every build because of Godot's `uid_cache.bin`. It now names the disc's track files, `.cue`, `disc/` and `images/e03/`.
 - medium, deferred to story 11: the tests run only on .NET 10, so the APK's .NET 9 build of the library is never tested; only a one-off manual run showed .NET 9 and 10 write identical PNGs. Story 11 (PC command matches the headset byte for byte) is where that is proven on the device; the toolchain has no .NET 9 runtime to run tests on.
-- carried: acceptance criteria 1, 2 and 5 need the headset, which was not connected.
+- carried: acceptance criteria 1, 2 and 5 needed the headset, which was not connected at review. Since met: see the headset checks in Implementation Notes.
 
 Re-verified after the patches: `tools/test.sh` (94 Python, 192 GameLogic, 44 Decoding tests) passes; `pdz-extract` on the author's disc writes 28 PNGs; `build-quest.sh --no-install` builds an APK holding `PdzDecoding.dll` and no `.cue`, disc track, `disc/` or `images/e03` file.
 
