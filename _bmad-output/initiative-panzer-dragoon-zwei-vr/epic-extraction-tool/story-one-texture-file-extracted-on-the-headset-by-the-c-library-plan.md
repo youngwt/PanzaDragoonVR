@@ -3,7 +3,7 @@ title: 'One texture file extracted on the headset by the C# library'
 type: 'feature'
 ticket: '2'
 created: '2026-10-17'
-status: 'built'
+status: done
 baseline_revision: 'f70902f4e1a21c1bbb60866d0e84d2dd96115fe8'
 route: 'full'
 route_source: 'auto'
