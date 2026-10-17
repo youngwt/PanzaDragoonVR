@@ -3,7 +3,7 @@ title: 'All Episode 3 textures decoded'
 type: 'feature'
 ticket: '5'
 created: '2026-10-17'
-status: 'built'
+status: done
 baseline_revision: '364670722ce857269c1101db81f97c7a3eab3bc7'
 route: 'full'
 route_source: 'auto'
