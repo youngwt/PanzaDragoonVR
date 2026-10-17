@@ -14,9 +14,10 @@ public readonly record struct DiscFile(string Path, uint Sector, uint Size);
 public readonly record struct SaturnHeader(string Hardware, string Maker, string Product, string Version, string Date, string Title);
 
 /// <summary>
-/// The ISO9660 file system of a Saturn data track in 2352-byte MODE1 sectors, the user data being
-/// the 2048 bytes from byte 16 of each. The primary volume descriptor is at sector 16, and every
-/// directory is walked when the image is opened.
+/// The ISO9660 file system of a Saturn data track, in 2352-byte raw MODE1 sectors whose user data
+/// is the 2048 bytes from byte 16 of each, or in 2048-byte sectors of user data only. The Saturn
+/// header is at sector 0, the primary volume descriptor at sector 16, and every directory is walked
+/// when the image is opened.
 /// </summary>
 public sealed class DiscImage : IDisposable
 {
@@ -27,43 +28,60 @@ public sealed class DiscImage : IDisposable
 
     private readonly Stream _stream;
     private readonly long _startSector;
+    private readonly int _sectorSize;
+    private readonly int _dataOffset;
     private readonly string _name;
     private readonly List<DiscFile> _files = new();
 
-    private DiscImage(Stream stream, long startSector, string name)
+    private DiscImage(Stream stream, long startSector, int sectorSize, string name)
     {
         _stream = stream;
         _startSector = startSector;
+        _sectorSize = sectorSize;
+        _dataOffset = sectorSize == RawSectorSize ? SectorHeader : 0;
         _name = name;
     }
 
     /// <summary>Every file on the disc, sorted by path in ordinal order.</summary>
     public IReadOnlyList<DiscFile> Files => _files;
 
+    /// <summary>
+    /// Opens the disc image at <paramref name="path"/>: a <c>.cue</c> sheet, through the file holding
+    /// its track 1, or an <c>.iso</c> of 2048-byte sectors. Any other extension is an error.
+    /// </summary>
+    public static DiscImage OpenImage(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".cue" => OpenCue(path),
+            ".iso" => OpenIso(path),
+            _ => throw new DecodingException($"{path}: not a disc image: only a .cue sheet or an .iso is read"),
+        };
+
     /// <summary>Opens the data track that the cue sheet at <paramref name="cuePath"/> names.</summary>
     public static DiscImage OpenCue(string cuePath)
     {
         DataTrack track = CueSheet.Read(cuePath);
-        FileStream stream;
-        try
-        {
-            stream = new FileStream(track.BinPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            throw new DecodingException($"{track.BinPath}: cannot be opened: {DecodingException.OneLine(e.Message)}", e);
-        }
-
-        return Open(stream, track.StartSector, Path.GetFileName(track.BinPath));
+        return Open(OpenFile(track.BinPath), track.StartSector, Path.GetFileName(track.BinPath), track.SectorSize);
     }
 
+    /// <summary>Opens a plain ISO image: the data track alone, in 2048-byte sectors from the file's start.</summary>
+    public static DiscImage OpenIso(string isoPath) =>
+        Open(OpenFile(isoPath), 0, Path.GetFileName(isoPath), SectorSize);
+
     /// <summary>
-    /// Reads the file system of a data track held in <paramref name="stream"/> from 2352-byte sector
-    /// <paramref name="startSector"/>. The image owns the stream from here on.
+    /// Reads the file system of a data track held in <paramref name="stream"/> from sector
+    /// <paramref name="startSector"/>, its sectors being <paramref name="sectorSize"/> bytes: 2352
+    /// (raw MODE1) or 2048 (user data only). The image owns the stream from here on.
     /// </summary>
-    public static DiscImage Open(Stream stream, long startSector, string name)
+    public static DiscImage Open(Stream stream, long startSector, string name, int sectorSize = RawSectorSize)
     {
-        var image = new DiscImage(stream, startSector, name);
+        if (sectorSize is not (RawSectorSize or SectorSize))
+        {
+            stream.Dispose();
+            throw new ArgumentOutOfRangeException(nameof(sectorSize), sectorSize, "a sector is 2352 or 2048 bytes");
+        }
+
+        var image = new DiscImage(stream, startSector, sectorSize, name);
         try
         {
             image.ReadFileSystem();
@@ -73,6 +91,18 @@ public sealed class DiscImage : IDisposable
         {
             image.Dispose();
             throw;
+        }
+    }
+
+    private static FileStream OpenFile(string path)
+    {
+        try
+        {
+            return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new DecodingException($"{path}: cannot be opened: {DecodingException.OneLine(e.Message)}", e);
         }
     }
 
@@ -107,29 +137,42 @@ public sealed class DiscImage : IDisposable
         }
 
         byte[] data = new byte[count * SectorSize];
+        if (_sectorSize == SectorSize)
+        {
+            // User data only: the sectors lie end to end.
+            _stream.Seek((_startSector + sector) * SectorSize, SeekOrigin.Begin);
+            ReadFully(data, sector);
+            return data;
+        }
+
         for (long i = 0; i < count; i++)
         {
-            _stream.Seek((_startSector + sector + i) * RawSectorSize + SectorHeader, SeekOrigin.Begin);
-            Span<byte> target = data.AsSpan((int)(i * SectorSize), SectorSize);
-            int read = 0;
-            while (read < SectorSize)
-            {
-                int got = _stream.Read(target[read..]);
-                if (got == 0)
-                {
-                    throw new DecodingException($"{_name}: the image ends inside sector {sector + i}");
-                }
-
-                read += got;
-            }
+            _stream.Seek((_startSector + sector + i) * _sectorSize + _dataOffset, SeekOrigin.Begin);
+            ReadFully(data.AsSpan((int)(i * SectorSize), SectorSize), sector + i);
         }
 
         return data;
     }
 
+    /// <summary>Fills <paramref name="target"/> from the stream, whose position is in sector <paramref name="first"/>.</summary>
+    private void ReadFully(Span<byte> target, long first)
+    {
+        int read = 0;
+        while (read < target.Length)
+        {
+            int got = _stream.Read(target[read..]);
+            if (got == 0)
+            {
+                throw new DecodingException($"{_name}: the image ends inside sector {first + read / SectorSize}");
+            }
+
+            read += got;
+        }
+    }
+
     private void ReadFileSystem()
     {
-        if (_stream.Length < (_startSector + VolumeDescriptorSector + 1) * RawSectorSize)
+        if (_stream.Length < (_startSector + VolumeDescriptorSector + 1) * _sectorSize)
         {
             throw new DecodingException($"{_name}: no ISO9660 volume at sector {VolumeDescriptorSector}: the image is too short");
         }

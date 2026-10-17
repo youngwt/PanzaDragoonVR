@@ -10,7 +10,8 @@ namespace PdzDecoding.Tests;
 /// <summary>
 /// The extraction entry point on whole disc images built here, one or more tests per row of the
 /// stories' matrices: disc present, no disc, bad image, a repeated record and transparency; then the
-/// nine Episode 3 files, mode 5, a file missing, none present and a file with no textures.
+/// nine Episode 3 files, mode 5, a file missing, none present and a file with no textures; then each
+/// disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs.
 /// </summary>
 public sealed class ExtractionTests : IDisposable
 {
@@ -289,7 +290,7 @@ public sealed class ExtractionTests : IDisposable
         DiscSearch search = DiscFolder.Find(_assets);
 
         Assert.Equal(DiscFolderState.One, search.State);
-        Assert.Equal(cue, search.CuePath);
+        Assert.Equal(cue, search.ImagePath);
     }
 
     [Fact]
@@ -301,8 +302,132 @@ public sealed class ExtractionTests : IDisposable
         DiscSearch search = DiscFolder.Find(_assets);
 
         Assert.Equal(DiscFolderState.Several, search.State);
-        Assert.Null(search.CuePath);
+        Assert.Null(search.ImagePath);
         Assert.Equal(new[] { "a.CUE", "b.cue" }, search.Names);
+    }
+
+    /// <summary>The disc every layout test writes in its own way: two of the nine files, one with a mode 5 texture.</summary>
+    private static SyntheticDisc LayoutDisc() =>
+        new SyntheticDisc { Product = "MK-81022", Version = "V1.000" }
+            .With("E03B0N0.MDB", Mdb(Record(), Record(pixels: 16), Record(pixels: 32, pmod: Mode1 | 0x40)))
+            .With("E03B0N0.CGB", Cgb())
+            .With("E03CMN.MDB", Mdb(Record(pixels: 48), Record(pmod: Mode5)))
+            .With("E03CMN.CGB", Cgb());
+
+    /// <summary>Every file under <paramref name="folder"/>, by path relative to it, with its bytes.</summary>
+    private static (string Path, byte[] Bytes)[] Written(string folder) =>
+        Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .Select(f => (Path.GetRelativePath(folder, f).Replace('\\', '/'), File.ReadAllBytes(f)))
+            .ToArray();
+
+    /// <summary>Runs extraction on the image <paramref name="write"/> makes in a folder of its own; returns the result and what it wrote.</summary>
+    private (ExtractionResult Result, (string Path, byte[] Bytes)[] Files) RunOn(string name, Func<string, string> write)
+    {
+        string folder = Path.Combine(_assets, name);
+        string output = Path.Combine(folder, "out");
+        Directory.CreateDirectory(folder);
+        ExtractionResult result = Extraction.Run(write(folder), output);
+        return (result, Written(output));
+    }
+
+    [Fact]
+    public void Run_SingleFileCue_WritesTheSameFilesAndHeaderAsPerTrack()
+    {
+        var perTrack = RunOn("per-track", f => LayoutDisc().WriteCue(f));
+        var single = RunOn("single", f => LayoutDisc().WriteSingleFileCue(f));
+
+        Assert.Equal(perTrack.Result.Source, single.Result.Source);
+        Assert.Equal(perTrack.Files.Select(f => f.Path), single.Files.Select(f => f.Path));
+        Assert.Equal(perTrack.Files.Select(f => f.Bytes), single.Files.Select(f => f.Bytes));
+        Assert.NotEmpty(single.Files);
+    }
+
+    [Fact]
+    public void Run_Mode1_2048Cue_WritesTheSameFilesAndHeaderAsPerTrack()
+    {
+        var perTrack = RunOn("per-track", f => LayoutDisc().WriteCue(f));
+        var cooked = RunOn("cooked", f => LayoutDisc().WriteCue(f, "Game.bin", mode: CueSheet.CookedMode));
+
+        Assert.Equal(perTrack.Result.Source, cooked.Result.Source);
+        Assert.Equal(perTrack.Files.Select(f => f.Path), cooked.Files.Select(f => f.Path));
+        Assert.Equal(perTrack.Files.Select(f => f.Bytes), cooked.Files.Select(f => f.Bytes));
+    }
+
+    [Fact]
+    public void Run_PlainIso_WritesTheSameFilesAndHeaderAsPerTrack()
+    {
+        var perTrack = RunOn("per-track", f => LayoutDisc().WriteCue(f));
+        var iso = RunOn("iso", f => LayoutDisc().WriteIso(f));
+
+        Assert.Equal("MK-81022", iso.Result.Source.Product);
+        Assert.Equal("V1.000", iso.Result.Source.Version);
+        Assert.Equal(perTrack.Result.Source, iso.Result.Source);
+        Assert.Equal(perTrack.Files.Select(f => f.Path), iso.Files.Select(f => f.Path));
+        Assert.Equal(perTrack.Files.Select(f => f.Bytes), iso.Files.Select(f => f.Bytes));
+        // A disc lacking files is attempted, and the missing ones are named.
+        Assert.Contains(iso.Result.Missing, m => m.Name == "E03END");
+    }
+
+    [Fact]
+    public void Run_IsoWithNoIsoVolume_FailsNamingItAndWritesNothing()
+    {
+        string iso = Path.Combine(_disc, "Game.iso");
+        File.WriteAllBytes(iso, new byte[40 * DiscImage.SectorSize]);
+
+        var e = Assert.Throws<DecodingException>(() => Extraction.Run(iso, _assets));
+
+        Assert.Equal("Game.iso: no ISO9660 volume at sector 16", e.Message);
+        Assert.False(Directory.Exists(Path.Combine(_assets, "images")));
+    }
+
+    [Fact]
+    public void Run_CueWithAudioTrack1_FailsNamingTheModeAndWritesNothing()
+    {
+        File.WriteAllBytes(Path.Combine(_disc, "Game (Track 1).bin"), LayoutDisc().Build());
+        string cue = Path.Combine(_disc, "Game.cue");
+        File.WriteAllText(cue, SyntheticDisc.Cue("Game (Track 1).bin", "AUDIO"));
+
+        var e = Assert.Throws<DecodingException>(() => Extraction.Run(cue, _assets));
+
+        Assert.Contains("track 1 is AUDIO", e.Message);
+        Assert.False(Directory.Exists(Path.Combine(_assets, "images")));
+    }
+
+    [Fact]
+    public void DiscFolder_OneIso_IsFound()
+    {
+        string iso = LayoutDisc().WriteIso(_disc, "Game.ISO");
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        Assert.Equal(DiscFolderState.One, search.State);
+        Assert.Equal(iso, search.ImagePath);
+    }
+
+    [Fact]
+    public void DiscFolder_CueWithItsBins_IsOneImage()
+    {
+        string cue = LayoutDisc().WriteSingleFileCue(_disc);
+        File.WriteAllBytes(Path.Combine(_disc, "Game (Track 2).bin"), new byte[16]);
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        Assert.Equal(DiscFolderState.One, search.State);
+        Assert.Equal(cue, search.ImagePath);
+    }
+
+    [Fact]
+    public void DiscFolder_IsoAndCue_AreNamedAndNotPicked()
+    {
+        LayoutDisc().WriteCue(_disc);
+        LayoutDisc().WriteIso(_disc);
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        Assert.Equal(DiscFolderState.Several, search.State);
+        Assert.Null(search.ImagePath);
+        Assert.Equal(new[] { "Game.cue", "Game.iso" }, search.Names);
     }
 
     [Fact]

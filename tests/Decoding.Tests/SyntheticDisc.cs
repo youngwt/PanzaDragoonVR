@@ -8,9 +8,10 @@ using System.Text;
 namespace PdzDecoding.Tests;
 
 /// <summary>
-/// Builds small Saturn data tracks in 2352-byte MODE1 sectors, with a Saturn header at sector 0, an
-/// ISO9660 primary volume descriptor at sector 16 and the given files, and the cue sheets naming them.
-/// Every byte is made here; nothing comes from the disc.
+/// Builds small Saturn data tracks, in 2352-byte MODE1 sectors or 2048-byte sectors of user data,
+/// with a Saturn header at sector 0, an ISO9660 primary volume descriptor at sector 16 and the given
+/// files, and the cue sheets naming them: per-track, single-file with audio after the data track, or
+/// a plain ISO. Every byte is made here; nothing comes from the disc.
 /// </summary>
 internal sealed class SyntheticDisc
 {
@@ -32,8 +33,8 @@ internal sealed class SyntheticDisc
         return this;
     }
 
-    /// <summary>The track's raw bytes.</summary>
-    public byte[] Build()
+    /// <summary>The track's bytes, in sectors of <paramref name="sectorSize"/>: 2352 (raw MODE1) or 2048 (user data only).</summary>
+    public byte[] Build(int sectorSize = DiscImage.RawSectorSize)
     {
         var sectors = new Dictionary<int, byte[]>();
         sectors[0] = Header();
@@ -109,6 +110,17 @@ internal sealed class SyntheticDisc
         sectors[16] = pvd;
 
         int total = sectors.Keys.Max() + 1;
+        if (sectorSize == DiscImage.SectorSize)
+        {
+            var cooked = new byte[total * DiscImage.SectorSize];
+            foreach ((int s, byte[] data) in sectors)
+            {
+                data.CopyTo(cooked, s * DiscImage.SectorSize);
+            }
+
+            return cooked;
+        }
+
         var track = new byte[total * DiscImage.RawSectorSize];
         for (int s = 0; s < total; s++)
         {
@@ -125,17 +137,47 @@ internal sealed class SyntheticDisc
         return track;
     }
 
-    /// <summary>Writes the track as <paramref name="binName"/> and a cue sheet naming it, returning the cue's path.</summary>
-    public string WriteCue(string folder, string binName = "Game (Track 1).bin", string cueName = "Game.cue")
+    /// <summary>Writes the track as <paramref name="binName"/> and a per-track cue sheet naming it, returning the cue's path.</summary>
+    public string WriteCue(string folder, string binName = "Game (Track 1).bin", string cueName = "Game.cue", string mode = CueSheet.RawMode)
     {
-        File.WriteAllBytes(Path.Combine(folder, binName), Build());
+        File.WriteAllBytes(Path.Combine(folder, binName), Build(mode == CueSheet.CookedMode ? DiscImage.SectorSize : DiscImage.RawSectorSize));
         string cue = Path.Combine(folder, cueName);
-        File.WriteAllText(cue, Cue(binName));
+        File.WriteAllText(cue, Cue(binName, mode));
         return cue;
     }
 
+    /// <summary>
+    /// Writes one <paramref name="binName"/> holding the raw track and then <paramref name="audioSectors"/>
+    /// sectors of audio as track 2, and a cue sheet naming that one file for both, returning the cue's path.
+    /// </summary>
+    public string WriteSingleFileCue(string folder, string binName = "Game.bin", string cueName = "Game.cue", int audioSectors = 300)
+    {
+        byte[] track = Build();
+        int trackSectors = track.Length / DiscImage.RawSectorSize;
+        var bin = new byte[track.Length + audioSectors * DiscImage.RawSectorSize];
+        track.CopyTo(bin, 0);
+        bin.AsSpan(track.Length).Fill(0xAA);
+        File.WriteAllBytes(Path.Combine(folder, binName), bin);
+        string cue = Path.Combine(folder, cueName);
+        File.WriteAllText(cue,
+            $"FILE \"{binName}\" BINARY\r\n  TRACK 01 MODE1/2352\r\n    INDEX 01 00:00:00\r\n" +
+            $"  TRACK 02 AUDIO\r\n    INDEX 00 {Time(trackSectors)}\r\n    INDEX 01 {Time(trackSectors + 150)}\r\n");
+        return cue;
+    }
+
+    /// <summary>Writes the track as a plain ISO of 2048-byte sectors, returning its path.</summary>
+    public string WriteIso(string folder, string isoName = "Game.iso")
+    {
+        string iso = Path.Combine(folder, isoName);
+        File.WriteAllBytes(iso, Build(DiscImage.SectorSize));
+        return iso;
+    }
+
+    /// <summary>A sector count as a cue time, mm:ss:ff.</summary>
+    private static string Time(int sectors) => $"{sectors / 75 / 60:D2}:{sectors / 75 % 60:D2}:{sectors % 75:D2}";
+
     /// <summary>A cue sheet for a per-track image whose track 1 is <paramref name="binName"/>, plus one audio track.</summary>
-    public static string Cue(string binName, string mode = "MODE1/2352") =>
+    public static string Cue(string binName, string mode = CueSheet.RawMode) =>
         $"CATALOG 0000000000000\r\nFILE \"{binName}\" BINARY\r\n  TRACK 01 {mode}\r\n    INDEX 01 00:00:00\r\n" +
         "FILE \"Game (Track 2).bin\" BINARY\r\n  TRACK 02 AUDIO\r\n    INDEX 00 00:00:00\r\n    INDEX 01 00:02:00\r\n";
 

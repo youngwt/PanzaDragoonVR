@@ -3,17 +3,18 @@ using System.IO;
 using System.Linq;
 using PdzDecoding;
 
-// pdz-extract <disc.cue> <output folder>: writes the textures the game extracts on the headset,
+// pdz-extract <disc.cue|disc.iso> <output folder>: writes the textures the game extracts on the headset,
 // with the same names and bytes, into a folder on the PC. See tools/README.md.
 
 const string Tool = "pdz-extract";
-const string Usage = "usage: pdz-extract <disc.cue> <output folder>";
+const string Usage = "usage: pdz-extract <disc.cue|disc.iso> <output folder>";
 
 if (args.Length == 1 && args[0] is "-h" or "--help")
 {
     Console.WriteLine(Usage);
     Console.WriteLine();
-    Console.WriteLine("Reads the disc image the cue sheet names and writes the textures in colour modes");
+    Console.WriteLine("Reads the disc image, a cue sheet with the .bin files it names or an ISO of");
+    Console.WriteLine("2048-byte sectors, and writes the textures in colour modes");
     Console.WriteLine($"1 and 5 of {string.Join(", ", Extraction.TextureFiles)}");
     Console.WriteLine("as images/e03/<file>/<n>.png inside the output folder, as the game does in its");
     Console.WriteLine("asset folder on the headset.");
@@ -22,21 +23,21 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
 
 if (args.Length != 2)
 {
-    Console.Error.WriteLine($"{Tool}: error: expected a cue sheet and an output folder ({Usage})");
+    Console.Error.WriteLine($"{Tool}: error: expected a disc image (.cue or .iso) and an output folder ({Usage})");
     return 1;
 }
 
-string cue = args[0];
+string image = args[0];
 string output = args[1];
-if (!File.Exists(cue))
+if (!File.Exists(image))
 {
-    Console.Error.WriteLine($"{Tool}: error: {cue}: no such file");
+    Console.Error.WriteLine($"{Tool}: error: {image}: no such file");
     return 1;
 }
 
 try
 {
-    ExtractionResult result = Extraction.Run(cue, output);
+    ExtractionResult result = Extraction.Run(image, output);
     Console.WriteLine($"{Tool}: disc {result.Source.Product} {result.Source.Version}");
     if (result.Files.Count == 0)
     {

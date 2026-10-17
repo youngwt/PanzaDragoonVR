@@ -9,7 +9,7 @@ using PdzDecoding;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// Extraction at launch: when the asset folder's <c>disc/</c> holds a <c>.cue</c> sheet, the decoding
+/// Extraction at launch: when the asset folder's <c>disc/</c> holds a disc image, a <c>.cue</c> sheet or an <c>.iso</c>, the decoding
 /// library writes the textures it extracts into the folder, before the folder is read. Every outcome
 /// is one <c>PDZ-ASSETS</c> line; nothing here stops the game, which carries on with what the folder holds.
 /// </summary>
@@ -37,7 +37,7 @@ public static class DiscExtraction
             }
 
             var clock = Stopwatch.StartNew();
-            ExtractionResult result = Extraction.Run(search.CuePath!, assetFolder);
+            ExtractionResult result = Extraction.Run(search.ImagePath!, assetFolder);
             string seconds = clock.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
             if (result.Files.Count == 0)
             {

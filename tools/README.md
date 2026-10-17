@@ -406,7 +406,7 @@ Missing files, wrong sizes and the other manifest problems read as they do for i
 
 The game extracts the textures from the player's own disc image itself, on the headset, at launch. A PC command runs the same code on the PC, so the files can be looked at and checked there. Both use one C# library, `lib/PdzDecoding/`, which holds everything the project knows about the Saturn disc and uses no Godot types. It targets `net9.0` for the APK and `net10.0` for the desktop game, the PC command and the tests; the game references it as a project, and the APK carries `PdzDecoding.dll`.
 
-What it extracts so far: the textures that carry their own colours, 16 colours through a lookup table (mode 1) and true colour (mode 5), of the nine Episode 3 files the asset contract names (`E03CMN`, `E03B0N0` to `E03B0N2`, `E03B1N0` to `E03B1N2`, `E03BOSS`, `E03END`), from a cue sheet whose track 1 is MODE1/2352, such as a per-track bin/cue dump. Each texture is written as `images/e03/<file>/<n>.png`, `<file>` being the disc file's name in lowercase, numbered from `0000` as the asset contract's "Extracted textures" says: in the order its first drawing record appears in the file's `.MDB`, with a record whose four words all equal an earlier one's taking no new number. Textures in the colour-bank modes (4 and 0), not decoded yet, keep their numbers but are not written, so there may be gaps; a file with nothing to write, such as `E03END`, whose textures are all mode 4, gets no folder. On the author's disc that is 250 textures in eight folders, all mode 1, with 161 in mode 4 and 9 in mode 0 left out. A file of the nine that the disc lacks (its `.MDB` or its `.CGB`) is left out and named, and the others are still extracted; a disc with none of the nine is an error. No `manifest.json` is written yet, so the game does not show the textures: it still runs on its placeholders.
+What it extracts so far: the textures that carry their own colours, 16 colours through a lookup table (mode 1) and true colour (mode 5), of the nine Episode 3 files the asset contract names (`E03CMN`, `E03B0N0` to `E03B0N2`, `E03B1N0` to `E03B1N2`, `E03BOSS`, `E03END`), from any disc image layout the asset contract accepts: a cue sheet whose track 1 is MODE1/2352 or MODE1/2048, with one `.bin` per track or one `.bin` holding every track, or a plain `.iso` of 2048-byte sectors (the data track alone). Track 1 is read from its `INDEX 01`; the Saturn header at its sector 0 gives the disc's product and version, and its ISO9660 file system starts at sector 16. CHD and other compressed images, and a MODE2 or audio track 1, are not read. Each texture is written as `images/e03/<file>/<n>.png`, `<file>` being the disc file's name in lowercase, numbered from `0000` as the asset contract's "Extracted textures" says: in the order its first drawing record appears in the file's `.MDB`, with a record whose four words all equal an earlier one's taking no new number. Textures in the colour-bank modes (4 and 0), not decoded yet, keep their numbers but are not written, so there may be gaps; a file with nothing to write, such as `E03END`, whose textures are all mode 4, gets no folder. On the author's disc that is 250 textures in eight folders, all mode 1, with 161 in mode 4 and 9 in mode 0 left out. A file of the nine that the disc lacks (its `.MDB` or its `.CGB`) is left out and named, and the others are still extracted; a disc with none of the nine is an error. No `manifest.json` is written yet, so the game does not show the textures: it still runs on its placeholders.
 
 The PNGs are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: `E03B0N0`'s 28 textures take 110 KB instead of 15 KB.
 
@@ -425,13 +425,25 @@ pdz-extract:   E03B0N0: 28 written
 pdz-extract:   E03END: 0 written (45 in mode 4 not decoded yet, left out)
 ```
 
-`pdz-extract <disc.cue> <output folder>` writes the same files, with the same names and bytes, that the game writes in its asset folder, into the output folder. Write it under `extracted/`, which is git-ignored: the files come from the disc. `-h` prints the usage. An error is one line, `pdz-extract: error: <line>`, and the exit status is 1: no cue sheet, a cue sheet naming a missing `.bin` or with another kind of track 1, no ISO9660 volume at sector 16, or a disc with none of the nine files (the error names them). One line per disc file follows the total: a file the disc lacks reads `<file>: not on the disc (no <file>.MDB)` or `(no <file>.CGB)`, naming whichever is absent (the `.MDB` when both are), and one whose `.MDB` holds no record that fits its `.CGB` reads `<file>: no textures`. Every texture of every file is decoded before any file is written, so a decoding error writes nothing, and a file with no texture to write gets no folder. A write that fails part way, such as a full disk, may leave some PNGs written; staging (story 9) will fix that.
+The European disc's ISO reads the same way, and gives the same 250 files, byte for byte:
+
+```sh
+dotnet run --project tools/pdz-extract -- "rom/PAL/Panzer Dragoon II Zwei (Europe).iso" extracted/pdz-extract-pal
+```
+
+```
+pdz-extract: disc MK-81022 V1.000
+pdz-extract: wrote 250 textures from 8 disc files to /.../extracted/pdz-extract-pal/images/e03
+...
+```
+
+`pdz-extract <disc.cue|disc.iso> <output folder>` writes the same files, with the same names and bytes, that the game writes in its asset folder, into the output folder. Write it under `extracted/`, which is git-ignored: the files come from the disc. `-h` prints the usage. An error is one line, `pdz-extract: error: <line>`, and the exit status is 1: no such file, a file that is neither a `.cue` nor an `.iso`, a cue sheet naming a missing `.bin` or with another kind of track 1 (the error names the mode found), no ISO9660 volume at sector 16, or a disc with none of the nine files (the error names them). One line per disc file follows the total: a file the disc lacks reads `<file>: not on the disc (no <file>.MDB)` or `(no <file>.CGB)`, naming whichever is absent (the `.MDB` when both are), and one whose `.MDB` holds no record that fits its `.CGB` reads `<file>: no textures`. Every texture of every file is decoded before any file is written, so a decoding error writes nothing, and a file with no texture to write gets no folder. A write that fails part way, such as a full disk, may leave some PNGs written; staging (story 9) will fix that.
 
 ### On the headset
 
-The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one `.cue` sheet, it extracts at launch, before reading the folder, and writes the PNGs into `files/images/e03/<file>/`. It does so on every launch for now, and the disc image stays. The scene waits for it; on the PC it takes a fraction of a second, and the log line gives the time on the headset.
+The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one disc image, a `.cue` sheet with its `.bin` files or one `.iso`, it extracts at launch, before reading the folder, and writes the PNGs into `files/images/e03/<file>/`. It does so on every launch for now, and the disc image stays. The scene waits for it; on the PC it takes a fraction of a second, and the log line gives the time on the headset.
 
-Copy your disc image there with the host's `adb`: about 475 MB, the `.cue` and its four `.bin` files. The home folder is shared with the host, so the host's `adb` can read the dump in `rom/JP/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
+Copy your disc image there with the host's `adb`: for the Japanese dump about 475 MB, the `.cue` and its four `.bin` files; for the European ISO, the one `.iso` of about 390 MB. The home folder is shared with the host, so the host's `adb` can read the dumps in `rom/JP/` and `rom/PAL/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
 
 ```sh
 . tools/toolchain-env.sh
@@ -439,6 +451,8 @@ adb() { flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" "$@"; }
 dir=/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc
 adb shell mkdir -p "$dir"
 for f in "$PWD/rom/JP"/*.cue "$PWD/rom/JP"/*.bin; do adb push "$f" "$dir/"; done
+# or, instead (one image only in disc/):
+# adb push "$PWD/rom/PAL/Panzer Dragoon II Zwei (Europe).iso" "$dir/"
 ```
 
 Then start the app and read its log:
@@ -452,8 +466,8 @@ adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03 
 | Line | Meaning |
 |------|---------|
 | `extracted <n> textures from <m> disc files of <product> <version> into <folder>/images/e03 in <s> s (<details>)` | Extraction ran; `<n>` PNGs were written, from the `<m>` disc files that gave at least one. `<details>` gives the PNGs per file (`E03CMN 8, E03B0N0 28, ...`), then, when there are any, the textures left out by colour mode (`left out, in colour modes not decoded yet: mode 0 9, mode 4 161`), the files the disc lacks (`missing: E03END (no E03END.MDB)`, or `.CGB`, whichever is absent) and the files with no textures (`no textures in: ...`). |
-| `no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue`. Not an error. |
-| `more than one disc image in <folder>/disc (<names>): nothing extracted` | A warning; remove all but one. |
+| `no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue` and no `.iso`. Not an error. |
+| `more than one disc image in <folder>/disc (<names>): nothing extracted` | A warning: more than one `.cue` or `.iso`, such as a cue sheet and an ISO together; remove all but one. A cue sheet's `.bin` files are part of it and do not count, but an `.iso` does, even one the cue sheet names: for a cue sheet that points at an `.iso`, keep only the `.iso`. |
 | `nothing extracted from the disc image: <reason>` | A warning: the image cannot be read, or it has none of the nine Episode 3 files; the reasons are those of the PC command. The game carries on. |
 | `found no textures in colour modes 1 or 5 on <product> <version>: nothing written (<details>)` | The disc was read but gave no texture to write. |
 | `extraction failed (<error>); carrying on with what the folder holds` | Something the checks did not foresee. A warning. |

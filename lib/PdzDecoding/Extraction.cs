@@ -9,18 +9,18 @@ namespace PdzDecoding;
 /// <summary>What <see cref="DiscFolder.Find"/> found in an asset folder's <c>disc/</c>.</summary>
 public enum DiscFolderState
 {
-    /// <summary><c>disc/</c> is absent or holds no <c>.cue</c> sheet.</summary>
+    /// <summary><c>disc/</c> is absent or holds no disc image: no <c>.cue</c> sheet and no <c>.iso</c>.</summary>
     None,
 
-    /// <summary>One <c>.cue</c> sheet, in <see cref="DiscSearch.CuePath"/>.</summary>
+    /// <summary>One disc image, a <c>.cue</c> sheet or an <c>.iso</c>, in <see cref="DiscSearch.ImagePath"/>.</summary>
     One,
 
     /// <summary>More than one, named in <see cref="DiscSearch.Names"/>: nothing is extracted.</summary>
     Several,
 }
 
-/// <summary>The disc image found in <c>disc/</c>, if any.</summary>
-public readonly record struct DiscSearch(DiscFolderState State, string DiscFolder, string? CuePath, IReadOnlyList<string> Names);
+/// <summary>The disc image found in <c>disc/</c>, if any: the <c>.cue</c> sheet or the <c>.iso</c>.</summary>
+public readonly record struct DiscSearch(DiscFolderState State, string DiscFolder, string? ImagePath, IReadOnlyList<string> Names);
 
 /// <summary>The <c>disc/</c> folder inside the asset folder, where the asset contract puts the player's disc image.</summary>
 public static class DiscFolder
@@ -28,7 +28,14 @@ public static class DiscFolder
     /// <summary>The folder's name inside the asset folder, fixed by the asset contract.</summary>
     public const string Name = "disc";
 
-    /// <summary>Looks for a <c>.cue</c> sheet in <c>disc/</c> inside <paramref name="assetFolder"/>. Other layouts come with story 4.</summary>
+    /// <summary>The extensions of a disc image: a cue sheet, which names its <c>.bin</c> files, or a plain ISO.</summary>
+    public static readonly IReadOnlyList<string> ImageExtensions = new[] { ".cue", ".iso" };
+
+    /// <summary>
+    /// Looks for a disc image in <c>disc/</c> inside <paramref name="assetFolder"/>: a <c>.cue</c> sheet
+    /// (its <c>.bin</c> files are part of it, not images of their own) or an <c>.iso</c>, matched without
+    /// regard to case.
+    /// </summary>
     public static DiscSearch Find(string assetFolder)
     {
         string folder = Path.Combine(assetFolder, Name);
@@ -37,15 +44,15 @@ public static class DiscFolder
             return new DiscSearch(DiscFolderState.None, folder, null, Array.Empty<string>());
         }
 
-        string[] cues = Directory.EnumerateFiles(folder)
-            .Where(f => string.Equals(Path.GetExtension(f), ".cue", StringComparison.OrdinalIgnoreCase))
+        string[] images = Directory.EnumerateFiles(folder)
+            .Where(f => ImageExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToArray();
-        string[] names = cues.Select(f => Path.GetFileName(f)).ToArray();
-        return cues.Length switch
+        string[] names = images.Select(f => Path.GetFileName(f)).ToArray();
+        return images.Length switch
         {
             0 => new DiscSearch(DiscFolderState.None, folder, null, names),
-            1 => new DiscSearch(DiscFolderState.One, folder, cues[0], names),
+            1 => new DiscSearch(DiscFolderState.One, folder, images[0], names),
             _ => new DiscSearch(DiscFolderState.Several, folder, null, names),
         };
     }
@@ -150,19 +157,20 @@ public static class Extraction
     };
 
     /// <summary>
-    /// Extracts from the cue sheet at <paramref name="cuePath"/> into <paramref name="outputFolder"/>.
+    /// Extracts from the disc image at <paramref name="imagePath"/>, a <c>.cue</c> sheet or an <c>.iso</c>
+    /// (see <see cref="DiscImage.OpenImage"/>), into <paramref name="outputFolder"/>.
     /// A file of <see cref="TextureFiles"/> the disc lacks is left out and named in the result; a disc
     /// with none of them is an error. Every texture of every file is decoded before any file is written,
     /// so a decoding error writes nothing; a write that fails part way may leave some PNGs written, until
     /// staging (story 9). A folder is created only for a disc file with a PNG to write.
     /// Throws <see cref="DecodingException"/> for a disc image or disc file it cannot read.
     /// </summary>
-    public static ExtractionResult Run(string cuePath, string outputFolder)
+    public static ExtractionResult Run(string imagePath, string outputFolder)
     {
         SaturnHeader header;
         var decoded = new List<(DiscFileResult Result, List<byte[]> Pngs)>();
         var missing = new List<MissingDiscFile>();
-        using (DiscImage disc = DiscImage.OpenCue(cuePath))
+        using (DiscImage disc = DiscImage.OpenImage(imagePath))
         {
             header = disc.Header();
             foreach (string name in TextureFiles)

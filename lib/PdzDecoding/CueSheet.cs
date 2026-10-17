@@ -6,18 +6,23 @@ using System.IO;
 namespace PdzDecoding;
 
 /// <summary>
-/// Where a cue sheet puts the data track: the file holding track 1 and the sector in that file
-/// where the track starts. Only a MODE1/2352 track 1 is read; other layouts come with story 4.
+/// Where a cue sheet puts the data track: the file holding track 1, the sector in that file where
+/// the track starts, and the size of its sectors. Track 1 may have a file of its own or share one
+/// with the tracks after it; either way it comes first. Only a MODE1/2352 or MODE1/2048 track 1 is read.
 /// </summary>
 /// <param name="BinPath">The full path of the file holding track 1.</param>
-/// <param name="StartSector">The 2352-byte sector in that file where track 1's INDEX 01 is.</param>
-public readonly record struct DataTrack(string BinPath, long StartSector);
+/// <param name="StartSector">The sector in that file where track 1's INDEX 01 is.</param>
+/// <param name="SectorSize">The size of the track's sectors in the file: 2352 (raw) or 2048 (user data only).</param>
+public readonly record struct DataTrack(string BinPath, long StartSector, int SectorSize);
 
 /// <summary>Reads a <c>.cue</c> sheet far enough to find track 1.</summary>
 public static class CueSheet
 {
-    /// <summary>The track mode the library reads: 2352-byte raw sectors with 2048 bytes of user data.</summary>
-    public const string DataMode = "MODE1/2352";
+    /// <summary>The track 1 mode of a raw image: 2352-byte sectors with 2048 bytes of user data from byte 16.</summary>
+    public const string RawMode = "MODE1/2352";
+
+    /// <summary>The track 1 mode of an image of user data only: 2048-byte sectors.</summary>
+    public const string CookedMode = "MODE1/2048";
 
     /// <summary>Finds track 1 in the cue sheet at <paramref name="cuePath"/>; file names are relative to its folder.</summary>
     public static DataTrack Read(string cuePath)
@@ -41,6 +46,7 @@ public static class CueSheet
         string folder = Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? ".";
         string? file = null;
         bool inTrack1 = false;
+        int sectorSize = 0;
         foreach (string raw in text.Split('\n'))
         {
             List<string> words = Words(raw.Trim());
@@ -65,9 +71,17 @@ public static class CueSheet
 
                 if (int.TryParse(words[1], NumberStyles.None, CultureInfo.InvariantCulture, out int number) && number == 1)
                 {
-                    if (!string.Equals(words[2], DataMode, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(words[2], RawMode, StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new DecodingException($"{cuePath}: track 1 is {words[2]}, and only {DataMode} is read");
+                        sectorSize = DiscImage.RawSectorSize;
+                    }
+                    else if (string.Equals(words[2], CookedMode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        sectorSize = DiscImage.SectorSize;
+                    }
+                    else
+                    {
+                        throw new DecodingException($"{cuePath}: track 1 is {words[2]}, and only {RawMode} or {CookedMode} is read");
                     }
 
                     if (file == null)
@@ -87,7 +101,7 @@ public static class CueSheet
                     throw new DecodingException($"{cuePath}: names the file '{file}', which is missing");
                 }
 
-                return new DataTrack(bin, start);
+                return new DataTrack(bin, start, sectorSize);
             }
         }
 
