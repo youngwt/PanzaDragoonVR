@@ -4,6 +4,7 @@
 
 This is a hard rule. Never commit the disc image, anything extracted or decoded from it, BIOS files, or the soundtrack. The project is shared on a bring-your-own-disc basis: the game ships only the author's own placeholders, and the player's own disc supplies the real assets.
 
+- The author's own dumps live in `rom/JP/` (the Japanese GS-9049 V1.001 as `.cue` and per-track `.bin`) and `rom/PAL/` (the European MK-81022 V1.000 as a 2048-byte-sector `.iso`).
 - Keep `rom/`, `extracted/` and `tools/mednafen/` git-ignored, and write decoded output only under `extracted/`. That includes `pdz-extract`'s output folder.
 - The APK must hold no disc data: the game extracts on the headset into its asset folder, which is outside the APK. After a build, `unzip -l game/build/PanzaDragoonVR.apk` should list `PdzDecoding.dll` and no disc data: no `.cue`, no track `.bin` from the disc (`assets/.godot/uid_cache.bin` is Godot's own and always there), and nothing under `disc/` or `images/e03/`.
 - Before any commit, check the staged file list for game data.

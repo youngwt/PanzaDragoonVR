@@ -413,7 +413,7 @@ The PNGs are 8-bit RGBA, and their data is stored without compression. .NET's ow
 ### On the PC
 
 ```sh
-dotnet run --project tools/pdz-extract -- "rom/Panzer Dragoon II Zwei (Japan)/Panzer Dragoon II Zwei (Japan).cue" extracted/pdz-extract
+dotnet run --project tools/pdz-extract -- "rom/JP/Panzer Dragoon II Zwei (Japan).cue" extracted/pdz-extract
 ```
 
 ```
@@ -431,14 +431,14 @@ pdz-extract:   E03END: 0 written (45 in mode 4 not decoded yet, left out)
 
 The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one `.cue` sheet, it extracts at launch, before reading the folder, and writes the PNGs into `files/images/e03/<file>/`. It does so on every launch for now, and the disc image stays. The scene waits for it; on the PC it takes a fraction of a second, and the log line gives the time on the headset.
 
-Copy your disc image there with the host's `adb`: about 475 MB, the `.cue` and its four `.bin` files. The home folder is shared with the host, so the host's `adb` can read the dump in `rom/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
+Copy your disc image there with the host's `adb`: about 475 MB, the `.cue` and its four `.bin` files. The home folder is shared with the host, so the host's `adb` can read the dump in `rom/JP/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
 
 ```sh
 . tools/toolchain-env.sh
 adb() { flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" "$@"; }
 dir=/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc
 adb shell mkdir -p "$dir"
-for f in "$PWD/rom/Panzer Dragoon II Zwei (Japan)"/*; do adb push "$f" "$dir/"; done
+for f in "$PWD/rom/JP"/*.cue "$PWD/rom/JP"/*.bin; do adb push "$f" "$dir/"; done
 ```
 
 Then start the app and read its log:
