@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The PC command: runs the decoding library on a disc image and writes what the game would
+       write on the headset. See tools/README.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The toolchain installs the .NET 10 SDK only. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>pdz-extract</AssemblyName>
+    <RootNamespace>PdzExtract</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../lib/PdzDecoding/PdzDecoding.csproj" />
+  </ItemGroup>
+</Project>

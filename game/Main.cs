@@ -96,8 +96,9 @@ public partial class Main : Node3D
 
     /// <summary>
     /// The images and model the asset folder supplies, null for each placeholder, and the launch
-    /// report, which is logged here once. Whatever goes wrong in loading, the scene and OpenXR still
-    /// start: everything is a placeholder and the report says loading failed.
+    /// report, which is logged here once. Extraction from a disc image in the folder runs first.
+    /// Whatever goes wrong in loading, the scene and OpenXR still start: everything is a placeholder
+    /// and the report says loading failed.
     /// </summary>
     private static (ImageTexture? Ground, ImageTexture? Sky, Node3D? Flyer, LaunchReport Report) LoadAssets()
     {
@@ -108,7 +109,10 @@ public partial class Main : Node3D
         LaunchReport report;
         try
         {
-            assets = AssetFolder.Open();
+            string? folder = AssetFolder.Locate();
+            // Synchronously for now: the scene waits for extraction (story 9 moves it off the main thread).
+            DiscExtraction.Run(folder);
+            assets = AssetFolder.Open(folder);
             ground = assets.Image(AssetIds.E03Floor);
             sky = assets.Image(AssetIds.E03Canopy);
             flyer = assets.Model(AssetIds.E03Flyer);

@@ -47,9 +47,14 @@ public sealed class AssetFolder
     public string? Path { get; }
 
     /// <summary>Finds the folder and reads its manifest, logging what came of it.</summary>
-    public static AssetFolder Open()
+    public static AssetFolder Open() => Open(Locate());
+
+    /// <summary>
+    /// Reads the manifest of the folder <see cref="Locate"/> found, logging what came of it; null
+    /// for no folder. Extraction runs on the same folder before this.
+    /// </summary>
+    public static AssetFolder Open(string? path)
     {
-        string? path = Locate();
         if (path == null)
         {
             Log($"{EnvironmentVariable} is not set, so there is no asset folder: running on placeholders");
@@ -333,9 +338,10 @@ public sealed class AssetFolder
 
     /// <summary>
     /// Where the asset folder is: on Android the app's external files folder, asked of Android
-    /// through Godot's Android runtime bridge, else the fixed path; elsewhere <c>PDZ_ASSETS</c>.
+    /// through Godot's Android runtime bridge, else the fixed path; elsewhere <c>PDZ_ASSETS</c>,
+    /// or null when it is unset.
     /// </summary>
-    private static string? Locate()
+    public static string? Locate()
     {
         if (!OS.HasFeature("android"))
         {

@@ -17,5 +17,10 @@ __pycache__/
 # Unit test build output
 /tests/**/bin/
 /tests/**/obj/
+# Build output of the decoding library and the PC command
+/lib/**/bin/
+/lib/**/obj/
+/tools/pdz-extract/bin/
+/tools/pdz-extract/obj/
 # The Godot OpenXR vendors plugin: 48 MB, installed by tools/setup-toolchain.sh
 /game/addons/godotopenxrvendors/

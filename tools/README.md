@@ -191,16 +191,20 @@ On a desktop the same lines go to Godot's own output, each starting with `PDZ-FP
 
 ## Unit tests
 
-`test.sh` runs the unit tests on this computer: the Python tests in `tests/tools/`, then the C# tests in `tests/GameLogic.Tests/`. No headset is needed, and it takes a few seconds. It exits non-zero if either set fails.
+`test.sh` runs the unit tests on this computer: the Python tests in `tests/tools/`, then the C# tests in `tests/GameLogic.Tests/` and `tests/Decoding.Tests/`. No headset is needed, and it takes a few seconds. It exits non-zero if any set fails.
 
 ```sh
 tools/test.sh                         # run every test, Python and C#
 tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`; only the C# tests run
 ```
 
+With a filter, each C# project runs it, so the one with no matching test says so; that is not a failure.
+
 The Python tests cover the scripts in `tools/`, at present the manifest writer and the test model writer. They use `unittest` from the standard library and work in temporary folders.
 
-The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest and its check of a model file (`game/Logic/GlbCheck.cs`). The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+`tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest and its check of a model file (`game/Logic/GlbCheck.cs`). That project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
+
+`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding mode 1, the PNG writer, and extraction as a whole, with the cases of the story's matrix (disc present, no disc, a bad image, a repeated record, transparency). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
 
 ### Shared asset-rule cases
 
@@ -398,6 +402,60 @@ Missing files, wrong sizes and the other manifest problems read as they do for i
 
 `write_manifest.py` applies the same checks, in the same order and words, when it writes a manifest and with `--check`, so a model it passes is not rejected for any reason above except two it cannot see: an image inside the file that the engine cannot decode, and a load that fails in the engine.
 
+## Extracting from your own disc
+
+The game extracts the textures from the player's own disc image itself, on the headset, at launch. A PC command runs the same code on the PC, so the files can be looked at and checked there. Both use one C# library, `lib/PdzDecoding/`, which holds everything the project knows about the Saturn disc and uses no Godot types. It targets `net9.0` for the APK and `net10.0` for the desktop game, the PC command and the tests; the game references it as a project, and the APK carries `PdzDecoding.dll`.
+
+What it extracts so far (the in-game extraction epic's tracer bullet): the 16-colour (mode 1) textures of one disc file, `E03B0N0`, from a cue sheet whose track 1 is MODE1/2352, such as a per-track bin/cue dump. Each texture is written as `images/e03/e03b0n0/<n>.png`, numbered from `0000` as the asset contract's "Extracted textures" says: in the order its first drawing record appears in `E03B0N0.MDB`, with a record whose four words all equal an earlier one's taking no new number. Textures in colour modes not decoded yet keep their numbers but are not written, so there may be gaps. No `manifest.json` is written yet, so the game does not show the textures: it still runs on its placeholders.
+
+The PNGs are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: `E03B0N0`'s 28 textures take 110 KB instead of 15 KB.
+
+### On the PC
+
+```sh
+dotnet run --project tools/pdz-extract -- "rom/Panzer Dragoon II Zwei (Japan)/Panzer Dragoon II Zwei (Japan).cue" extracted/pdz-extract
+```
+
+```
+pdz-extract: disc GS-9049 V1.001
+pdz-extract: wrote 28 textures from E03B0N0 to /.../extracted/pdz-extract/images/e03/e03b0n0
+```
+
+`pdz-extract <disc.cue> <output folder>` writes the same files, with the same names and bytes, that the game writes in its asset folder, into the output folder. Write it under `extracted/`, which is git-ignored: the files come from the disc. `-h` prints the usage. An error is one line, `pdz-extract: error: <line>`, and the exit status is 1: no cue sheet, a cue sheet naming a missing `.bin` or with another kind of track 1, no ISO9660 volume at sector 16, or a disc without `E03B0N0`. Every texture is decoded before any file is written, so a decoding error writes nothing, and with no texture to write not even the folder is made. A write that fails part way, such as a full disk, may leave some PNGs written; staging (story 9) will fix that.
+
+### On the headset
+
+The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one `.cue` sheet, it extracts at launch, before reading the folder, and writes the PNGs into `files/images/e03/e03b0n0/`. It does so on every launch for now, and the disc image stays. The scene waits for it; on the PC it takes a fraction of a second, and the log line gives the time on the headset.
+
+Copy your disc image there with the host's `adb`: about 475 MB, the `.cue` and its four `.bin` files. The home folder is shared with the host, so the host's `adb` can read the dump in `rom/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
+
+```sh
+. tools/toolchain-env.sh
+adb() { flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" "$@"; }
+dir=/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc
+adb shell mkdir -p "$dir"
+for f in "$PWD/rom/Panzer Dragoon II Zwei (Japan)"/*; do adb push "$f" "$dir/"; done
+```
+
+Then start the app and read its log:
+
+```sh
+adb logcat -d | grep PDZ-ASSETS
+adb shell ls /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03/e03b0n0/
+adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03/e03b0n0 extracted/headset
+```
+
+| Line | Meaning |
+|------|---------|
+| `extracted <n> textures from E03B0N0 of <product> <version> into <folder> in <s> s` | Extraction ran; `<n>` PNGs were written. |
+| `no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue`. Not an error. |
+| `more than one disc image in <folder>/disc (<names>): nothing extracted` | A warning; remove all but one. |
+| `nothing extracted from the disc image: <reason>` | A warning: the image cannot be read, or it has no `E03B0N0`; the reasons are those of the PC command. The game carries on. |
+| `found no mode 1 textures in E03B0N0 of <product> <version>: nothing written` | The disc was read but gave no texture to write. |
+| `extraction failed (<error>); carrying on with what the folder holds` | Something the checks did not foresee. A warning. |
+
+The code is in `game/DiscExtraction.cs`; it is called from `LoadAssets` in `game/Main.cs`.
+
 ## Extraction scripts
 
-The Python scripts here (`saturn_disc.py`, `cgb_textures.py`, `png.py`, `mednafen_state.py`) read the game disc and emulator save states. `tools/mednafen/` is a local emulator install and is git-ignored.
+The Python scripts here (`saturn_disc.py`, `cgb_textures.py`, `png.py`, `mednafen_state.py`) read the game disc and emulator save states. They are the prototypes the decoding library was ported from, and stay as they are. `tools/mednafen/` is a local emulator install and is git-ignored.

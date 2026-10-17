@@ -8,4 +8,9 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>PanzaDragoonVR</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- The decoding library: everything the game knows about the Saturn disc. The PC command,
+         tools/pdz-extract, references the same project. -->
+    <ProjectReference Include="../lib/PdzDecoding/PdzDecoding.csproj" />
+  </ItemGroup>
 </Project>

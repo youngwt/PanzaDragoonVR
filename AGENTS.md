@@ -4,7 +4,8 @@
 
 This is a hard rule. Never commit the disc image, anything extracted or decoded from it, BIOS files, or the soundtrack. The project is shared on a bring-your-own-disc basis: the game ships only the author's own placeholders, and the player's own disc supplies the real assets.
 
-- Keep `rom/`, `extracted/` and `tools/mednafen/` git-ignored, and write decoded output only under `extracted/`.
+- Keep `rom/`, `extracted/` and `tools/mednafen/` git-ignored, and write decoded output only under `extracted/`. That includes `pdz-extract`'s output folder.
+- The APK must hold no disc data: the game extracts on the headset into its asset folder, which is outside the APK. After a build, `unzip -l game/build/PanzaDragoonVR.apk` should list `PdzDecoding.dll` and no disc data: no `.cue`, no track `.bin` from the disc (`assets/.godot/uid_cache.bin` is Godot's own and always there), and nothing under `disc/` or `images/e03/`.
 - Before any commit, check the staged file list for game data.
 - Tool source code, format notes, and test files the project generates itself (such as `tests/fixtures/asset-rules/`) are fine to commit.
 
@@ -17,17 +18,26 @@ These describe what the code does today. Follow them in new code. The exceptions
 - An error is printed to stderr as `<tool>: error: <line>`, one problem per line, for example `write_manifest: error: ...`.
 - Exit status is 0 on success and 1 on any error. In the epic-era Python tools, `-h` prints the usage and exits 0; the shell scripts take no `-h` and name their usage in the error line for an unknown argument.
 - Shell scripts define `die` (prints the error line, exits 1) and `say` (prints `<tool>: <line>`), each with the script's own name as the prefix. `toolchain-env.sh` and `quest-adb.sh` are sourced, not run; `quest-adb.sh` uses the `die` of the script that sources it.
+- C# tools (`tools/pdz-extract/`) follow the same rules: `pdz-extract: error: <line>` on stderr, exit 1 on any error, `-h` prints the usage and exits 0.
 - Known exceptions:
   - `make_test_model.py` uses `argparse`, so a usage error exits 2.
   - `build-quest.sh` exits 2 when the app was installed but has not started.
   - `setup-toolchain.sh` exits 130 or 143 when interrupted.
-  - `test.sh` defines no `die` or `say`, prints its errors with `echo`, passes extra arguments to `dotnet test` and exits with `dotnet test`'s status.
+  - `test.sh` defines no `die` or `say`, prints its errors with `echo`, passes extra arguments to each `dotnet test` and exits with the status of the last one that failed.
   - `write_manifest.py` with no arguments or an unknown option prints only the usage to stderr and exits 1, with no `error:` line.
   - The older extraction scripts (`saturn_disc.py`, `cgb_textures.py`, `mednafen_state.py`) predate these rules: on `-h` or a bad argument they print the usage to stdout and exit 1, with no `error:` line.
 
 ### Python style
 
 - Epic-era Python (`manifest.py`, `write_manifest.py`, `make_test_model.py`) formats strings with `%`. The older extraction scripts use f-strings. Match the file you are in.
+
+### The decoding library (`lib/PdzDecoding/`)
+
+- All Saturn-format knowledge lives here: disc images, file systems, `.MDB`/`.CGB` textures, PNG writing. The game (`game/DiscExtraction.cs`) and the PC command (`tools/pdz-extract/`) only call it. It uses no Godot types.
+- It targets `net9.0` (the APK) and `net10.0`. The game references it as a project.
+- A disc image or disc file it cannot read throws `DecodingException`, whose message is one line with no full stop, so callers can put it after `<tool>: error: ` or a `PDZ-ASSETS` tag.
+- Its output must be byte-for-byte the same on the PC and the headset. Do not use .NET's compressors for files it writes: they differ between runtimes (the PNG writer stores its data uncompressed for this reason).
+- How textures are found and de-duplicated fixes their numbers, and so the asset IDs (`Textures.FindRecords` and `Textures.Number`). Change them only with the author's agreement.
 
 ### Game log lines (`game/`)
 
@@ -37,8 +47,8 @@ These describe what the code does today. Follow them in new code. The exceptions
 ### Tests
 
 - Python: `unittest`, in `tests/tools/`, with `test_snake_case` names.
-- C#: xUnit, in `tests/GameLogic.Tests/`, with `Subject_Behaviour` names (two older tests, `CasesAreFound` and `NoReportBeforeTheWindowIsFull`, are a single phrase). `game/Logic/` uses no engine code and is compiled straight into the tests.
-- `tools/test.sh` runs both.
+- C#: xUnit, in `tests/GameLogic.Tests/` and `tests/Decoding.Tests/`, with `Subject_Behaviour` names (two older tests, `CasesAreFound` and `NoReportBeforeTheWindowIsFull`, are a single phrase). `game/Logic/` uses no engine code and is compiled straight into `GameLogic.Tests`; `Decoding.Tests` references the library's project. Decoding tests build their own small disc images and `.MDB`/`.CGB` pairs and never read the disc.
+- `tools/test.sh` runs all three.
 
 ### Rules kept in two places
 
