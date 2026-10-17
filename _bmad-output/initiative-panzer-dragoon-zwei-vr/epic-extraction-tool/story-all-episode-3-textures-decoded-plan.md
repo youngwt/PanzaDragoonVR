@@ -3,7 +3,7 @@ title: 'All Episode 3 textures decoded'
 type: 'feature'
 ticket: '5'
 created: '2026-10-17'
-status: 'in-review'
+status: 'built'
 baseline_revision: '364670722ce857269c1101db81f97c7a3eab3bc7'
 route: 'full'
 route_source: 'auto'
@@ -94,7 +94,7 @@ Quick lens, 2026-10-17: high 0, medium 0, low 5, false 0, maybe-false 0. Four pa
 - low, patched: "from N disc files" counted files that wrote nothing (9 where 8 wrote). Now counts files with at least one texture, in the game, the PC command and the README.
 - low, patched: the README said a missing file names its `.CGB`; the code names the `.MDB` first. Reworded.
 - low, rejected: `Decode` returns mutable collections that a caller could change after the result is built. No caller does, and wrapping every collection adds code for a state nobody reaches.
-- carried: the "they look right" criterion is the author's.
+- carried: the "they look right" criterion was the author's. Met on 2026-10-17: the author looked at the contact sheets and judged them right ("looks exciting").
 
 Re-verified after the patches: `tools/test.sh` (94 Python, 192 GameLogic, 54 Decoding tests) passes; `pdz-extract` on the author's disc writes 250 textures from 8 files, with per-file counts as planned, and 161 mode 4 and 9 mode 0 left out.
 
