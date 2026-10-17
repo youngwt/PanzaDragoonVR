@@ -13,7 +13,7 @@
 
 ## Extraction (pipeline track)
 
-The decoders become one C# library, run by the game on the headset at first launch and by a PC command for reverse engineering; not built yet. The Python scripts in `tools/` are the prototypes it is ported from, standard library only:
+The decoders become one C# library, run by the game on the headset at launch (asset contract, Extraction) and by a PC command for reverse engineering; not built yet. The Python scripts in `tools/` are the prototypes it is ported from, standard library only:
 
 | Script | Does |
 |--------|------|

@@ -30,7 +30,7 @@ The work runs on two tracks. The **pipeline** track is a C# library that turns t
   - **intent:** The game ships with only the author's own placeholder assets and nothing copyrighted. At runtime it replaces them, ID by ID, with assets from a known folder on the headset, and checks that folder against a manifest at launch.
   - **success:** The ground and sky of the CAP-1 scene are textured from the user's own example images copied into the folder. A file the manifest lists but the folder lacks is reported at launch. With an empty folder the scene still appears, on placeholders.
 - **CAP-3: In-game extraction**
-  - **intent:** At launch the game finds the player's disc image in its folder and extracts the demo's assets, writing them and the manifest into the same folder: once in release builds, on every launch in development mode.
+  - **intent:** At launch the game finds the player's disc image in its folder and extracts the demo's assets, writing them and the manifest into the same folder: once in release mode, on every launch in development mode.
   - **success:** With a disc image copied to the headset, the first launch extracts the Episode 3 images; in release mode later launches skip extraction, in development mode they extract again. The same images, written by the PC command, are recognisable by eye in a file explorer.
 - **CAP-4: Forest floor and canopy**
   - **intent:** The player flies through the Episode 3 forest between the extracted floor and canopy.
@@ -60,7 +60,7 @@ Build order and track for each capability are in `milestones.md`.
 - The two tracks share only the external asset folder and manifest, as defined in `asset-contract.md`. Flight work runs on own example images and grey cubes, so it never waits on extraction.
 - Extraction runs on the headset, at launch, from the player's own disc image.
 - Accepted disc images: bin/cue (one `.bin` for all tracks or one per track, read through the cue sheet) and plain 2048-byte-sector ISO.
-- One setting is development mode: it keeps the disc image and re-extracts on every launch, so improved decoders take effect at once. In release mode the disc image is deleted after a successful extraction and extraction does not run again.
+- One setting is development mode, set by a marker file in the asset folder (asset contract, Extraction): it keeps the disc image and re-extracts on every launch, so improved decoders take effect at once. In release mode the disc image is deleted after a successful extraction, and extraction does not run again for the same disc.
 - Platform is standalone Quest 3, Godot 4.7, with C# from the first line (`stack.md`).
 - The known folder is the app's own `Android/data/<package>/files`. Quest's scoped storage rules out arbitrary `/sdcard` paths.
 - The game stays on rails as in the original: the dragon always moves forward.
@@ -88,7 +88,7 @@ Build order and track for each capability are in `milestones.md`.
 
 - The Python scripts in `tools/` are prototypes for format research; finished decoders move into the C# library.
 - The Japanese disc (GS-9049, V1.001) is the reference the decoders are built and checked against. Other discs are attempted, with unknown results.
-- The disc image goes in a subfolder of the app's files folder, such as `disc/`; the extraction epic fixes the name.
+- The disc image goes in the `disc/` subfolder of the app's files folder (asset contract, Extraction).
 - The aiming hand defaults to left; the left/right option is post-demo.
 - The no-HUD rule was the brainstorm coach's synthesis of the author's ideas and is treated as a constraint.
 - The demo ends at milestone 7.

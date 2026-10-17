@@ -20,17 +20,19 @@ On the headset, the asset folder is the app's own external files folder:
 /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/
 ```
 
-The game fills it itself: on first launch it extracts the assets from the player's disc image and writes them and the manifest here. The player's own files can be copied in with SideQuest or `adb push` instead. On the PC, the same decoding library writes an output folder of the user's choosing with exactly the layout below. The user copies what is inside that folder, not the folder itself, into `files/`, so that `manifest.json` ends up directly inside `files/`.
+The game fills it itself: at launch, as Extraction says, it extracts the assets from the player's disc image and writes them and the manifest here. The player's own files can be copied in with SideQuest or `adb push` instead. On the PC, the same decoding library writes an output folder of the user's choosing with exactly the layout below. The user copies what is inside that folder, not the folder itself, into `files/`, so that `manifest.json` ends up directly inside `files/`.
 
 ```
 files/                 the asset folder (the output folder's contents on the PC)
   manifest.json        required whenever the folder holds assets; at the top level
   images/              suggested, not required
   models/              suggested, not required
+  disc/                the player's disc image, read by extraction on the headset; see Extraction
+  development          an empty marker file: development mode; see Extraction
 ```
 
 - There is one `manifest.json`, at the top level.
-- Everything else is the tool's choice. The game finds files only through the manifest and must not assume any file name or subfolder.
+- Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines.
 - Files in the folder that the manifest does not list are ignored.
 
 ## The manifest
@@ -71,9 +73,9 @@ files/                 the asset folder (the output folder's contents on the PC)
 | Field | Type | Required | Meaning |
 |-------|------|----------|---------|
 | `format` | integer | yes | Version of this contract. This document describes `1`. |
-| `generator` | string | yes | What wrote the manifest: a tool's name and version, or `hand-written`. For people; the game does not act on it. |
-| `source` | object or null | yes | Which disc the assets came from, as `{"product": "GS-9049", "version": "V1.001"}`. `null` when they are not from a disc. For people; the game does not act on it. |
-| `assets` | array | yes | One entry per file. May be empty. |
+| `generator` | string | yes | What wrote the manifest: a tool's name and version, or `hand-written`. The game acts on it only to decide whether to extract again in release mode (see Extraction). |
+| `source` | object or null | yes | Which disc the assets came from, as `{"product": "GS-9049", "version": "V1.001"}`. `null` when they are not from a disc. The game acts on it only to decide whether to extract again in release mode (see Extraction). |
+| `assets` | array | yes | One entry per file, at least one. An empty list is a problem: see What the game does at launch. |
 
 ### Asset entries
 
@@ -101,6 +103,19 @@ files/                 the asset folder (the output folder's contents on the PC)
 - The engine spike's flying grey cube is the placeholder for `e03.flyer`, a model: the Episode 3 flying enemy that the grey cubes later become. As with the ground and sky, there is no separate test ID.
 - An ID is a promise. Once the game asks for an ID, the tool keeps writing it. The file behind it may move or be renamed freely.
 
+#### Extracted textures
+
+Every texture the extractor decodes from the disc's Episode 3 files is listed, as an `image`, under an ID of the form
+
+```
+e03.tex.<file>.<n>
+```
+
+- `<file>` is the disc file's name without its extension, in lowercase: `e03cmn`, `e03b0n0` to `e03b0n2`, `e03b1n0` to `e03b1n2`, `e03boss`, `e03end`.
+- `<n>` is the texture's place in that file, as four decimal digits from `0000`. Textures are numbered in the order their first drawing record appears in the file's `.MDB`. A record whose four words (CMDPMOD, CMDCOLR, CMDSRCA and CMDSIZE) all equal those of an earlier record in the same file is the same texture and takes no new number; a record differing in any of them is a new texture, even when its image turns out the same.
+- The number depends on how the extractor finds and de-duplicates records. A change to either renumbers the textures, which breaks the promise for every ID the game already asks for. Such a change is made only with the author's agreement, and with the game updated to match.
+- The file behind the ID is at `images/e03/<file>/<n>.png`, for example `images/e03/e03b0n0/0007.png`.
+
 ### Paths
 
 - Relative to the asset folder, with forward slashes.
@@ -113,6 +128,60 @@ files/                 the asset folder (the output folder's contents on the PC)
 |------|-------------|
 | `image` | PNG, 8 bits per channel, RGB or RGBA. |
 | `model` | Binary glTF 2.0 (`.glb`), one self-contained file with its textures inside it. See Models. |
+
+## Extraction
+
+The game extracts the assets on the headset at launch, and the PC command does the same on the PC. Both use the one decoding library, so given the same disc image they write the same files, byte for byte.
+
+### The disc image
+
+- The player copies their own disc image into `disc/` inside the asset folder: one `.cue` sheet with the `.bin` file or files it names, or one `.iso` of 2048-byte sectors. Any file names.
+- More than one disc image in `disc/` is a problem: it is reported and nothing is extracted.
+- A disc other than the Japanese GS-9049 V1.001 is attempted, not refused. What it yields is whatever the decoders find.
+
+### Development and release modes
+
+- **Development mode** is on when an empty file named `development` sits at the top of the asset folder. The game then keeps the disc image and extracts again on every launch.
+- **Release mode** is the mode without that file, whatever the build. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the extractor (its `generator` starts `pdz-extract ` with the space) from a disc with the same `source` product and version. After a successful extraction, and whenever extraction is skipped for that reason, the game deletes the disc image.
+
+### What extraction writes
+
+- Extraction writes into a staging folder, `extracting/` inside the asset folder, which it empties first. Only when every file is written without error does it move the new files into place, the new `manifest.json` last, and then remove the staging folder. A failure before that leaves the previous files and manifest in place; a leftover `extracting/` folder is emptied by the next extraction.
+- It writes its own `manifest.json`, replacing any manifest in the folder. Files it did not write are left in place but are no longer listed.
+- `generator` is `pdz-extract` followed by the decoding library's version, the same on the PC and the headset. `source` is the product and version from the disc's Saturn header.
+- For identical output: entries are sorted by `id` in ordinal order; every entry has `sha256`; the JSON puts every object and array member on a line of its own, indented two spaces per level, with `": "` after each key, `\n` line ends and a final newline, and keys in the order of the example below; PNGs come from one deterministic encoder.
+
+```json
+{
+  "format": 1,
+  "generator": "pdz-extract 0.1",
+  "source": {
+    "product": "GS-9049",
+    "version": "V1.001"
+  },
+  "assets": [
+    {
+      "id": "e03.tex.e03b0n0.0000",
+      "kind": "image",
+      "path": "images/e03/e03b0n0/0000.png",
+      "bytes": 1283,
+      "sha256": "9f2c5d8a3b1e4f6a7c0d2e9b8a1f3c5e7d9b0a2c4e6f8a1b3c5d7e9f0a2b4c6d"
+    },
+    {
+      "id": "e03.tex.e03b0n0.0001",
+      "kind": "image",
+      "path": "images/e03/e03b0n0/0001.png",
+      "bytes": 977,
+      "sha256": "1b3d5f7a9c2e4a6b8d0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b"
+    }
+  ]
+}
+```
+
+### Progress and failure
+
+- While extraction runs, the scene is shown on what the folder already holds, and a board in the world shows progress by disc file. When it finishes, the game reads the folder again.
+- A failed extraction is reported on the launch report board with the reason, and the game carries on with what the folder held, or placeholders.
 
 ## Models
 
@@ -199,6 +268,7 @@ The game checks the folder before showing the scene. It never refuses to run: an
 | Situation | What the player is told | What is shown |
 |-----------|-------------------------|---------------|
 | No `manifest.json` | A short notice: running on placeholders, with the folder path. Not an error. | Placeholders for everything. |
+| `manifest.json` lists no assets | The manifest cannot be read: it lists no assets. | Placeholders for everything. |
 | `manifest.json` is not valid JSON, or a required top-level field is absent or of the wrong type | The manifest cannot be read, with the reason. | Placeholders for everything. |
 | `format` is not one this build of the game supports | The assets were made by a newer or older tool than this build understands; run the matching tool again. | Placeholders for everything. |
 | Two entries share an `id` | Duplicate ID, with the ID. | The placeholder for that ID. |
@@ -210,6 +280,14 @@ The game checks the folder before showing the scene. It never refuses to run: an
 | The manifest lists an ID the game does not use | Nothing. | Nothing. |
 
 Checking size catches a copy that was cut short, without hashing every file on every launch.
+
+Extraction, when it runs, adds these:
+
+| Situation | What the player is told | What is shown |
+|-----------|-------------------------|---------------|
+| More than one disc image in `disc/` | More than one disc image, with their names. Nothing is extracted. | What the folder already holds. |
+| The disc image cannot be read, or is not a Saturn disc | The disc image cannot be read, with the reason. | What the folder already holds. |
+| Extraction fails part way | Extraction failed, with the disc file and the reason. The previous contents are kept. | What the folder already holds. |
 
 ## Versioning
 
