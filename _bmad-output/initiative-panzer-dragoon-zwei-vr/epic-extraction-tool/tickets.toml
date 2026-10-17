@@ -50,8 +50,8 @@ risk = "medium"
 id = 5
 type = "story"
 title = "All Episode 3 textures decoded"
-description = "Ports the rest of the texture decoding from `tools/cgb_textures.py` into the library for every Episode 3 texture file: finding the textures in each `.MDB`, the load base, transparency, and modes 1 (16-colour lookup table), 5 (RGB) and 0 (greyscale), writing deterministic PNGs, toward CAP-3."
-verify = "Unit tests on synthetic `.MDB`/`.CGB` pairs cover each mode and edge, and the PC command on the author's disc writes every Episode 3 texture (about 420 by the prototype's log), the mode 1 ones looking right by eye."
+description = "Ports the rest of the texture decoding from `tools/cgb_textures.py` into the library for every Episode 3 texture file: finding the textures in each `.MDB`, the load base, transparency, and modes 1 (16-colour lookup table) and 5 (RGB), writing deterministic PNGs; modes 4 and 0 stay numbered but unwritten until story 6, toward CAP-3."
+verify = "Unit tests on synthetic `.MDB`/`.CGB` pairs cover modes 1 and 5 and each edge, and the PC command on the author's disc writes every mode 1 and mode 5 Episode 3 texture (about 250 by the prototype's log), looking right by eye."
 covers = ["CAP-3"]
 after = [2]
 hitl = false
@@ -60,20 +60,20 @@ risk = "medium"
 [[entry]]
 id = 6
 type = "story"
-title = "The 256-colour textures come out in colour"
-description = "Applies the palettes found by spike 3 to the 256-colour Episode 3 textures, so they are written in colour, toward CAP-3."
-verify = "The PC command's mode 4 Episode 3 textures (about 160 by the prototype's log) look right by eye to the author, and unit tests cover the palette lookup."
+title = "The colour-bank textures come out in colour"
+description = "Finds the colour upload tables in `EPISODE3.PRG` by their pattern (pairs of a `0x25Fxxxxx` destination and a `0x060xxxxx` source, a table running from destination `0x25F00000` to the first other destination; a lead in zwei-disc-formats.md), uses the second of the two the author's disc holds (at 0xE23C), fills colour RAM from the blocks it names, and writes the 256-colour (mode 4) and colour-bank (mode 0) Episode 3 textures in colour under the numbers story 5 already gives them; with no such table it leaves them out with a notice, toward CAP-3."
+verify = "The PC command's mode 4 textures of `E03CMN` and `E03END` match the spike's sheets by eye, `E03BOSS`'s mode 0 shadows come out as one dark colour, the author agrees, and unit tests cover finding the table, a disc with none, and the colour code rules."
 covers = ["CAP-3"]
 after = [3, 5]
 hitl = true                 # the author checks the colours by eye
-risk = "high"
-unknown = "How the palettes are found and applied depends on spike 3's answer."
+risk = "medium"
+references = ["../spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md", "spike-where-the-256-colour-palettes-are-on-the-disc-plan.md"]
 
 [[entry]]
 id = 7
 type = "story"
 title = "The extraction writes a manifest the checker accepts"
-description = "The library writes `manifest.json` for the extracted textures with the IDs from story 1, the `source` read by story 4, `generator` and checksums the contract now defines, and the game reports an empty asset list as a problem, as the contract now says, toward CAP-3."
+description = "The library writes `manifest.json` for the extracted textures with the IDs from story 1, the `source` read by story 4, `generator` and checksums the contract now defines, and the game reports an empty asset list as a problem, as the contract now says; the manifest lists every texture the extraction writes, whichever stories write them, toward CAP-3."
 verify = "`tools/write_manifest.py --check` passes on the PC command's output folder, and a shared asset-rule case shows an empty asset list reported the same by the PC check and the game."
 covers = ["CAP-3"]
 after = [1, 4, 5]

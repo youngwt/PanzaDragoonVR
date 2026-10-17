@@ -33,7 +33,7 @@ The C# decoding library, the in-game extraction step and the PC command, for tex
 
 ## Notes
 
-- Unknown: where the 256-colour palettes are on the disc. Today the likely source is a save state's colour RAM.
+- Settled by spike 3 (2026-10-17): the palettes for mode 4 and mode 0 textures come from VDP2 colour RAM, which Episode 3 fills from colour upload tables in `EPISODE3.PRG` (at 0x288 and 0xE23C); see zwei-disc-formats.md, "Palettes for colour banks".
 - Waits on Engine spike because: it writes the manifest in the format agreed there, and story 1.4 settles how the game reaches its asset folder.
 - Unknown: how other discs than the Japanese GS-9049 V1.001 behave; they are attempted, not refused.
 - Decision: re-scoped on 2026-10-14 from a PC extraction tool to in-game extraction with a shared C# decoding library, following the spec update; Done when 4 (identical output on PC and headset) added so checking by eye on the PC holds for the headset (user approved, 2026-10-14).
@@ -48,6 +48,7 @@ The C# decoding library, the in-game extraction step and the PC command, for tex
 - Decision: if spike 3 finds no palette on the disc, whether Done when 2 moves to a later epic is decided then, on the spike's evidence; story 6 waits on the answer (user, 2026-10-16).
 - Decision: spike 3 also looks for the palette of the colour-bank (mode 0) textures (user, 2026-10-16).
 - Note: backlog ticket 7 (stack notes and asset contract) must not run alongside story 1; both edit the asset contract.
+- Decision: re-sliced after spike 3. Story 6 colours mode 4 and mode 0 from the 0xE23C table, found by its pattern, leaving them out with a notice on a disc with no table; mode 0 moves from story 5 (greyscale) to story 6; the 0x288 table stays a lead; story 7's manifest lists whatever the extraction writes. The 2026-10-16 decision on what to do if the spike found no palette no longer applies (user approved, 2026-10-17).
 
 ## References
 
