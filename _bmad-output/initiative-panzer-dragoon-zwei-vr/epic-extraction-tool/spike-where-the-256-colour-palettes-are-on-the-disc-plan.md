@@ -3,7 +3,7 @@ title: 'Where the 256-colour palettes are on the disc'
 type: 'chore'
 ticket: '3'
 created: '2026-10-17'
-status: 'built'
+status: done
 baseline_revision: '4fed8751fefbb6a5d926ba5140b887a9a842f0d1'
 route: 'full'
 route_source: 'auto'
