@@ -3,7 +3,7 @@ title: 'Every accepted disc image layout is read'
 type: 'feature'
 ticket: '4'
 created: '2026-10-17'
-status: 'built'
+status: done
 baseline_revision: '3910800832c6cbb6ab20d617ea42253e784c2755'
 route: 'full'
 route_source: 'auto'
