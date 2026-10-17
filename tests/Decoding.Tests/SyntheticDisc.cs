@@ -193,6 +193,9 @@ internal static class SyntheticTextures
     /// <summary>CMDPMOD for colour mode 1 with transparent pixels on.</summary>
     public const ushort Mode1 = 0x0408;
 
+    /// <summary>CMDPMOD for colour mode 5, true colour, with transparent pixels on.</summary>
+    public const ushort Mode5 = 0x0428;
+
     /// <summary>
     /// A <c>.CGB</c> of 128 bytes: from offset 0, pixels counting 0, 1, ... 15, 0, 1 ... in 4-bit
     /// indices; then at offset 96 a 16-entry lookup table whose entry i has red i, green 31 - i and blue 1.

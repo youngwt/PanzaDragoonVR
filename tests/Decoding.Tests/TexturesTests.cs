@@ -130,6 +130,38 @@ public sealed class TexturesTests
     }
 
     [Fact]
+    public void DecodeMode5_ReadsEachWordAsRgb555()
+    {
+        TextureRecord r = Textures.FindRecords(Mdb(Record(pmod: Mode5))).Single();
+
+        byte[] rgba = Textures.DecodeMode5(Cgb(), Base, r);
+
+        Assert.Equal(8 * 2 * 4, rgba.Length);
+        // Pixel 1 is the word 0x4567: red 7, green 11, blue 17.
+        Assert.Equal(new byte[] { 7 * 255 / 31, 11 * 255 / 31, 17 * 255 / 31 }, rgba[4..7]);
+    }
+
+    [Fact]
+    public void DecodeMode5_AlphaIsBit15()
+    {
+        TextureRecord r = Textures.FindRecords(Mdb(Record(pmod: Mode5 | 0x40))).Single();
+
+        byte[] rgba = Textures.DecodeMode5(Cgb(), Base, r);
+
+        // The words run 0x0123, 0x4567, 0x89AB, 0xCDEF, then repeat; the transparency bit plays no part.
+        Assert.Equal(new byte[] { 0, 0, 255, 255, 0, 0, 255, 255 }, Enumerable.Range(0, 8).Select(p => rgba[p * 4 + 3]));
+    }
+
+    [Fact]
+    public void DecodeMode5_TextureOutsideTheCgbThrows()
+    {
+        // 8 x 2 in mode 5 is 32 bytes, so at offset 112 it runs past the 128-byte .CGB.
+        var r = new TextureRecord(0, Mode5, Base, (ushort)(Base + 14), 0x0102);
+
+        Assert.Throws<DecodingException>(() => Textures.DecodeMode5(Cgb(), Base, r));
+    }
+
+    [Fact]
     public void Rgb555_ScalesEachChannelTo8Bits()
     {
         var rgb = new byte[3];

@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using Godot;
 using PdzDecoding;
 
@@ -40,14 +41,13 @@ public static class DiscExtraction
             string seconds = clock.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
             if (result.Files.Count == 0)
             {
-                GD.Print($"{AssetFolder.LogTag} found no mode 1 textures in {result.DiscFileName} of " +
-                    $"{result.Source.Product} {result.Source.Version}: nothing written");
+                GD.Print($"{AssetFolder.LogTag} found no textures in colour modes 1 or 5 on " +
+                    $"{result.Source.Product} {result.Source.Version}: nothing written ({result.Details()})");
                 return;
             }
 
-            string skipped = result.Skipped == 0 ? "" : $", {result.Skipped} in colour modes not decoded yet left out";
-            GD.Print($"{AssetFolder.LogTag} extracted {result.Files.Count} textures from {result.DiscFileName} " +
-                $"of {result.Source.Product} {result.Source.Version} into {result.Folder} in {seconds} s{skipped}");
+            GD.Print($"{AssetFolder.LogTag} extracted {result.Files.Count} textures from {result.DiscFiles.Count(f => f.Files.Count > 0)} disc files " +
+                $"of {result.Source.Product} {result.Source.Version} into {result.Folder} in {seconds} s ({result.Details()})");
         }
         catch (DecodingException e)
         {

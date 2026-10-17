@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using PdzDecoding;
 
 // pdz-extract <disc.cue> <output folder>: writes the textures the game extracts on the headset,
@@ -12,9 +13,10 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
 {
     Console.WriteLine(Usage);
     Console.WriteLine();
-    Console.WriteLine("Reads the disc image the cue sheet names and writes the mode 1 textures of");
-    Console.WriteLine($"{Extraction.TextureFile} as images/e03/{Extraction.TextureFile.ToLowerInvariant()}/<n>.png inside the output folder,");
-    Console.WriteLine("as the game does in its asset folder on the headset.");
+    Console.WriteLine("Reads the disc image the cue sheet names and writes the textures in colour modes");
+    Console.WriteLine($"1 and 5 of {string.Join(", ", Extraction.TextureFiles)}");
+    Console.WriteLine("as images/e03/<file>/<n>.png inside the output folder, as the game does in its");
+    Console.WriteLine("asset folder on the headset.");
     return 0;
 }
 
@@ -38,12 +40,26 @@ try
     Console.WriteLine($"{Tool}: disc {result.Source.Product} {result.Source.Version}");
     if (result.Files.Count == 0)
     {
-        Console.WriteLine($"{Tool}: found no mode 1 textures in {result.DiscFileName}: nothing written");
-        return 0;
+        Console.WriteLine($"{Tool}: found no textures in colour modes 1 or 5: nothing written");
+    }
+    else
+    {
+        Console.WriteLine($"{Tool}: wrote {result.Files.Count} textures from {result.DiscFiles.Count(f => f.Files.Count > 0)} disc files to {result.Folder}");
     }
 
-    Console.WriteLine($"{Tool}: wrote {result.Files.Count} textures from {result.DiscFileName} to {result.Folder}" +
-        (result.Skipped == 0 ? "" : $" ({result.Skipped} in colour modes not decoded yet were left out)"));
+    foreach (DiscFileResult file in result.DiscFiles)
+    {
+        string leftOut = file.Skipped == 0 ? "" :
+            " (" + string.Join(", ", file.LeftOut.Select(m => $"{m.Value} in mode {m.Key}")) + " not decoded yet, left out)";
+        string what = file.Textures == 0 ? "no textures" : $"{file.Files.Count} written{leftOut}";
+        Console.WriteLine($"{Tool}:   {file.Name}: {what}");
+    }
+
+    foreach (MissingDiscFile missing in result.Missing)
+    {
+        Console.WriteLine($"{Tool}:   {missing.Name}: not on the disc (no {missing.Absent})");
+    }
+
     return 0;
 }
 catch (DecodingException e)

@@ -204,7 +204,7 @@ The Python tests cover the scripts in `tools/`, at present the manifest writer a
 
 `tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest and its check of a model file (`game/Logic/GlbCheck.cs`). That project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
 
-`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding mode 1, the PNG writer, and extraction as a whole, with the cases of the story's matrix (disc present, no disc, a bad image, a repeated record, transparency). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
+`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, the PNG writer, and extraction as a whole, with the cases of the stories' matrices (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
 
 ### Shared asset-rule cases
 
@@ -406,7 +406,7 @@ Missing files, wrong sizes and the other manifest problems read as they do for i
 
 The game extracts the textures from the player's own disc image itself, on the headset, at launch. A PC command runs the same code on the PC, so the files can be looked at and checked there. Both use one C# library, `lib/PdzDecoding/`, which holds everything the project knows about the Saturn disc and uses no Godot types. It targets `net9.0` for the APK and `net10.0` for the desktop game, the PC command and the tests; the game references it as a project, and the APK carries `PdzDecoding.dll`.
 
-What it extracts so far (the in-game extraction epic's tracer bullet): the 16-colour (mode 1) textures of one disc file, `E03B0N0`, from a cue sheet whose track 1 is MODE1/2352, such as a per-track bin/cue dump. Each texture is written as `images/e03/e03b0n0/<n>.png`, numbered from `0000` as the asset contract's "Extracted textures" says: in the order its first drawing record appears in `E03B0N0.MDB`, with a record whose four words all equal an earlier one's taking no new number. Textures in colour modes not decoded yet keep their numbers but are not written, so there may be gaps. No `manifest.json` is written yet, so the game does not show the textures: it still runs on its placeholders.
+What it extracts so far: the textures that carry their own colours, 16 colours through a lookup table (mode 1) and true colour (mode 5), of the nine Episode 3 files the asset contract names (`E03CMN`, `E03B0N0` to `E03B0N2`, `E03B1N0` to `E03B1N2`, `E03BOSS`, `E03END`), from a cue sheet whose track 1 is MODE1/2352, such as a per-track bin/cue dump. Each texture is written as `images/e03/<file>/<n>.png`, `<file>` being the disc file's name in lowercase, numbered from `0000` as the asset contract's "Extracted textures" says: in the order its first drawing record appears in the file's `.MDB`, with a record whose four words all equal an earlier one's taking no new number. Textures in the colour-bank modes (4 and 0), not decoded yet, keep their numbers but are not written, so there may be gaps; a file with nothing to write, such as `E03END`, whose textures are all mode 4, gets no folder. On the author's disc that is 250 textures in eight folders, all mode 1, with 161 in mode 4 and 9 in mode 0 left out. A file of the nine that the disc lacks (its `.MDB` or its `.CGB`) is left out and named, and the others are still extracted; a disc with none of the nine is an error. No `manifest.json` is written yet, so the game does not show the textures: it still runs on its placeholders.
 
 The PNGs are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: `E03B0N0`'s 28 textures take 110 KB instead of 15 KB.
 
@@ -418,14 +418,18 @@ dotnet run --project tools/pdz-extract -- "rom/Panzer Dragoon II Zwei (Japan)/Pa
 
 ```
 pdz-extract: disc GS-9049 V1.001
-pdz-extract: wrote 28 textures from E03B0N0 to /.../extracted/pdz-extract/images/e03/e03b0n0
+pdz-extract: wrote 250 textures from 8 disc files to /.../extracted/pdz-extract/images/e03
+pdz-extract:   E03CMN: 8 written (1 in mode 0, 116 in mode 4 not decoded yet, left out)
+pdz-extract:   E03B0N0: 28 written
+...
+pdz-extract:   E03END: 0 written (45 in mode 4 not decoded yet, left out)
 ```
 
-`pdz-extract <disc.cue> <output folder>` writes the same files, with the same names and bytes, that the game writes in its asset folder, into the output folder. Write it under `extracted/`, which is git-ignored: the files come from the disc. `-h` prints the usage. An error is one line, `pdz-extract: error: <line>`, and the exit status is 1: no cue sheet, a cue sheet naming a missing `.bin` or with another kind of track 1, no ISO9660 volume at sector 16, or a disc without `E03B0N0`. Every texture is decoded before any file is written, so a decoding error writes nothing, and with no texture to write not even the folder is made. A write that fails part way, such as a full disk, may leave some PNGs written; staging (story 9) will fix that.
+`pdz-extract <disc.cue> <output folder>` writes the same files, with the same names and bytes, that the game writes in its asset folder, into the output folder. Write it under `extracted/`, which is git-ignored: the files come from the disc. `-h` prints the usage. An error is one line, `pdz-extract: error: <line>`, and the exit status is 1: no cue sheet, a cue sheet naming a missing `.bin` or with another kind of track 1, no ISO9660 volume at sector 16, or a disc with none of the nine files (the error names them). One line per disc file follows the total: a file the disc lacks reads `<file>: not on the disc (no <file>.MDB)` or `(no <file>.CGB)`, naming whichever is absent (the `.MDB` when both are), and one whose `.MDB` holds no record that fits its `.CGB` reads `<file>: no textures`. Every texture of every file is decoded before any file is written, so a decoding error writes nothing, and a file with no texture to write gets no folder. A write that fails part way, such as a full disk, may leave some PNGs written; staging (story 9) will fix that.
 
 ### On the headset
 
-The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one `.cue` sheet, it extracts at launch, before reading the folder, and writes the PNGs into `files/images/e03/e03b0n0/`. It does so on every launch for now, and the disc image stays. The scene waits for it; on the PC it takes a fraction of a second, and the log line gives the time on the headset.
+The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one `.cue` sheet, it extracts at launch, before reading the folder, and writes the PNGs into `files/images/e03/<file>/`. It does so on every launch for now, and the disc image stays. The scene waits for it; on the PC it takes a fraction of a second, and the log line gives the time on the headset.
 
 Copy your disc image there with the host's `adb`: about 475 MB, the `.cue` and its four `.bin` files. The home folder is shared with the host, so the host's `adb` can read the dump in `rom/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
 
@@ -441,17 +445,17 @@ Then start the app and read its log:
 
 ```sh
 adb logcat -d | grep PDZ-ASSETS
-adb shell ls /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03/e03b0n0/
-adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03/e03b0n0 extracted/headset
+adb shell ls /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03/
+adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03 extracted/headset
 ```
 
 | Line | Meaning |
 |------|---------|
-| `extracted <n> textures from E03B0N0 of <product> <version> into <folder> in <s> s` | Extraction ran; `<n>` PNGs were written. |
+| `extracted <n> textures from <m> disc files of <product> <version> into <folder>/images/e03 in <s> s (<details>)` | Extraction ran; `<n>` PNGs were written, from the `<m>` disc files that gave at least one. `<details>` gives the PNGs per file (`E03CMN 8, E03B0N0 28, ...`), then, when there are any, the textures left out by colour mode (`left out, in colour modes not decoded yet: mode 0 9, mode 4 161`), the files the disc lacks (`missing: E03END (no E03END.MDB)`, or `.CGB`, whichever is absent) and the files with no textures (`no textures in: ...`). |
 | `no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue`. Not an error. |
 | `more than one disc image in <folder>/disc (<names>): nothing extracted` | A warning; remove all but one. |
-| `nothing extracted from the disc image: <reason>` | A warning: the image cannot be read, or it has no `E03B0N0`; the reasons are those of the PC command. The game carries on. |
-| `found no mode 1 textures in E03B0N0 of <product> <version>: nothing written` | The disc was read but gave no texture to write. |
+| `nothing extracted from the disc image: <reason>` | A warning: the image cannot be read, or it has none of the nine Episode 3 files; the reasons are those of the PC command. The game carries on. |
+| `found no textures in colour modes 1 or 5 on <product> <version>: nothing written (<details>)` | The disc was read but gave no texture to write. |
 | `extraction failed (<error>); carrying on with what the folder holds` | Something the checks did not foresee. A warning. |
 
 The code is in `game/DiscExtraction.cs`; it is called from `LoadAssets` in `game/Main.cs`.

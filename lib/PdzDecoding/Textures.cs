@@ -174,6 +174,35 @@ public static class Textures
         return rgba;
     }
 
+    /// <summary>
+    /// A mode 5 (true colour) texture as 8-bit RGBA, row-major: one big-endian 16-bit word per pixel,
+    /// its low 15 bits RGB555 and alpha 255 when bit 15 is set, else 0, as <c>tools/cgb_textures.py</c>.
+    /// </summary>
+    public static byte[] DecodeMode5(ReadOnlySpan<byte> cgb, int baseAddress, TextureRecord r)
+    {
+        if (r.ColourMode != 5)
+        {
+            throw new ArgumentException($"the record at offset {r.Offset} is in colour mode {r.ColourMode}, not 5", nameof(r));
+        }
+
+        if (!Fits(r, baseAddress, cgb.Length))
+        {
+            throw new DecodingException($"the texture at .MDB offset {r.Offset} lies outside the .CGB");
+        }
+
+        int offset = (r.Srca - baseAddress) * 8;
+        int pixels = r.Width * r.Height;
+        var rgba = new byte[pixels * 4];
+        for (int i = 0; i < pixels; i++)
+        {
+            ushort word = BinaryPrimitives.ReadUInt16BigEndian(cgb[(offset + i * 2)..]);
+            Rgb555(word, rgba.AsSpan(i * 4, 3));
+            rgba[i * 4 + 3] = (byte)((word & 0x8000) != 0 ? 255 : 0);
+        }
+
+        return rgba;
+    }
+
     /// <summary>An RGB555 word (red in the low bits) as three 8-bit channels, each <c>c * 255 / 31</c>.</summary>
     public static void Rgb555(ushort word, Span<byte> rgb)
     {
