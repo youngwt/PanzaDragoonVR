@@ -3,7 +3,7 @@ title: 'Decide texture IDs and the extraction rules in the asset contract'
 type: 'chore'
 ticket: '1'
 created: '2026-10-17'
-status: 'built'
+status: done
 baseline_revision: '42986593ae581b0cba109779229bdee4f145e758'
 route: 'oneshot'
 route_source: 'auto'
@@ -69,7 +69,7 @@ Quick lens, 2026-10-17: high 0, medium 1, low 7, false 0, maybe-false 0. Eight p
 - low, patched: the spec still said release mode never extracts again. It now says not again for the same disc.
 - low, patched: `stack.md` said "at first launch". It now says at launch, pointing to the contract.
 - carried: no code enforces an empty asset list as a problem yet, and some C# tests use `"assets": []` as readable. That is entry 7's work (game check and shared case), as planned.
-- carried: the author's agreement is pending; it is asked for at presentation.
+- carried: the author's agreement was pending at review; the author agreed the contract as written on 2026-10-17.
 
 ## Verification
 
