@@ -3,7 +3,7 @@ title: 'Extraction runs behind a progress board and falls back on failure'
 type: 'feature'
 ticket: '9'
 created: '2026-10-18'
-status: 'built'
+status: done
 baseline_revision: 'a9587f3aa5e01dfb9ea7ca474e8cb0673a9532b5'
 route: 'full'
 route_source: 'auto'
