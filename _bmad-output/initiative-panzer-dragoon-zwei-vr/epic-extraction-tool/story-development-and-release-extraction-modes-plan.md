@@ -3,7 +3,7 @@ title: 'Development and release extraction modes'
 type: 'feature'
 ticket: '10'
 created: '2026-10-18'
-status: 'built'
+status: done
 baseline_revision: 'ac22a3b9d47b637cc4bb47fe3c217b8eccc2be87'
 route: 'full'
 route_source: 'auto'
