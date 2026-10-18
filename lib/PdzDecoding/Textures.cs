@@ -203,6 +203,77 @@ public static class Textures
         return rgba;
     }
 
+    /// <summary>
+    /// A mode 4 (256 colours from a colour bank) texture as 8-bit RGBA, row-major: one byte per pixel,
+    /// the colour code <c>((CMDCOLR &amp; 0xFF00) | pixel) &amp; 0x7FF</c> into <paramref name="colours"/>.
+    /// Pixel value 0 has alpha 0 unless CMDPMOD bit 0x40 is set; every other pixel has alpha 255.
+    /// </summary>
+    public static byte[] DecodeMode4(ReadOnlySpan<byte> cgb, int baseAddress, TextureRecord r, ColourRam colours)
+    {
+        if (r.ColourMode != 4)
+        {
+            throw new ArgumentException($"the record at offset {r.Offset} is in colour mode {r.ColourMode}, not 4", nameof(r));
+        }
+
+        if (!Fits(r, baseAddress, cgb.Length))
+        {
+            throw new DecodingException($"the texture at .MDB offset {r.Offset} lies outside the .CGB");
+        }
+
+        int offset = (r.Srca - baseAddress) * 8;
+        int bank = r.Colr & 0xFF00;
+        bool transparent = r.IndexZeroTransparent;
+        var rgba = new byte[r.Width * r.Height * 4];
+        int p = 0;
+        foreach (byte pixel in cgb.Slice(offset, r.Width * r.Height))
+        {
+            ColourPixel(rgba.AsSpan(p, 4), colours.Colour(bank | pixel), transparent && pixel == 0);
+            p += 4;
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// A mode 0 (16 colours from a colour bank) texture as 8-bit RGBA, row-major: 4-bit pixels, high
+    /// nibble first, each the colour code <c>((CMDCOLR &amp; 0xFFF0) | pixel) &amp; 0x7FF</c> into
+    /// <paramref name="colours"/>. Pixel value 0 has alpha 0 unless CMDPMOD bit 0x40 is set.
+    /// </summary>
+    public static byte[] DecodeMode0(ReadOnlySpan<byte> cgb, int baseAddress, TextureRecord r, ColourRam colours)
+    {
+        if (r.ColourMode != 0)
+        {
+            throw new ArgumentException($"the record at offset {r.Offset} is in colour mode {r.ColourMode}, not 0", nameof(r));
+        }
+
+        if (!Fits(r, baseAddress, cgb.Length))
+        {
+            throw new DecodingException($"the texture at .MDB offset {r.Offset} lies outside the .CGB");
+        }
+
+        int offset = (r.Srca - baseAddress) * 8;
+        int bank = r.Colr & 0xFFF0;
+        bool transparent = r.IndexZeroTransparent;
+        var rgba = new byte[r.Width * r.Height * 4];
+        int p = 0;
+        foreach (byte b in cgb.Slice(offset, r.Width * r.Height / 2))
+        {
+            foreach (int pixel in new[] { b >> 4, b & 15 })
+            {
+                ColourPixel(rgba.AsSpan(p, 4), colours.Colour(bank | pixel), transparent && pixel == 0);
+                p += 4;
+            }
+        }
+
+        return rgba;
+    }
+
+    private static void ColourPixel(Span<byte> rgba, ushort colour, bool transparent)
+    {
+        Rgb555(colour, rgba);
+        rgba[3] = (byte)(transparent ? 0 : 255);
+    }
+
     /// <summary>An RGB555 word (red in the low bits) as three 8-bit channels, each <c>c * 255 / 31</c>.</summary>
     public static void Rgb555(ushort word, Span<byte> rgb)
     {

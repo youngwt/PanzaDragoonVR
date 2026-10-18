@@ -65,7 +65,7 @@ public readonly record struct ExtractedFile(string Id, string Path, int Width, i
 /// <param name="Name">The pair's name, as on the disc: <c>E03B0N0</c>.</param>
 /// <param name="Folder">The folder its PNGs go in, in full; created only when <see cref="Files"/> is not empty.</param>
 /// <param name="Files">The PNGs written, in number order.</param>
-/// <param name="LeftOut">Textures numbered but not written, by colour mode, being in a mode not decoded yet.</param>
+/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode not decoded yet, or a colour-bank mode (0 or 4) with no colour table.</param>
 public sealed record DiscFileResult(string Name, string Folder, IReadOnlyList<ExtractedFile> Files, IReadOnlyDictionary<int, int> LeftOut)
 {
     /// <summary>Textures numbered but not written, in all modes.</summary>
@@ -85,7 +85,10 @@ public readonly record struct MissingDiscFile(string Name, string Absent);
 /// <param name="DiscFiles">Each file found on the disc, in the order of <see cref="Extraction.TextureFiles"/>, including those with no textures.</param>
 /// <param name="Missing">The files looked for and not found, in the same order.</param>
 /// <param name="Folder">The folder the disc files' folders go in, in full: <c>images/e03</c> in the output folder.</param>
-public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFileResult> DiscFiles, IReadOnlyList<MissingDiscFile> Missing, string Folder)
+/// <param name="Colours">The colour RAM modes 0 and 4 were coloured from, and the table it came from; null when there is none.</param>
+/// <param name="ColourNotice">Why there is no colour RAM, so modes 0 and 4 are left out: one line, no full stop. Null when there is.</param>
+public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFileResult> DiscFiles, IReadOnlyList<MissingDiscFile> Missing, string Folder,
+    ColourRam? Colours, string? ColourNotice)
 {
     /// <summary>Every PNG written, file by file, in number order.</summary>
     public IReadOnlyList<ExtractedFile> Files => DiscFiles.SelectMany(f => f.Files).ToList();
@@ -113,15 +116,18 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
 
     /// <summary>
     /// One line, with no full stop, for the game's log and the PC command: PNGs written per file, the
-    /// textures left out by mode, and the files missing or with no textures, for example
-    /// <c>E03CMN 8, E03B0N0 28; left out, in colour modes not decoded yet: mode 0 9, mode 4 161; missing: E03END (no E03END.CGB)</c>.
+    /// colour table modes 0 and 4 were coloured from or why there is none, the textures left out by
+    /// mode, and the files missing or with no textures, for example
+    /// <c>E03CMN 125, E03B0N0 28; colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks; missing: E03END (no E03END.CGB)</c>
+    /// or <c>E03CMN 8; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 116</c>.
     /// </summary>
     public string Details()
     {
         var parts = new List<string> { string.Join(", ", DiscFiles.Select(f => string.Create(CultureInfo.InvariantCulture, $"{f.Name} {f.Files.Count}"))) };
+        parts.Add(ColourLine());
         if (LeftOut.Count > 0)
         {
-            parts.Add("left out, in colour modes not decoded yet: " +
+            parts.Add("left out: " +
                 string.Join(", ", LeftOut.Select(m => string.Create(CultureInfo.InvariantCulture, $"mode {m.Key} {m.Value}"))));
         }
 
@@ -137,13 +143,16 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
 
         return string.Join("; ", parts);
     }
+
+    /// <summary>One line, with no full stop: the colour table used (<see cref="ColourRam.Describe"/>), or <c>no colours for modes 0 and 4: &lt;notice&gt;</c>.</summary>
+    public string ColourLine() => Colours?.Describe() ?? $"no colours for modes 0 and 4: {ColourNotice}";
 }
 
 /// <summary>
 /// The one entry point the game and the PC command call: reads the disc image and writes the
-/// textures of the nine Episode 3 files that carry their own colours (modes 1 and 5) as PNGs,
-/// numbered and placed as the asset contract's "Extracted textures" says. Colour-bank modes, the
-/// manifest and staging come later.
+/// textures of the nine Episode 3 files as PNGs, numbered and placed as the asset contract's
+/// "Extracted textures" says: modes 1 and 5 from their own colours, modes 4 and 0 from the colour RAM
+/// <c>EPISODE3.PRG</c>'s upload table fills (see <see cref="ColourBanks"/>). The manifest and staging come later.
 /// </summary>
 public static class Extraction
 {
@@ -160,7 +169,9 @@ public static class Extraction
     /// Extracts from the disc image at <paramref name="imagePath"/>, a <c>.cue</c> sheet or an <c>.iso</c>
     /// (see <see cref="DiscImage.OpenImage"/>), into <paramref name="outputFolder"/>.
     /// A file of <see cref="TextureFiles"/> the disc lacks is left out and named in the result; a disc
-    /// with none of them is an error. Every texture of every file is decoded before any file is written,
+    /// with none of them is an error. Colour RAM for modes 4 and 0 is built once, from <c>EPISODE3.PRG</c>;
+    /// a disc without it, or without an upload table in it, leaves those modes out and says why in the
+    /// result. Every texture of every file is decoded before any file is written,
     /// so a decoding error writes nothing; a write that fails part way may leave some PNGs written, until
     /// staging (story 9). A folder is created only for a disc file with a PNG to write.
     /// Throws <see cref="DecodingException"/> for a disc image or disc file it cannot read.
@@ -170,9 +181,12 @@ public static class Extraction
         SaturnHeader header;
         var decoded = new List<(DiscFileResult Result, List<byte[]> Pngs)>();
         var missing = new List<MissingDiscFile>();
+        ColourRam? colours;
+        string? notice;
         using (DiscImage disc = DiscImage.OpenImage(imagePath))
         {
             header = disc.Header();
+            (colours, notice) = ColourBanks.FromDisc(disc);
             foreach (string name in TextureFiles)
             {
                 DiscFile? mdb = disc.Find(name + ".MDB");
@@ -183,7 +197,7 @@ public static class Extraction
                     continue;
                 }
 
-                DecodedFile file = Decode(disc.ReadFile(mdb.Value), disc.ReadFile(cgb.Value), name);
+                DecodedFile file = Decode(disc.ReadFile(mdb.Value), disc.ReadFile(cgb.Value), name, colours);
                 string folder = Path.GetFullPath(Path.Combine(outputFolder, FolderFor(name)));
                 decoded.Add((new DiscFileResult(name, folder, file.Pngs.Select(p => p.File).ToList(), file.LeftOut),
                     file.Pngs.Select(p => p.Png).ToList()));
@@ -209,19 +223,25 @@ public static class Extraction
         }
 
         return new ExtractionResult(header, decoded.Select(d => d.Result).ToList(), missing,
-            Path.GetFullPath(Path.Combine(outputFolder, "images", "e03")));
+            Path.GetFullPath(Path.Combine(outputFolder, "images", "e03")), colours, notice);
     }
 
-    /// <summary>The PNGs of one pair's textures in colour modes 1 and 5, and how many were left out by mode.</summary>
+    /// <summary>
+    /// The PNGs of one pair's textures in colour modes 0, 1, 4 and 5, and how many were left out by
+    /// mode, with modes 0 and 4 coloured from the disc's <c>EPISODE3.PRG</c> as <see cref="Run"/> does.
+    /// </summary>
     public static DecodedFile Decode(DiscImage disc, string name)
     {
         byte[] mdb = Read(disc, name + ".MDB");
         byte[] cgb = Read(disc, name + ".CGB");
-        return Decode(mdb, cgb, name);
+        return Decode(mdb, cgb, name, ColourBanks.FromDisc(disc).Colours);
     }
 
-    /// <summary>As <see cref="Decode(DiscImage, string)"/>, on the two files' bytes.</summary>
-    public static DecodedFile Decode(byte[] mdb, byte[] cgb, string name)
+    /// <summary>
+    /// As <see cref="Decode(DiscImage, string)"/>, on the two files' bytes, with modes 0 and 4 coloured
+    /// from <paramref name="colours"/>, or left out when it is null.
+    /// </summary>
+    public static DecodedFile Decode(byte[] mdb, byte[] cgb, string name, ColourRam? colours = null)
     {
         List<TextureRecord> records = Textures.FindRecords(mdb);
         int? baseAddress = Textures.InferBase(records, cgb.Length);
@@ -243,6 +263,12 @@ public static class Extraction
                     break;
                 case 5:
                     rgba = Textures.DecodeMode5(cgb, baseAddress.Value, r);
+                    break;
+                case 4 when colours != null:
+                    rgba = Textures.DecodeMode4(cgb, baseAddress.Value, r, colours);
+                    break;
+                case 0 when colours != null:
+                    rgba = Textures.DecodeMode0(cgb, baseAddress.Value, r, colours);
                     break;
                 default:
                     leftOut[r.ColourMode] = leftOut.GetValueOrDefault(r.ColourMode) + 1;

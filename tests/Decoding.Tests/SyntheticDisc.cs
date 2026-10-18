@@ -258,9 +258,64 @@ internal static class SyntheticTextures
         return cgb;
     }
 
-    /// <summary>A mode 1 record for an 8 x <paramref name="height"/> texture at <c>.CGB</c> offset <paramref name="pixels"/>, table at <paramref name="lut"/>.</summary>
-    public static (ushort Pmod, ushort Colr, ushort Srca, ushort Size) Record(int pixels = 0, int lut = 96, int height = 2, ushort pmod = Mode1) =>
-        (pmod, (ushort)(Base + lut / 8), (ushort)(Base + pixels / 8), (ushort)((1 << 8) | height));
+    /// <summary>CMDPMOD for colour mode 4, 256 colours from a colour bank, with transparent pixels on.</summary>
+    public const ushort Mode4 = 0x0420;
+
+    /// <summary>CMDPMOD for colour mode 0, 16 colours from a colour bank, with transparent pixels on.</summary>
+    public const ushort Mode0 = 0x0400;
+
+    /// <summary>
+    /// A mode 1 record for an 8 x <paramref name="height"/> texture at <c>.CGB</c> offset <paramref name="pixels"/>, table at <paramref name="lut"/>;
+    /// <paramref name="colr"/>, when given, is CMDCOLR in place of the table's address.
+    /// </summary>
+    public static (ushort Pmod, ushort Colr, ushort Srca, ushort Size) Record(int pixels = 0, int lut = 96, int height = 2, ushort pmod = Mode1, ushort? colr = null) =>
+        (pmod, colr ?? (ushort)(Base + lut / 8), (ushort)(Base + pixels / 8), (ushort)((1 << 8) | height));
+
+    /// <summary>A <c>.CGB</c> of 128 bytes whose byte i is i: as mode 4 pixels from offset 0 they count 0, 1, 2 ...; as mode 0 pixels from offset 8, 0, 8, 0, 9 ...</summary>
+    public static byte[] CountingCgb() => Enumerable.Range(0, 128).Select(i => (byte)i).ToArray();
+
+    /// <summary>The colour block entry <paramref name="i"/> of the block marked <paramref name="seed"/> holds: never 0.</summary>
+    public static ushort BlockColour(int seed, int i) => (ushort)(((seed * 0x111 + i * 7) & 0x7FFF) | 0x8000);
+
+    /// <summary>
+    /// An <c>EPISODE3.PRG</c> of <paramref name="size"/> bytes holding a colour block, see <see cref="BlockColour"/>,
+    /// at each of <paramref name="blocks"/> (file offset, seed), and each upload table of <paramref name="tables"/>:
+    /// its pairs of destination and source from the file offset given, then the destination 0x06022E58 that ends it.
+    /// </summary>
+    public static byte[] Program(int size, (int At, int Seed)[] blocks, params (int At, (uint Destination, uint Source)[] Pairs)[] tables)
+    {
+        var prg = new byte[size];
+        foreach ((int at, int seed) in blocks)
+        {
+            for (int i = 0; i < 256; i++)
+            {
+                BinaryPrimitives.WriteUInt16BigEndian(prg.AsSpan(at + i * 2), BlockColour(seed, i));
+            }
+        }
+
+        foreach ((int at, (uint Destination, uint Source)[] pairs) in tables)
+        {
+            for (int i = 0; i < pairs.Length; i++)
+            {
+                BinaryPrimitives.WriteUInt32BigEndian(prg.AsSpan(at + i * 8), pairs[i].Destination);
+                BinaryPrimitives.WriteUInt32BigEndian(prg.AsSpan(at + i * 8 + 4), pairs[i].Source);
+            }
+
+            BinaryPrimitives.WriteUInt32BigEndian(prg.AsSpan(at + pairs.Length * 8), 0x06022E58);
+        }
+
+        return prg;
+    }
+
+    /// <summary>
+    /// The <c>EPISODE3.PRG</c> most tests use, 0x1000 bytes: blocks marked 1, 2 and 3 at 0x400, 0x600 and 0x800;
+    /// a first table at 0x10 copying block 1 to colour RAM 0x000 and 0x400; a second at 0x102 copying
+    /// block 2 to 0x000 and block 3 to 0x400. So from the second, codes 0x000 to 0x0FF are block 2's,
+    /// 0x200 to 0x2FF block 3's, and the rest black.
+    /// </summary>
+    public static byte[] TwoTableProgram() => Program(0x1000, new[] { (0x400, 1), (0x600, 2), (0x800, 3) },
+        (0x10, new[] { (0x25F00000u, 0x06080400u), (0x25F00400u, 0x06080400u) }),
+        (0x102, new[] { (0x25F00000u, 0x06080600u), (0x25F00400u, 0x06080800u) }));
 
     /// <summary>An <c>.MDB</c> holding <paramref name="records"/> one after another, after 6 bytes of zeros and with 10 after.</summary>
     public static byte[] Mdb(params (ushort Pmod, ushort Colr, ushort Srca, ushort Size)[] records)

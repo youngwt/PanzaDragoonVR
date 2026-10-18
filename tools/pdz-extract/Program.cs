@@ -14,10 +14,11 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
     Console.WriteLine(Usage);
     Console.WriteLine();
     Console.WriteLine("Reads the disc image, a cue sheet with the .bin files it names or an ISO of");
-    Console.WriteLine("2048-byte sectors, and writes the textures in colour modes");
-    Console.WriteLine($"1 and 5 of {string.Join(", ", Extraction.TextureFiles)}");
+    Console.WriteLine("2048-byte sectors, and writes the textures in colour modes 0, 1, 4 and 5");
+    Console.WriteLine($"of {string.Join(", ", Extraction.TextureFiles)}");
     Console.WriteLine("as images/e03/<file>/<n>.png inside the output folder, as the game does in its");
-    Console.WriteLine("asset folder on the headset.");
+    Console.WriteLine("asset folder on the headset. Modes 0 and 4 are coloured from a colour upload");
+    Console.WriteLine("table in EPISODE3.PRG; with none, they are left out and a notice says why.");
     return 0;
 }
 
@@ -39,9 +40,12 @@ try
 {
     ExtractionResult result = Extraction.Run(image, output);
     Console.WriteLine($"{Tool}: disc {result.Source.Product} {result.Source.Version}");
+    Console.WriteLine(result.Colours != null
+        ? $"{Tool}: modes 0 and 4 coloured from the {result.ColourLine()}"
+        : $"{Tool}: {result.ColourLine()}; those textures are left out");
     if (result.Files.Count == 0)
     {
-        Console.WriteLine($"{Tool}: found no textures in colour modes 1 or 5: nothing written");
+        Console.WriteLine($"{Tool}: found no textures to write: nothing written");
     }
     else
     {
@@ -51,7 +55,7 @@ try
     foreach (DiscFileResult file in result.DiscFiles)
     {
         string leftOut = file.Skipped == 0 ? "" :
-            " (" + string.Join(", ", file.LeftOut.Select(m => $"{m.Value} in mode {m.Key}")) + " not decoded yet, left out)";
+            " (" + string.Join(", ", file.LeftOut.Select(m => $"{m.Value} in mode {m.Key}")) + " left out)";
         string what = file.Textures == 0 ? "no textures" : $"{file.Files.Count} written{leftOut}";
         Console.WriteLine($"{Tool}:   {file.Name}: {what}");
     }

@@ -10,8 +10,9 @@ namespace PdzDecoding.Tests;
 /// <summary>
 /// The extraction entry point on whole disc images built here, one or more tests per row of the
 /// stories' matrices: disc present, no disc, bad image, a repeated record and transparency; then the
-/// nine Episode 3 files, mode 5, a file missing, none present and a file with no textures; then each
-/// disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs.
+/// nine Episode 3 files, mode 5, a file missing, none present and a file with no textures; then the
+/// colour-bank modes from <c>EPISODE3.PRG</c>'s tables: two, one, none, a bad pair, and modes 1 and 5
+/// unchanged; then each disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs.
 /// </summary>
 public sealed class ExtractionTests : IDisposable
 {
@@ -231,7 +232,7 @@ public sealed class ExtractionTests : IDisposable
         Assert.Equal(new[] { (0, 1), (4, 2) }, result.LeftOut.Select(m => (m.Key, m.Value)));
         Assert.Equal(3, result.Skipped);
         Assert.Equal("e03.tex.e03b0n0.0003", Assert.Single(result.Files).Id);
-        Assert.Contains("E03B0N0 1; left out, in colour modes not decoded yet: mode 0 1, mode 4 2", result.Details());
+        Assert.Contains("E03B0N0 1; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 2", result.Details());
     }
 
     [Fact]
@@ -271,6 +272,138 @@ public sealed class ExtractionTests : IDisposable
         string[] names = Directory.GetFiles(aloneFolder).Select(Path.GetFileName).OrderBy(n => n).ToArray()!;
         Assert.Equal(names, Directory.GetFiles(TextureFolder).Select(Path.GetFileName).OrderBy(n => n));
         Assert.All(names, n => Assert.Equal(File.ReadAllBytes(Path.Combine(aloneFolder, n)), File.ReadAllBytes(Path.Combine(TextureFolder, n))));
+    }
+
+    /// <summary>An <c>E03B0N0</c> of a mode 4, a mode 0 and a mode 1 texture, each in its own pixels of <see cref="CountingCgb"/>.</summary>
+    private static byte[] ColourBankMdb() =>
+        Mdb(Record(pmod: Mode4, colr: 0x1200), Record(pixels: 16, pmod: Mode0 | 0x40, colr: 0x0010), Record(pixels: 32));
+
+    [Fact]
+    public void Run_TwoTables_WritesModes4And0FromTheSecondUnderTheirNumbers()
+    {
+        string cue = DiscWith(ColourBankMdb(), CountingCgb(), new SyntheticDisc().With("EPISODE3.PRG", TwoTableProgram()));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Equal(new[] { "0000.png", "0001.png", "0002.png" }, Directory.GetFiles(TextureFolder).Select(Path.GetFileName).OrderBy(n => n));
+        Assert.Equal(0, result.Skipped);
+        Assert.Equal(0x102, result.Colours!.Table.Offset);
+        Assert.Null(result.ColourNotice);
+        ColourRam second = ColourBanks.FromProgram(TwoTableProgram()).Colours!;
+        var records = Textures.FindRecords(ColourBankMdb());
+        Assert.Equal(PngWriter.Encode(8, 2, Textures.DecodeMode4(CountingCgb(), Base, records[0], second)), File.ReadAllBytes(Path.Combine(TextureFolder, "0000.png")));
+        Assert.Equal(PngWriter.Encode(8, 2, Textures.DecodeMode0(CountingCgb(), Base, records[1], second)), File.ReadAllBytes(Path.Combine(TextureFolder, "0001.png")));
+        Assert.Contains("E03B0N0 3; colour table at 0x102 of EPISODE3.PRG (table 2 of 2), 2 blocks", result.Details());
+        Assert.DoesNotContain("left out", result.Details());
+    }
+
+    [Fact]
+    public void Run_OneTable_ColoursFromIt()
+    {
+        byte[] prg = Program(0x1000, new[] { (0x400, 7) }, (0x40, new[] { (0x25F00000u, 0x06080400u), (0x25F00400u, 0x06080400u) }));
+        string cue = DiscWith(ColourBankMdb(), CountingCgb(), new SyntheticDisc().With("EPISODE3.PRG", prg));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Equal(0x40, result.Colours!.Table.Offset);
+        Assert.Equal(1, result.Colours.TablesFound);
+        TextureRecord r = Textures.FindRecords(ColourBankMdb())[0];
+        Assert.Equal(PngWriter.Encode(8, 2, Textures.DecodeMode4(CountingCgb(), Base, r, ColourBanks.FromProgram(prg).Colours!)),
+            File.ReadAllBytes(Path.Combine(TextureFolder, "0000.png")));
+    }
+
+    [Theory]
+    [InlineData(false, "the disc has no EPISODE3.PRG")]
+    [InlineData(true, "EPISODE3.PRG holds no colour upload table")]
+    public void Run_NoTable_LeavesModes4And0OutWithANoticeAndWritesTheRest(bool withProgram, string notice)
+    {
+        var others = new SyntheticDisc().With("E03CMN.MDB", Mdb(Record(pmod: Mode5))).With("E03CMN.CGB", Cgb());
+        if (withProgram)
+        {
+            others.With("EPISODE3.PRG", new byte[0x1000]);
+        }
+
+        ExtractionResult result = Extraction.Run(DiscWith(ColourBankMdb(), CountingCgb(), others), _assets);
+
+        Assert.Null(result.Colours);
+        Assert.Equal(notice, result.ColourNotice);
+        Assert.Equal(new[] { "e03.tex.e03cmn.0000", "e03.tex.e03b0n0.0002" }, result.Files.Select(f => f.Id));
+        Assert.Equal(new[] { (0, 1), (4, 1) }, result.LeftOut.Select(m => (m.Key, m.Value)));
+        Assert.Contains($"no colours for modes 0 and 4: {notice}; left out: mode 0 1, mode 4 1", result.Details());
+    }
+
+    [Fact]
+    public void Run_ProgramPastTheImagesEnd_IsNoticedAndModes1And5StillWritten()
+    {
+        // EPISODE3.PRG is the last file, so cutting the image short leaves its sectors past the end.
+        byte[] prg = TwoTableProgram();
+        var disc = new SyntheticDisc()
+            .With("E03CMN.MDB", Mdb(Record(pmod: Mode5))).With("E03CMN.CGB", Cgb())
+            .With("E03B0N0.MDB", ColourBankMdb()).With("E03B0N0.CGB", CountingCgb())
+            .With("EPISODE3.PRG", prg);
+        byte[] track = disc.Build(DiscImage.SectorSize);
+        string iso = Path.Combine(_disc, "Game.iso");
+        File.WriteAllBytes(iso, track.AsSpan(0, track.Length - prg.Length / 2).ToArray());
+
+        ExtractionResult result = Extraction.Run(iso, _assets);
+
+        Assert.Null(result.Colours);
+        Assert.StartsWith("EPISODE3.PRG cannot be read (Game.iso: the image ends inside sector ", result.ColourNotice);
+        Assert.Equal(new[] { "e03.tex.e03cmn.0000", "e03.tex.e03b0n0.0002" }, result.Files.Select(f => f.Id));
+        Assert.Equal(new[] { (0, 1), (4, 1) }, result.LeftOut.Select(m => (m.Key, m.Value)));
+    }
+
+    [Fact]
+    public void Run_BadPair_IsSkippedTheRestAppliedAndNotedInTheResult()
+    {
+        byte[] prg = Program(0x1000, new[] { (0x400, 1), (0x600, 2) }, (0x10, new[]
+        {
+            (0x25F00000u, 0x06080400u), (0x25F00200u, 0x06090000u), (0x25F00400u, 0x06080600u),
+        }));
+        string cue = DiscWith(ColourBankMdb(), CountingCgb(), new SyntheticDisc().With("EPISODE3.PRG", prg));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Equal(0x18, Assert.Single(result.Colours!.Skipped).Offset);
+        Assert.Equal(3, result.Files.Count);
+        Assert.Equal(BlockColour(2, 1), result.Colours.Colour(0x201));
+        Assert.Contains("2 blocks; skipped: the pair at 0x18 (destination 0x25F00200, source 0x06090000)", result.Details());
+    }
+
+    [Fact]
+    public void Run_WithColourTables_LeavesModes1And5AsTheBaselineBuildWroteThem()
+    {
+        // The same disc as Run_FixedDisc_WritesE03B0N0AsTheBaselineBuildDid, plus an EPISODE3.PRG:
+        // the mode 1 PNGs keep their bytes, and number 0002, mode 4, is now written as well.
+        string cue = DiscWith(Mdb(Record(), Record(lut: 64), Record(pmod: 0x0420), Record(pixels: 32, pmod: Mode1 | 0x40), Record()), Cgb(),
+            new SyntheticDisc().With("EPISODE3.PRG", TwoTableProgram()));
+
+        Extraction.Run(cue, _assets);
+
+        var written = Directory.GetFiles(TextureFolder).OrderBy(f => f, StringComparer.Ordinal)
+            .Select(f => (Path.GetFileName(f), Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(f))))).ToArray();
+        Assert.Equal(new[] { "0000.png", "0001.png", "0002.png", "0003.png" }, written.Select(w => w.Item1));
+        Assert.Equal(new[]
+        {
+            ("0000.png", "d9c8f7e3a4503fcf3966943ab1bdc9dfcf796362131dff5f8fe99709554a4b8e"),
+            ("0001.png", "1d48d8b557d91a51b7711fac2639e02e1c9d666791cc44405c2a4a848bc839f5"),
+            ("0003.png", "bdcf009ba090d9060e6f784288f1b2d947a0082bd15612f658f43d9ea67ee5c4"),
+        }, written.Where(w => w.Item1 != "0002.png"));
+    }
+
+    [Fact]
+    public void Run_Mode5WithColourTables_IsWrittenAsWithout()
+    {
+        byte[] mdb = Mdb(Record(pmod: Mode5), Record(pixels: 32));
+        string alone = Path.Combine(_assets, "alone");
+        Directory.CreateDirectory(alone);
+        Extraction.Run(new SyntheticDisc().With("E03B0N0.MDB", mdb).With("E03B0N0.CGB", Cgb()).WriteCue(alone), alone);
+
+        Extraction.Run(DiscWith(mdb, Cgb(), new SyntheticDisc().With("EPISODE3.PRG", TwoTableProgram())), _assets);
+
+        string aloneFolder = Path.Combine(alone, "images", "e03", "e03b0n0");
+        Assert.All(new[] { "0000.png", "0001.png" }, n =>
+            Assert.Equal(File.ReadAllBytes(Path.Combine(aloneFolder, n)), File.ReadAllBytes(Path.Combine(TextureFolder, n))));
     }
 
     [Fact]

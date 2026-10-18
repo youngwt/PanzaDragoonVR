@@ -41,7 +41,7 @@ public static class DiscExtraction
             string seconds = clock.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
             if (result.Files.Count == 0)
             {
-                GD.Print($"{AssetFolder.LogTag} found no textures in colour modes 1 or 5 on " +
+                GD.Print($"{AssetFolder.LogTag} found no textures to write on " +
                     $"{result.Source.Product} {result.Source.Version}: nothing written ({result.Details()})");
                 return;
             }

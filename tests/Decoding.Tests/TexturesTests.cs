@@ -161,6 +161,88 @@ public sealed class TexturesTests
         Assert.Throws<DecodingException>(() => Textures.DecodeMode5(Cgb(), Base, r));
     }
 
+    private static ColourRam Colours => ColourBanks.FromProgram(TwoTableProgram()).Colours!;
+
+    private static byte[] Rgba(ushort colour, byte alpha)
+    {
+        var rgba = new byte[4];
+        Textures.Rgb555(colour, rgba);
+        rgba[3] = alpha;
+        return rgba;
+    }
+
+    [Fact]
+    public void DecodeMode4_LooksEachPixelUpInColourRamThroughCmdcolrsHighByte()
+    {
+        // CMDCOLR 0x1234: the bank is 0x1200, so pixel p is code (0x1200 | p) & 0x7FF = 0x200 | p.
+        TextureRecord r = Textures.FindRecords(Mdb(Record(pmod: Mode4, colr: 0x1234))).Single();
+
+        byte[] rgba = Textures.DecodeMode4(CountingCgb(), Base, r, Colours);
+
+        Assert.Equal(8 * 2 * 4, rgba.Length);
+        Assert.Equal(Rgba(BlockColour(3, 5), 255), rgba[20..24]);
+        Assert.Equal(Rgba(BlockColour(3, 15), 255), rgba[60..64]);
+    }
+
+    [Fact]
+    public void DecodeMode4_PixelZeroIsTransparentUnlessBit0x40()
+    {
+        TextureRecord on = Textures.FindRecords(Mdb(Record(pmod: Mode4))).Single();
+        TextureRecord off = Textures.FindRecords(Mdb(Record(pmod: Mode4 | 0x40))).Single();
+
+        byte[] transparent = Textures.DecodeMode4(CountingCgb(), Base, on, Colours);
+        byte[] opaque = Textures.DecodeMode4(CountingCgb(), Base, off, Colours);
+
+        Assert.Equal(Rgba(BlockColour(2, 0), 0), transparent[0..4]);
+        Assert.Equal(Rgba(BlockColour(2, 0), 255), opaque[0..4]);
+        Assert.All(Enumerable.Range(1, 15), p => Assert.Equal(255, transparent[p * 4 + 3]));
+    }
+
+    [Fact]
+    public void DecodeMode4_CodeNoPairFilledIsBlack()
+    {
+        // CMDCOLR 0x0100: codes 0x100 to 0x1FF, which the second table leaves empty.
+        TextureRecord r = Textures.FindRecords(Mdb(Record(pmod: Mode4, colr: 0x0100))).Single();
+
+        byte[] rgba = Textures.DecodeMode4(CountingCgb(), Base, r, Colours);
+
+        Assert.Equal(new byte[] { 0, 0, 0, 255 }, rgba[4..8]);
+    }
+
+    [Fact]
+    public void DecodeMode0_LooksEachNibbleUpThroughCmdcolrsHigh12Bits()
+    {
+        // Pixels from offset 8 run 0, 8, 0, 9 ...; CMDCOLR 0x1237 makes pixel p code (0x1230 | p) & 0x7FF.
+        TextureRecord r = Textures.FindRecords(Mdb(Record(pixels: 8, pmod: Mode0, colr: 0x1237))).Single();
+
+        byte[] rgba = Textures.DecodeMode0(CountingCgb(), Base, r, Colours);
+
+        Assert.Equal(8 * 2 * 4, rgba.Length);
+        Assert.Equal(Rgba(BlockColour(3, 0x38), 255), rgba[4..8]);
+        Assert.Equal(Rgba(BlockColour(3, 0x39), 255), rgba[12..16]);
+        Assert.Equal(Rgba(BlockColour(3, 0x30), 0), rgba[0..4]);
+    }
+
+    [Fact]
+    public void DecodeMode0_PixelZeroIsOpaqueWithBit0x40()
+    {
+        TextureRecord r = Textures.FindRecords(Mdb(Record(pixels: 8, pmod: Mode0 | 0x40, colr: 0x1230))).Single();
+
+        byte[] rgba = Textures.DecodeMode0(CountingCgb(), Base, r, Colours);
+
+        Assert.Equal(Rgba(BlockColour(3, 0x30), 255), rgba[0..4]);
+        Assert.All(Enumerable.Range(0, 16), p => Assert.Equal(255, rgba[p * 4 + 3]));
+    }
+
+    [Fact]
+    public void DecodeMode4_TextureOutsideTheCgbThrows()
+    {
+        // 8 x 2 in mode 4 is 16 bytes, so at offset 120 it runs past the 128-byte .CGB.
+        var r = new TextureRecord(0, Mode4, Base, (ushort)(Base + 15), 0x0102);
+
+        Assert.Throws<DecodingException>(() => Textures.DecodeMode4(CountingCgb(), Base, r, Colours));
+    }
+
     [Fact]
     public void Rgb555_ScalesEachChannelTo8Bits()
     {

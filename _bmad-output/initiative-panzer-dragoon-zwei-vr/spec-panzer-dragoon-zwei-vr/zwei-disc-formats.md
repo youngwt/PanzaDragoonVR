@@ -33,7 +33,7 @@ What is known about the disc as of 2026-10-17 (first written 2026-10-06), worked
 | Colour mode | Count | State |
 |-------------|-------|-------|
 | 1: 16 colours through a lookup table | 4,873 | Decoded in colour. The 32-byte RGB555 table is inside the `.CGB`. By eye on `E03B0N0`, `E03BOSS`, `DRA01A` |
-| 4: 256 colours | 4,033 | Palette is in VDP2 colour RAM, filled from `EPISODE3.PRG` for Episode 3 (see Palettes). Coloured by eye on `E03CMN` and `E03END`; not yet in the extractor |
+| 4: 256 colours | 4,033 | Palette is in VDP2 colour RAM, filled from `EPISODE3.PRG` for Episode 3 (see Palettes). Coloured by eye on `E03CMN` and `E03END`; the extractor colours them from the 0xE23C table (ticket 2.6) |
 | 0: 16 colours from a colour bank | 100 records found by the scan, not all real | Lead: same colour RAM as mode 4. In Episode 3 the clear case is `E03BOSS`'s shadows (colour code 0x400, colour RAM bank 4: one dark colour); most other mode 0 records do not fit their `.CGB` and are likely false |
 | 5 | 13 | Not handled |
 
