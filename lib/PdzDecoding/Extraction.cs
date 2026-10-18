@@ -56,6 +56,41 @@ public static class DiscFolder
             _ => new DiscSearch(DiscFolderState.Several, folder, null, names),
         };
     }
+
+    /// <summary>
+    /// The files the disc image at <paramref name="imagePath"/> consists of, in full, the image itself
+    /// first: for a <c>.cue</c> sheet, the sheet and every file it names that exists inside the sheet's
+    /// folder, at any depth (a file named outside it is not the image's own and is left out); for an
+    /// <c>.iso</c>, the ISO alone. What release mode deletes. Throws <see cref="DecodingException"/>
+    /// when the cue sheet cannot be read, or for any other extension.
+    /// </summary>
+    public static IReadOnlyList<string> ImageFiles(string imagePath)
+    {
+        string image = Path.GetFullPath(imagePath);
+        switch (Path.GetExtension(image).ToLowerInvariant())
+        {
+            case ".iso":
+                return new[] { image };
+            case ".cue":
+                string folder = Path.GetDirectoryName(image) ?? ".";
+                var files = new List<string> { image };
+                files.AddRange(CueSheet.ReadFiles(image).Where(f =>
+                    !string.Equals(f, image, StringComparison.Ordinal) &&
+                    IsInside(f, folder) &&
+                    File.Exists(f)));
+                return files;
+            default:
+                throw new DecodingException($"{imagePath}: not a disc image: only a .cue sheet or an .iso is read");
+        }
+    }
+
+    /// <summary>Whether the full path <paramref name="file"/> lies inside <paramref name="folder"/>, at any depth.</summary>
+    private static bool IsInside(string file, string folder)
+    {
+        string relative = Path.GetRelativePath(folder, file);
+        return !Path.IsPathRooted(relative) && relative != ".." &&
+            !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>One PNG extraction wrote: its asset ID and its path relative to the output folder.</summary>

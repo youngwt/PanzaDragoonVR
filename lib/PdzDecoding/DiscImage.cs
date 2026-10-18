@@ -108,6 +108,24 @@ public sealed class DiscImage : IDisposable
 
     public void Dispose() => _stream.Dispose();
 
+    /// <summary>
+    /// Reads only the Saturn header, sector 0 of the data track, of the disc image at
+    /// <paramref name="path"/>, a <c>.cue</c> sheet or an <c>.iso</c>, without walking its file system.
+    /// Throws <see cref="DecodingException"/> when the image or its sector 0 cannot be read, or for any other extension.
+    /// </summary>
+    public static SaturnHeader ReadHeader(string path)
+    {
+        string extension = Path.GetExtension(path).ToLowerInvariant();
+        DataTrack track = extension switch
+        {
+            ".cue" => CueSheet.Read(path),
+            ".iso" => new DataTrack(path, 0, SectorSize),
+            _ => throw new DecodingException($"{path}: not a disc image: only a .cue sheet or an .iso is read"),
+        };
+        using var image = new DiscImage(OpenFile(track.BinPath), track.StartSector, track.SectorSize, Path.GetFileName(track.BinPath));
+        return image.Header();
+    }
+
     /// <summary>The Saturn header at sector 0. Any disc is read; nothing here is checked.</summary>
     public SaturnHeader Header()
     {

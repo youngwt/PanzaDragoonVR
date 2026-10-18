@@ -202,9 +202,9 @@ With a filter, each C# project runs it, so the one with no matching test says so
 
 The Python tests cover the scripts in `tools/`, at present the manifest writer and the test model writer. They use `unittest` from the standard library and work in temporary folders.
 
-`tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest and its check of a model file (`game/Logic/GlbCheck.cs`). That project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
+`tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, its check of a model file (`game/Logic/GlbCheck.cs`), and the development and release mode decision and the deletion of the disc image (`game/Logic/ExtractionMode.cs`), with the cases of story 10's matrix. That project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
 
-`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, finding `EPISODE3.PRG`'s colour upload tables and decoding modes 4 and 0 from them, the PNG writer, and extraction as a whole, with the cases of the stories' matrices (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures; two colour tables, one, none, a bad pair, a colour code no pair filled, and modes 1 and 5 unchanged; story 9's staging: no staging folder left, progress by disc file, the previous extraction kept while writing and replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
+`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, finding `EPISODE3.PRG`'s colour upload tables and decoding modes 4 and 0 from them, the PNG writer, and extraction as a whole, with the cases of the stories' matrices (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures; two colour tables, one, none, a bad pair, a colour code no pair filled, and modes 1 and 5 unchanged; story 9's staging: no staging folder left, progress by disc file, the previous extraction kept while writing and replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error; story 10's list of a disc image's own files, which release mode deletes). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
 
 ### Shared asset-rule cases
 
@@ -456,7 +456,25 @@ pdz-extract: wrote /.../extracted/pdz-extract-pal/manifest.json listing 420 asse
 
 ### On the headset
 
-The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one disc image, a `.cue` sheet with its `.bin` files or one `.iso`, it extracts at launch and writes the PNGs into `files/images/e03/<file>/` and `manifest.json` into `files/`, through `files/extracting/`, byte for byte as the PC command writes them for the same disc. It does so on every launch for now, and the disc image stays.
+The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one disc image, a `.cue` sheet with its `.bin` files or one `.iso`, it extracts at launch and writes the PNGs into `files/images/e03/<file>/` and `manifest.json` into `files/`, through `files/extracting/`, byte for byte as the PC command writes them for the same disc. Whether it extracts, and whether the disc image stays, depends on the mode (below).
+
+#### Development and release modes
+
+The asset contract's "Development and release modes" fixes two modes, decided at each launch from the asset folder alone, whatever the build:
+
+- **Development mode** is on when an empty file named `development` sits at the top of the asset folder, `files/development`. The game extracts on every launch and keeps the disc image.
+- **Release mode** is the mode without that file. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the extractor (its `generator` starts `pdz-extract ` with the space) from a disc with the same `source` product and version as the image's Saturn header; then it skips extraction. After a successful extraction, and after such a skip, it deletes the disc image.
+
+What release mode deletes is the image's own files only: the `.cue` and every `.bin` it names that sits inside `disc/` (a subfolder counts, but never anything outside `disc/`), or the `.iso`. `disc/` itself and anything else in it stay. The `.cue` goes first; if it cannot be deleted, the `.bin` files are kept with it. Nothing is deleted after a failed extraction, which keeps the previous contents as before; a successful one deletes the image even when it found nothing to write. A deletion that fails is logged as one warning and the game carries on. A hand-written manifest (`hand-written`, or any `generator` not starting `pdz-extract `) or one from another disc is never a reason to skip. The PC command has no modes: it always extracts and never deletes anything.
+
+Turn development mode on and off on the headset with the host's `adb` (set up as below):
+
+```sh
+adb shell touch /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/development   # on: extract every launch, keep the image
+adb shell rm /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/development      # off: release mode
+```
+
+In release mode the image is gone after the first launch that extracts; push it again (below) to extract again, after removing `manifest.json` or with a disc of another product or version.
 
 The scene does not wait for it. The game reads the folder as it is, then starts extraction on a background thread, which runs the decoding library alone (nothing on that thread touches the engine), and at once, without waiting for it, dresses the scene and starts OpenXR and the frame-rate readout. While it runs, the launch report's board shows its progress instead, in pale blue: `Extracting the assets from your disc image`, the disc image's name, the step under way (`Reading E03B0N0 (2 of 9)`, `Writing E03B0N0 (2 of 9)`, then `Moving the new files into place`) and that the scene shows what the folder already holds until then. Each step is also logged, one `PDZ-ASSETS extracting: ...` line each. The full Japanese disc takes about 0.3 s on the Quest 3, so the board may only flash. When extraction ends the game reads the folder again, dresses the ground, sky and flyer in what it now holds, and puts the launch report back on the board.
 
@@ -495,9 +513,13 @@ adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03 
 | Line | Meaning |
 |------|---------|
 | `extracted <n> textures from <m> disc files of <product> <version> into <folder>/images/e03, listed in <folder>/manifest.json, in <s> s (<details>)` | Extraction ran; `<n>` PNGs were written, from the `<m>` disc files that gave at least one, and the manifest listing them. `<details>` gives the PNGs per file (`E03CMN 125, E03B0N0 28, ...`), then the colour table modes 0 and 4 came from (`colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks`, with any pair skipped) or why there is none (`no colours for modes 0 and 4: the disc has no EPISODE3.PRG`, or `EPISODE3.PRG holds no colour upload table`), then, when there are any, the textures left out by colour mode (`left out: mode 0 9, mode 4 161`), the files the disc lacks (`missing: E03END (no E03END.MDB)`, or `.CGB`, whichever is absent) and the files with no textures (`no textures in: ...`). |
-| `no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue` and no `.iso`. Not an error. |
+| `<mode>: no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue` and no `.iso`; `<mode>` is `development mode` or `release mode`. Nothing is extracted or deleted. Not an error. |
 | `more than one disc image in <folder>/disc (<names>): nothing extracted` | A warning: more than one `.cue` or `.iso`, such as a cue sheet and an ISO together; remove all but one. A cue sheet's `.bin` files are part of it and do not count, but an `.iso` does, even one the cue sheet names: for a cue sheet that points at an `.iso`, keep only the `.iso`. |
-| `extracting from <image> in the background into <folder>` | Extraction has started, after the scene. |
+| `development mode (development is in <folder>): extracting from <image> in the background into <folder>; the disc image is kept` | Development mode: extraction has started, after the scene. |
+| `release mode: extracting from <image> in the background into <folder>; the disc image is deleted after a successful extraction` | Release mode, and the folder was not extracted from this disc: extraction has started. |
+| `release mode: <folder> is already extracted from <product> <version>: not extracting again; deleting the disc image <image>` | Release mode, and the folder's manifest is the extractor's from the same disc: nothing is extracted, and the image is deleted. |
+| `release mode: deleted the disc image <image> (<files>)` | Release mode, after a successful extraction or a skip: the files named were deleted. |
+| `release mode: the disc image <image> could not be deleted (<file>: <error>; ...); carrying on` | A warning, one line for every file that could not be deleted. When the `.cue` or `.iso` itself cannot go, nothing else of the image is deleted. The game carries on. |
 | `extracting: reading <file> (<n> of 9)`, `extracting: writing <file> (<n> of 9)`, `extracting: moving the new files into place` | Each step, as the board shows it. A file with nothing to write has no `writing` line. |
 | `the disc image cannot be read: <reason>; nothing extracted, the previous contents are kept` | A warning: the image cannot be read, or it has none of the nine Episode 3 files; the reasons are those of the PC command. The game carries on. |
 | `extraction failed on <file>: <reason>; nothing moved into place, the previous contents are kept` | A warning: a disc file could not be read. |
@@ -506,7 +528,7 @@ adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03 
 | `extraction failed while moving files into place (<error>); some new files may already be in place, the previous manifest is kept` | A move into place failed part way. A warning. |
 | `extraction could not be started (<error>); carrying on with what the folder holds` | `disc/` could not be looked in. A warning. |
 
-Every report line that follows is logged too, as `PDZ-ASSETS report: <line>`. The code is in `game/DiscExtraction.cs`, started from `_Ready` and followed from `_Process` in `game/Main.cs`; the board's words are in `game/Logic/ExtractionLines.cs` and `LaunchReport.WithExtractionProblem`.
+Every report line that follows is logged too, as `PDZ-ASSETS report: <line>`. The code is in `game/DiscExtraction.cs`, started from `_Ready` and followed from `_Process` in `game/Main.cs`; the board's words are in `game/Logic/ExtractionLines.cs` and `LaunchReport.WithExtractionProblem`; the mode decision and its log lines are in `game/Logic/ExtractionMode.cs`, and the list of an image's files in `DiscFolder.ImageFiles` in the library.
 
 ## Extraction scripts
 

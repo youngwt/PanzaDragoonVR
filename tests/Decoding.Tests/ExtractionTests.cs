@@ -547,6 +547,112 @@ public sealed class ExtractionTests : IDisposable
         Assert.Equal(new[] { "a.CUE", "b.cue" }, search.Names);
     }
 
+    [Fact]
+    public void ImageFiles_PerTrackCue_IsTheCueAndEveryBinItNames()
+    {
+        File.WriteAllBytes(Path.Combine(_disc, "Game (Track 1).bin"), new byte[16]);
+        File.WriteAllBytes(Path.Combine(_disc, "Game (Track 2).bin"), new byte[16]);
+        File.WriteAllBytes(Path.Combine(_disc, "other.bin"), new byte[16]);
+        string cue = Path.Combine(_disc, "Game.cue");
+        File.WriteAllText(cue, SyntheticDisc.Cue("Game (Track 1).bin"));
+
+        Assert.Equal(new[] { cue, Path.Combine(_disc, "Game (Track 1).bin"), Path.Combine(_disc, "Game (Track 2).bin") },
+            DiscFolder.ImageFiles(cue));
+    }
+
+    [Fact]
+    public void ImageFiles_SingleFileCue_NamesItsBinOnce()
+    {
+        string cue = new SyntheticDisc().WriteSingleFileCue(_disc);
+
+        Assert.Equal(new[] { cue, Path.Combine(_disc, "Game.bin") }, DiscFolder.ImageFiles(cue));
+    }
+
+    [Fact]
+    public void ImageFiles_Iso_IsTheIsoAlone()
+    {
+        string iso = new SyntheticDisc().WriteIso(_disc);
+        File.WriteAllText(Path.Combine(_disc, "readme.txt"), "");
+
+        Assert.Equal(new[] { iso }, DiscFolder.ImageFiles(iso));
+    }
+
+    [Fact]
+    public void ImageFiles_CueNamingFilesOutsideItsFolderOrMissing_LeavesThemOut()
+    {
+        File.WriteAllText(Path.Combine(_assets, "manifest.json"), "{}");
+        string cue = Path.Combine(_disc, "Game.cue");
+        File.WriteAllText(cue, "FILE \"../manifest.json\" BINARY\nFILE \"gone.bin\" BINARY\nFILE \"Game.cue\" BINARY\n");
+
+        Assert.Equal(new[] { cue }, DiscFolder.ImageFiles(cue));
+    }
+
+    [Fact]
+    public void ImageFiles_CueNamingFilesInASubfolder_KeepsThem()
+    {
+        Directory.CreateDirectory(Path.Combine(_disc, "tracks"));
+        File.WriteAllBytes(Path.Combine(_disc, "tracks", "x.bin"), new byte[16]);
+        File.WriteAllBytes(Path.Combine(_disc, "..x.bin"), new byte[16]);
+        string cue = Path.Combine(_disc, "Game.cue");
+        File.WriteAllText(cue, "FILE \"tracks/x.bin\" BINARY\nFILE \"..x.bin\" BINARY\n");
+
+        Assert.Equal(new[] { cue, Path.Combine(_disc, "tracks", "x.bin"), Path.Combine(_disc, "..x.bin") }, DiscFolder.ImageFiles(cue));
+    }
+
+    [Fact]
+    public void ReadHeader_ReadsSectorZeroWithoutTheFileSystem()
+    {
+        var header = new byte[20 * DiscImage.SectorSize];
+        System.Text.Encoding.ASCII.GetBytes("SEGA SEGASATURN SEGA TP T-000   GS-9049   V1.001").CopyTo(header, 0);
+        string iso = Path.Combine(_disc, "Game.iso");
+        File.WriteAllBytes(iso, header);
+
+        Assert.Throws<DecodingException>(() => DiscImage.OpenImage(iso));
+        Assert.Equal(("GS-9049", "V1.001"), (DiscImage.ReadHeader(iso).Product, DiscImage.ReadHeader(iso).Version));
+    }
+
+    [Fact]
+    public void ReadHeader_Cue_ReadsTrack1sSectorZero()
+    {
+        string cue = new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }.WriteCue(_disc);
+
+        Assert.Equal("GS-9049", DiscImage.ReadHeader(cue).Product);
+    }
+
+    [Fact]
+    public void ReadHeader_EmptyIso_Throws()
+    {
+        string iso = Path.Combine(_disc, "Game.iso");
+        File.WriteAllBytes(iso, Array.Empty<byte>());
+
+        Assert.Throws<DecodingException>(() => DiscImage.ReadHeader(iso));
+    }
+
+    [Fact]
+    public void ImageFiles_NotADiscImage_Throws()
+    {
+        Assert.Throws<DecodingException>(() => DiscFolder.ImageFiles(Path.Combine(_disc, "Game.bin")));
+    }
+
+    [Fact]
+    public void CueSheet_Files_ListsEveryFileLineInFull()
+    {
+        string cue = Path.Combine(_disc, "Game.cue");
+
+        Assert.Equal(new[] { Path.Combine(_disc, "Game (Track 1).bin"), Path.Combine(_disc, "Game (Track 2).bin") },
+            CueSheet.Files(SyntheticDisc.Cue("Game (Track 1).bin"), cue));
+    }
+
+    [Fact]
+    public void ReadHeader_GivesProductAndVersion()
+    {
+        string iso = new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }.WriteIso(_disc);
+
+        SaturnHeader header = DiscImage.ReadHeader(iso);
+
+        Assert.Equal(("GS-9049", "V1.001"), (header.Product, header.Version));
+    }
+
     /// <summary>The disc every layout test writes in its own way: two of the nine files, one with a mode 5 texture.</summary>
     private static SyntheticDisc LayoutDisc() =>
         new SyntheticDisc { Product = "MK-81022", Version = "V1.000" }

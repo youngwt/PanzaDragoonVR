@@ -19,18 +19,25 @@ namespace PanzaDragoonVR;
 /// thread runs the engine-free library alone; progress comes back through a queue that
 /// <see cref="Update"/> drains on the main thread, where every log line and board line is made. Every
 /// outcome is one <c>PDZ-ASSETS</c> line; nothing here stops the game, which carries on with what the folder holds.
+/// Before it starts, the asset contract's mode is applied (see <see cref="ExtractionModes"/>): development
+/// mode extracts and keeps the disc image; release mode skips extraction when the folder was already
+/// extracted from the same disc, and deletes the disc image after a successful extraction or such a skip.
 /// </summary>
 public sealed class DiscExtraction
 {
     private readonly ConcurrentQueue<ExtractionProgress> _progress = new();
     private readonly string _image;
+    private readonly string _imagePath;
+    private readonly ExtractionDecision _decision;
     private readonly Stopwatch _clock;
     private readonly Task<ExtractionResult> _task;
     private ExtractionProgress? _last;
 
-    private DiscExtraction(string imagePath, string assetFolder)
+    private DiscExtraction(string imagePath, string assetFolder, ExtractionDecision decision)
     {
         _image = System.IO.Path.GetFileName(imagePath);
+        _imagePath = imagePath;
+        _decision = decision;
         _clock = Stopwatch.StartNew();
         // Engine-free work only: the library, and a queue the main thread reads.
         _task = Task.Run(() => Extraction.Run(imagePath, assetFolder, _progress.Enqueue));
@@ -51,9 +58,11 @@ public sealed class DiscExtraction
     public string? Problem { get; private set; }
 
     /// <summary>
-    /// Looks in the folder's <c>disc/</c> and starts extraction when it holds one disc image. Returns
-    /// null when there is nothing to run: no folder, no disc image, which is logged as a notice, or more
-    /// than one, whose problem line is put in <paramref name="problem"/> for the launch report.
+    /// Looks in the folder's <c>disc/</c> and, when it holds one disc image, decides by the folder's mode
+    /// whether to extract, logging the decision, and starts extraction. Returns null when there is nothing
+    /// to run: no folder, no disc image, which is logged as a notice, more than one, whose problem line is
+    /// put in <paramref name="problem"/> for the launch report, or a release-mode skip, after which the
+    /// disc image is deleted.
     /// </summary>
     public static DiscExtraction? Start(string? assetFolder, out string? problem)
     {
@@ -66,10 +75,11 @@ public sealed class DiscExtraction
         try
         {
             DiscSearch search = DiscFolder.Find(assetFolder);
+            ExtractionMode mode = ExtractionModes.ModeOf(assetFolder);
             switch (search.State)
             {
                 case DiscFolderState.None:
-                    GD.Print($"{AssetFolder.LogTag} no disc image in {search.DiscFolder}: nothing to extract");
+                    GD.Print($"{AssetFolder.LogTag} {ExtractionModes.NoImageLine(mode, search.DiscFolder)}");
                     return null;
                 case DiscFolderState.Several:
                     Warn($"more than one disc image in {search.DiscFolder} ({string.Join(", ", search.Names)}): nothing extracted");
@@ -77,8 +87,19 @@ public sealed class DiscExtraction
                     return null;
             }
 
-            GD.Print($"{AssetFolder.LogTag} extracting from {search.ImagePath} in the background into {assetFolder}");
-            return new DiscExtraction(search.ImagePath!, assetFolder);
+            string image = search.ImagePath!;
+            // The header is needed only for release mode's skip test; one that cannot be read is never a
+            // skip, and extraction then reports why.
+            DiscSource? disc = mode == ExtractionMode.Release ? ReadSource(image) : null;
+            ExtractionDecision decision = ExtractionModes.Decide(mode, ExtractionModes.LoadOrigin(assetFolder), disc);
+            GD.Print($"{AssetFolder.LogTag} {ExtractionModes.DecisionLine(decision, image, assetFolder, disc)}");
+            if (!decision.Extract)
+            {
+                DeleteImage(image);
+                return null;
+            }
+
+            return new DiscExtraction(image, assetFolder, decision);
         }
         catch (Exception e)
         {
@@ -125,6 +146,15 @@ public sealed class DiscExtraction
         IsFinished = true;
         string seconds = _clock.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         Exception? error = _task.Exception?.InnerException ?? (_task.IsCanceled ? new OperationCanceledException() : null);
+        Report(error, seconds);
+        if (ExtractionModes.DeleteAfterExtraction(_decision, succeeded: error == null))
+        {
+            DeleteImage(_imagePath);
+        }
+    }
+
+    private void Report(Exception? error, string seconds)
+    {
         switch (error)
         {
             case null:
@@ -168,6 +198,52 @@ public sealed class DiscExtraction
             $"of {result.Source.Product} {result.Source.Version} into {result.Folder}, listed in {result.ManifestPath}, " +
             $"in {seconds} s ({result.Details()})");
     }
+
+    /// <summary>The disc image's product and version from its Saturn header, or null when it cannot be read.</summary>
+    private static DiscSource? ReadSource(string imagePath)
+    {
+        try
+        {
+            SaturnHeader header = DiscImage.ReadHeader(imagePath);
+            return new DiscSource(header.Product, header.Version);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Deletes the disc image's own files, as the library lists them (the <c>.cue</c> and the <c>.bin</c>
+    /// files it names, or the <c>.iso</c>), through <see cref="ExtractionModes.DeleteImage"/>; <c>disc/</c>
+    /// and anything else in it stay. Each outcome is logged, a failure as one warning line, and the game carries on.
+    /// </summary>
+    private static void DeleteImage(string imagePath)
+    {
+        IReadOnlyList<string> files;
+        try
+        {
+            files = DiscFolder.ImageFiles(imagePath);
+        }
+        catch (Exception e)
+        {
+            Warn(ExtractionModes.NotDeletedLine(imagePath, Reason(e)));
+            return;
+        }
+
+        DeletionOutcome outcome = ExtractionModes.DeleteImage(imagePath, files);
+        if (outcome.Line != null)
+        {
+            GD.Print($"{AssetFolder.LogTag} {outcome.Line}");
+        }
+
+        if (outcome.Warning != null)
+        {
+            Warn(outcome.Warning);
+        }
+    }
+
+    private static string Reason(Exception e) => $"{e.GetType().Name}: {DecodingException.OneLine(e.Message)}";
 
     private static ExtractionStep Step(ExtractionStage stage) => stage switch
     {

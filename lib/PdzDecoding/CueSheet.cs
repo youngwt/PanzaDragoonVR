@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace PdzDecoding;
 
@@ -15,7 +16,7 @@ namespace PdzDecoding;
 /// <param name="SectorSize">The size of the track's sectors in the file: 2352 (raw) or 2048 (user data only).</param>
 public readonly record struct DataTrack(string BinPath, long StartSector, int SectorSize);
 
-/// <summary>Reads a <c>.cue</c> sheet far enough to find track 1.</summary>
+/// <summary>Reads a <c>.cue</c> sheet far enough to find track 1, or to list the files it names.</summary>
 public static class CueSheet
 {
     /// <summary>The track 1 mode of a raw image: 2352-byte sectors with 2048 bytes of user data from byte 16.</summary>
@@ -106,6 +107,46 @@ public static class CueSheet
         }
 
         throw new DecodingException($"{cuePath}: no track 1 with an INDEX 01 was found");
+    }
+
+    /// <summary>
+    /// Every file the cue sheet at <paramref name="cuePath"/> names in its <c>FILE</c> lines, in full,
+    /// in the order named and each once, whether or not it exists; file names are relative to its folder.
+    /// </summary>
+    public static IReadOnlyList<string> ReadFiles(string cuePath)
+    {
+        string text;
+        try
+        {
+            text = File.ReadAllText(cuePath);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new DecodingException($"{cuePath}: the cue sheet cannot be read: {DecodingException.OneLine(e.Message)}", e);
+        }
+
+        return Files(text, cuePath);
+    }
+
+    /// <summary>Every file cue sheet text names in its <c>FILE</c> lines, in full, in order and each once; <paramref name="cuePath"/> anchors the names.</summary>
+    public static IReadOnlyList<string> Files(string text, string cuePath)
+    {
+        string folder = Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? ".";
+        var files = new List<string>();
+        foreach (string raw in text.Split('\n'))
+        {
+            List<string> words = Words(raw.Trim());
+            if (words.Count >= 2 && string.Equals(words[0], "FILE", StringComparison.OrdinalIgnoreCase))
+            {
+                string file = Path.GetFullPath(Path.Combine(folder, words[1]));
+                if (!files.Contains(file, StringComparer.Ordinal))
+                {
+                    files.Add(file);
+                }
+            }
+        }
+
+        return files;
     }
 
     /// <summary>A cue time <c>mm:ss:ff</c> as a count of 75-a-second frames, which are sectors.</summary>
