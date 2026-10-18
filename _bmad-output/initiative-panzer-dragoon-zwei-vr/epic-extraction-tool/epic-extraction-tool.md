@@ -49,6 +49,7 @@ The C# decoding library, the in-game extraction step and the PC command, for tex
 - Decision: spike 3 also looks for the palette of the colour-bank (mode 0) textures (user, 2026-10-16).
 - Note: backlog ticket 7 (stack notes and asset contract) must not run alongside story 1; both edit the asset contract.
 - Decision: re-sliced after spike 3. Story 6 colours mode 4 and mode 0 from the 0xE23C table, found by its pattern, leaving them out with a notice on a disc with no table; mode 0 moves from story 5 (greyscale) to story 6; the 0x288 table stays a lead; story 7's manifest lists whatever the extraction writes. The 2026-10-16 decision on what to do if the spike found no palette no longer applies (user approved, 2026-10-17).
+- Decision: story 13 added (board placed in front of the head's starting direction), from the deferred-work item of 2026-10-18; it waits on story 10 to avoid concurrent edits to the game's launch code, and the refactor sweep waits on it (user, 2026-10-18).
 
 ## References
 

@@ -58,3 +58,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-extraction-runs-behind-a-progress-board-and-falls-back-on-fa-plan.md`
   summary: The launch report and progress board can stand behind the player: it is placed at a fixed spot ahead of the play area's origin, not ahead of where the headset faces when the app starts. Place it in front of the head's starting direction.
   evidence: The author, 2026-10-18, on the Quest 3 during ticket 2.9's damaged-image check: "the board is behind me when I view it, can you move it to the front in future?"
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/epic-extraction-tool.md`
+  summary: The item about the board standing behind the player moved into the extraction epic as story 2.13.
+  evidence: The author asked for it as its own entry in the epic, 2026-10-18.

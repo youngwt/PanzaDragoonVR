@@ -127,12 +127,24 @@ hitl = true                 # pulling the headset's files
 risk = "medium"
 
 [[entry]]
+id = 13
+type = "story"
+title = "The launch report board stands in front of the player"
+description = "Places the launch report and progress board in front of the direction the headset faces when the app starts, at eye height, instead of at a fixed spot ahead of the play area's origin, so a player who starts facing another way still sees it; the head pose may not be tracked on the first frames, so the board is placed once a tracked pose arrives, toward CAP-3."
+verify = "On the headset, starting the app while facing away from the play area's forward direction shows the board straight ahead; the placement from the head's starting yaw has an engine-free test."
+covers = ["CAP-3"]
+after = [10]
+hitl = true                 # headset check facing another way
+risk = "low"
+references = ["../deferred-work.md"]
+
+[[entry]]
 id = 12
 type = "story"
 title = "Refactor sweep"
 description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
 verify = "The epic's Done when checks still pass on the headset after the cleanup."
 covers = ["CAP-3"]
-after = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+after = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]
 hitl = false
 risk = "low"
