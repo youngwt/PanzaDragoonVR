@@ -3,7 +3,7 @@ title: 'The extraction writes a manifest the checker accepts'
 type: 'feature'
 ticket: '7'
 created: '2026-10-18'
-status: 'built'
+status: done
 baseline_revision: '73adf96e3f46a45b7813bb185820c43e708717cf'
 route: 'full'
 route_source: 'auto'
