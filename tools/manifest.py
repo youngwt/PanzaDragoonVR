@@ -18,6 +18,8 @@ import struct
 FORMAT = 1
 MANIFEST_NAME = "manifest.json"
 GENERATOR = "write_manifest.py 0.1"
+# An empty 'assets' list is a problem, in the game's words (AssetManifest.NoAssets).
+NO_ASSETS = "%s: lists no assets" % MANIFEST_NAME
 
 # Extension to kind. See Kinds in the contract.
 KINDS = {".png": "image", ".glb": "model"}
@@ -506,6 +508,9 @@ def check_report(folder, notices=None):
                    % (MANIFEST_NAME, manifest["format"], FORMAT)]
 
     assets = manifest["assets"]
+    if not assets:
+        # After the format check, as in the game, so a newer format is still reported as such.
+        return 0, [NO_ASSETS]
     problems = []
     usable = {}      # id -> (entry, whether its sha256 can be compared), in manifest order
     first_path = {}  # id -> how its first entry was named

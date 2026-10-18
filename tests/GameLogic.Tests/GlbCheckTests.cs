@@ -411,7 +411,11 @@ public sealed class GlbCheckTests : IDisposable
     [Fact]
     public void Manifest_NotListed_IsNotAProblem()
     {
-        Put(AssetManifest.FileName, Encoding.UTF8.GetBytes("""{ "format": 1, "generator": "test", "source": null, "assets": [] }"""));
+        // The manifest lists another ID only: an empty list would make the manifest unreadable.
+        Put(AssetManifest.FileName, Encoding.UTF8.GetBytes("""
+            { "format": 1, "generator": "test", "source": null, "assets": [
+              { "id": "e03.floor", "kind": "image", "path": "images/e03.floor.png", "bytes": 1 } ] }
+            """));
 
         Assert.Equal(AssetLookupStatus.NotListed, AssetManifest.Load(_folder).Find(Flyer, AssetManifest.ModelKind).Status);
     }

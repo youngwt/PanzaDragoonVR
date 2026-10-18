@@ -87,8 +87,9 @@ public readonly record struct MissingDiscFile(string Name, string Absent);
 /// <param name="Folder">The folder the disc files' folders go in, in full: <c>images/e03</c> in the output folder.</param>
 /// <param name="Colours">The colour RAM modes 0 and 4 were coloured from, and the table it came from; null when there is none.</param>
 /// <param name="ColourNotice">Why there is no colour RAM, so modes 0 and 4 are left out: one line, no full stop. Null when there is.</param>
+/// <param name="ManifestPath">The <c>manifest.json</c> written at the top of the output folder, in full; null when no texture was written, and so no manifest.</param>
 public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFileResult> DiscFiles, IReadOnlyList<MissingDiscFile> Missing, string Folder,
-    ColourRam? Colours, string? ColourNotice)
+    ColourRam? Colours, string? ColourNotice, string? ManifestPath)
 {
     /// <summary>Every PNG written, file by file, in number order.</summary>
     public IReadOnlyList<ExtractedFile> Files => DiscFiles.SelectMany(f => f.Files).ToList();
@@ -152,7 +153,8 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
 /// The one entry point the game and the PC command call: reads the disc image and writes the
 /// textures of the nine Episode 3 files as PNGs, numbered and placed as the asset contract's
 /// "Extracted textures" says: modes 1 and 5 from their own colours, modes 4 and 0 from the colour RAM
-/// <c>EPISODE3.PRG</c>'s upload table fills (see <see cref="ColourBanks"/>). The manifest and staging come later.
+/// <c>EPISODE3.PRG</c>'s upload table fills (see <see cref="ColourBanks"/>), then <c>manifest.json</c>
+/// listing them (see <see cref="Manifest"/>). Staging comes later.
 /// </summary>
 public static class Extraction
 {
@@ -173,7 +175,10 @@ public static class Extraction
     /// a disc without it, or without an upload table in it, leaves those modes out and says why in the
     /// result. Every texture of every file is decoded before any file is written,
     /// so a decoding error writes nothing; a write that fails part way may leave some PNGs written, until
-    /// staging (story 9). A folder is created only for a disc file with a PNG to write.
+    /// staging (story 9). A folder is created only for a disc file with a PNG to write. After every PNG,
+    /// <c>manifest.json</c> is written at the top of <paramref name="outputFolder"/>, listing every PNG
+    /// written and replacing any manifest there; files extraction did not write stay, unlisted. With no
+    /// PNG written, no manifest is written and any already there is left alone.
     /// Throws <see cref="DecodingException"/> for a disc image or disc file it cannot read.
     /// </summary>
     public static ExtractionResult Run(string imagePath, string outputFolder)
@@ -209,6 +214,7 @@ public static class Extraction
             throw new DecodingException($"the disc has none of the Episode 3 texture files ({string.Join(", ", TextureFiles)}, each a .MDB and a .CGB)");
         }
 
+        var entries = new List<ManifestEntry>();
         foreach ((DiscFileResult result, List<byte[]> pngs) in decoded)
         {
             if (result.Files.Count > 0)
@@ -219,11 +225,19 @@ public static class Extraction
             for (int i = 0; i < pngs.Count; i++)
             {
                 File.WriteAllBytes(Path.Combine(outputFolder, result.Files[i].Path), pngs[i]);
+                entries.Add(new ManifestEntry(result.Files[i].Id, result.Files[i].Path, pngs[i]));
             }
         }
 
+        string? manifestPath = null;
+        if (entries.Count > 0)
+        {
+            manifestPath = Path.GetFullPath(Path.Combine(outputFolder, Manifest.FileName));
+            File.WriteAllBytes(manifestPath, Manifest.Write(header, entries));
+        }
+
         return new ExtractionResult(header, decoded.Select(d => d.Result).ToList(), missing,
-            Path.GetFullPath(Path.Combine(outputFolder, "images", "e03")), colours, notice);
+            Path.GetFullPath(Path.Combine(outputFolder, "images", "e03")), colours, notice, manifestPath);
     }
 
     /// <summary>

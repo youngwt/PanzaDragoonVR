@@ -12,7 +12,8 @@ namespace PdzDecoding.Tests;
 /// stories' matrices: disc present, no disc, bad image, a repeated record and transparency; then the
 /// nine Episode 3 files, mode 5, a file missing, none present and a file with no textures; then the
 /// colour-bank modes from <c>EPISODE3.PRG</c>'s tables: two, one, none, a bad pair, and modes 1 and 5
-/// unchanged; then each disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs.
+/// unchanged; then the manifest: recorded bytes, every PNG listed, an old manifest replaced and none
+/// when nothing is written; then each disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs.
 /// </summary>
 public sealed class ExtractionTests : IDisposable
 {
@@ -105,6 +106,7 @@ public sealed class ExtractionTests : IDisposable
         Assert.Empty(result.Files);
         Assert.Equal(1, result.Skipped);
         Assert.False(Directory.Exists(Path.Combine(_assets, "images")));
+        Assert.False(File.Exists(Path.Combine(_assets, Manifest.FileName)));
     }
 
     [Fact]
@@ -254,6 +256,110 @@ public sealed class ExtractionTests : IDisposable
             ("images/e03/e03b0n0/0001.png", "1d48d8b557d91a51b7711fac2639e02e1c9d666791cc44405c2a4a848bc839f5"),
             ("images/e03/e03b0n0/0003.png", "bdcf009ba090d9060e6f784288f1b2d947a0082bd15612f658f43d9ea67ee5c4"),
         }, written);
+    }
+
+    /// <summary>The disc of <see cref="Run_FixedDisc_WritesE03B0N0AsTheBaselineBuildDid"/>: three mode 1 textures and number 0002 in mode 4, left out.</summary>
+    private string FixedDisc() =>
+        DiscWith(Mdb(Record(), Record(lut: 64), Record(pmod: 0x0420), Record(pixels: 32, pmod: Mode1 | 0x40), Record()), Cgb());
+
+    private string ManifestFile => Path.Combine(_assets, Manifest.FileName);
+
+    [Fact]
+    public void Run_FixedDisc_WritesTheManifestAsRecorded()
+    {
+        // expected/fixed-disc-manifest.json was written by Python's json.dumps(indent=2) from the
+        // baseline PNGs' sizes and SHA-256s; tests/tools/test_manifest.py checks it is tools/manifest.py's text.
+        ExtractionResult result = Extraction.Run(FixedDisc(), _assets);
+
+        Assert.Equal(Path.GetFullPath(ManifestFile), result.ManifestPath);
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "fixed-disc-manifest.json")), File.ReadAllBytes(ManifestFile));
+    }
+
+    [Fact]
+    public void Run_Manifest_ListsEveryPngWrittenSortedByIdWithItsSizeAndChecksum()
+    {
+        var disc = new SyntheticDisc();
+        foreach (string name in Extraction.TextureFiles)
+        {
+            disc.With(name + ".MDB", Mdb(Record(), Record(pixels: 16))).With(name + ".CGB", Cgb());
+        }
+
+        ExtractionResult result = Extraction.Run(disc.WriteCue(_disc), _assets);
+
+        using var manifest = System.Text.Json.JsonDocument.Parse(File.ReadAllBytes(ManifestFile));
+        var root = manifest.RootElement;
+        Assert.Equal(1, root.GetProperty("format").GetInt32());
+        Assert.Equal("pdz-extract " + Extraction.Version, root.GetProperty("generator").GetString());
+        Assert.Equal("T-00000", root.GetProperty("source").GetProperty("product").GetString());
+        Assert.Equal("V9.999", root.GetProperty("source").GetProperty("version").GetString());
+        var assets = root.GetProperty("assets").EnumerateArray().ToArray();
+        Assert.Equal(result.Files.Select(f => f.Id).OrderBy(id => id, StringComparer.Ordinal), assets.Select(a => a.GetProperty("id").GetString()));
+        Assert.Equal("e03.tex.e03b0n0.0000", assets[0].GetProperty("id").GetString());
+        Assert.All(assets, a =>
+        {
+            Assert.Equal(new[] { "id", "kind", "path", "bytes", "sha256" }, a.EnumerateObject().Select(p => p.Name));
+            Assert.Equal("image", a.GetProperty("kind").GetString());
+            byte[] png = File.ReadAllBytes(Path.Combine(_assets, a.GetProperty("path").GetString()!));
+            Assert.Equal(png.Length, a.GetProperty("bytes").GetInt32());
+            Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(png)), a.GetProperty("sha256").GetString());
+        });
+    }
+
+    [Fact]
+    public void Run_OldManifest_IsReplaced_AndFilesNotWrittenStayUnlisted()
+    {
+        File.WriteAllText(ManifestFile, "{ \"format\": 1, \"assets\": [ \"an old manifest\" ] }\n");
+        string old = Path.Combine(_assets, "images", "e03", "e03b0n0", "0099.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(old)!);
+        File.WriteAllBytes(old, new byte[] { 1, 2, 3 });
+
+        Extraction.Run(FixedDisc(), _assets);
+
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "fixed-disc-manifest.json")), File.ReadAllBytes(ManifestFile));
+        Assert.True(File.Exists(old));
+        Assert.DoesNotContain("0099", File.ReadAllText(ManifestFile));
+    }
+
+    [Fact]
+    public void Run_NothingWritten_WritesNoManifest_AndLeavesAnOldOneAlone()
+    {
+        string cue = DiscWith(Mdb(Record(pmod: 0x0420)), Cgb());
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Null(result.ManifestPath);
+        Assert.False(File.Exists(ManifestFile));
+
+        File.WriteAllText(ManifestFile, "old\n");
+        Extraction.Run(cue, _assets);
+        Assert.Equal("old\n", File.ReadAllText(ManifestFile));
+    }
+
+    [Fact]
+    public void Run_Manifest_IsWrittenAfterEveryPng()
+    {
+        Extraction.Run(FixedDisc(), _assets);
+
+        DateTime manifest = File.GetLastWriteTimeUtc(ManifestFile);
+        Assert.All(Directory.GetFiles(TextureFolder), png => Assert.True(File.GetLastWriteTimeUtc(png) <= manifest, png));
+    }
+
+    [Fact]
+    public void Manifest_Write_IsJsonDumpsText_ForAHeaderWithCharactersToEscape()
+    {
+        // From Python: json.dumps({... "source": {"product": 'A"B\\C', "version": "\x01\tV\u00e9\x7f"}, ...}, indent=2, ensure_ascii=False) + "\n"
+        var header = new SaturnHeader("SEGA SEGASATURN", "SEGA", "A\"B\\C", "\u0001\tV\u00e9\u007f", "", "");
+        byte[] png = { 1, 2, 3 };
+
+        byte[] written = Manifest.Write(header, new[] { new ManifestEntry("e03.b", "images/b.png", png), new ManifestEntry("e03.a", "images/a.png", png) });
+
+        string sha = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
+        string expected = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.1\",\n  \"source\": {\n" +
+            "    \"product\": \"A\\\"B\\\\C\",\n    \"version\": \"\\u0001\\tV\u00e9\u007f\"\n  },\n  \"assets\": [\n" +
+            "    {\n      \"id\": \"e03.a\",\n      \"kind\": \"image\",\n      \"path\": \"images/a.png\",\n      \"bytes\": 3,\n      \"sha256\": \"" + sha + "\"\n    },\n" +
+            "    {\n      \"id\": \"e03.b\",\n      \"kind\": \"image\",\n      \"path\": \"images/b.png\",\n      \"bytes\": 3,\n      \"sha256\": \"" + sha + "\"\n    }\n" +
+            "  ]\n}\n";
+        Assert.Equal(System.Text.Encoding.UTF8.GetBytes(expected), written);
     }
 
     [Fact]

@@ -60,7 +60,9 @@ class SharedCases(unittest.TestCase):
                 wanted = expected(name)
                 notices = []
                 _, problems = manifest.check_report(str(CASES / name), notices)
-                if wanted.get("unreadable_manifest"):
+                if wanted.get("unreadable_manifest") and wanted.get("whole_line"):
+                    self.assertEqual(problems, wanted["problems"])
+                elif wanted.get("unreadable_manifest"):
                     self.assertEqual(len(problems), 1, problems)
                     self.assertTrue(problems[0].startswith(wanted["problems"][0]), problems[0])
                 else:
@@ -83,6 +85,12 @@ class SharedCases(unittest.TestCase):
                 self.assertEqual(status, 1)
                 self.assertFalse(Path(folder, "manifest.json").exists())
                 self.assertEqual(err.splitlines(), ["write_manifest: error: " + line for line in expected(name)["problems"]])
+
+    def test_check_command_reports_an_empty_asset_list_in_one_line(self):
+        status, out, err = run_command("--check", str(CASES / "empty-asset-list"))
+        self.assertEqual(status, 1)
+        self.assertEqual(out, "")
+        self.assertEqual(err.splitlines(), ["write_manifest: error: manifest.json: lists no assets"])
 
     def test_the_good_case_holds_the_test_model(self):
         self.assertEqual((CASES / "good-folder" / "models" / "e03.flyer.glb").read_bytes(), make_test_model.build())

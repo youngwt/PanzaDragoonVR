@@ -10,6 +10,8 @@ Each case is a folder holding a manifest.json, the small files it lists, and exp
     {"unreadable_manifest": true, ...}   the manifest cannot be read at all; only the start of
                                          the one line, "manifest.json: is not valid JSON", is
                                          compared, as the parsers' own detail differs
+    "whole_line": true                   with "unreadable_manifest": the whole of the one line
+                                         is compared, as for a manifest that lists no assets
     "pc_notices": [...]                  optional: notices only write_manifest.py gives
 
 tests/tools/test_asset_rules.py runs the cases through tools/manifest.py, and
@@ -172,6 +174,9 @@ def cases():
     case("unreadable-not-json", unreadable('{"format": 1, "assets": [\n'))
     # ...and the deepest manifest both can read.
     case("nested-64-deep", nested(64))
+    # An empty asset list is a problem, the manifest's as a whole (author, 2026-10-16).
+    case("empty-asset-list", {"files": {}, "manifest": document([]), "unreadable_manifest": True, "whole_line": True},
+         ["manifest.json: lists no assets"])
 
     # A lone surrogate escape: an invalid entry in 'id' or 'path', a kind nobody knows in 'kind'.
     case("lone-surrogate-in-id", one_file(FLOOR_PATH, floor, id="e03.\ud800"),
@@ -266,6 +271,8 @@ def write(output):
         expected = {}
         if spec.get("unreadable_manifest"):
             expected["unreadable_manifest"] = True
+            if spec.get("whole_line"):
+                expected["whole_line"] = True
         expected["problems"] = spec["problems"]
         if "pc_notices" in spec:
             expected["pc_notices"] = spec["pc_notices"]

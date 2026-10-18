@@ -10,6 +10,10 @@
     <RootNamespace>PdzDecoding.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Recorded output the tests compare against, written by the project itself, not from the disc. -->
+    <None Update="expected/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../lib/PdzDecoding/PdzDecoding.csproj" />
   </ItemGroup>
   <ItemGroup>

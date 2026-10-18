@@ -1,0 +1,31 @@
+{
+  "format": 1,
+  "generator": "pdz-extract 0.1",
+  "source": {
+    "product": "GS-9049",
+    "version": "V1.001"
+  },
+  "assets": [
+    {
+      "id": "e03.tex.e03b0n0.0000",
+      "kind": "image",
+      "path": "images/e03/e03b0n0/0000.png",
+      "bytes": 134,
+      "sha256": "d9c8f7e3a4503fcf3966943ab1bdc9dfcf796362131dff5f8fe99709554a4b8e"
+    },
+    {
+      "id": "e03.tex.e03b0n0.0001",
+      "kind": "image",
+      "path": "images/e03/e03b0n0/0001.png",
+      "bytes": 134,
+      "sha256": "1d48d8b557d91a51b7711fac2639e02e1c9d666791cc44405c2a4a848bc839f5"
+    },
+    {
+      "id": "e03.tex.e03b0n0.0003",
+      "kind": "image",
+      "path": "images/e03/e03b0n0/0003.png",
+      "bytes": 134,
+      "sha256": "bdcf009ba090d9060e6f784288f1b2d947a0082bd15612f658f43d9ea67ee5c4"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "unreadable_manifest": true,
+  "whole_line": true,
+  "problems": [
+    "manifest.json: lists no assets"
+  ]
+}

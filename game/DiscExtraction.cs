@@ -10,7 +10,7 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// Extraction at launch: when the asset folder's <c>disc/</c> holds a disc image, a <c>.cue</c> sheet or an <c>.iso</c>, the decoding
-/// library writes the textures it extracts into the folder, before the folder is read. Every outcome
+/// library writes the textures it extracts into the folder, and the <c>manifest.json</c> listing them, before the folder is read. Every outcome
 /// is one <c>PDZ-ASSETS</c> line; nothing here stops the game, which carries on with what the folder holds.
 /// </summary>
 public static class DiscExtraction
@@ -47,7 +47,8 @@ public static class DiscExtraction
             }
 
             GD.Print($"{AssetFolder.LogTag} extracted {result.Files.Count} textures from {result.DiscFiles.Count(f => f.Files.Count > 0)} disc files " +
-                $"of {result.Source.Product} {result.Source.Version} into {result.Folder} in {seconds} s ({result.Details()})");
+                $"of {result.Source.Product} {result.Source.Version} into {result.Folder}, listed in {result.ManifestPath}, " +
+                $"in {seconds} s ({result.Details()})");
         }
         catch (DecodingException e)
         {

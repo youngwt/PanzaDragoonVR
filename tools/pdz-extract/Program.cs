@@ -4,7 +4,7 @@ using System.Linq;
 using PdzDecoding;
 
 // pdz-extract <disc.cue|disc.iso> <output folder>: writes the textures the game extracts on the headset,
-// with the same names and bytes, into a folder on the PC. See tools/README.md.
+// and the manifest listing them, with the same names and bytes, into a folder on the PC. See tools/README.md.
 
 const string Tool = "pdz-extract";
 const string Usage = "usage: pdz-extract <disc.cue|disc.iso> <output folder>";
@@ -17,8 +17,9 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
     Console.WriteLine("2048-byte sectors, and writes the textures in colour modes 0, 1, 4 and 5");
     Console.WriteLine($"of {string.Join(", ", Extraction.TextureFiles)}");
     Console.WriteLine("as images/e03/<file>/<n>.png inside the output folder, as the game does in its");
-    Console.WriteLine("asset folder on the headset. Modes 0 and 4 are coloured from a colour upload");
-    Console.WriteLine("table in EPISODE3.PRG; with none, they are left out and a notice says why.");
+    Console.WriteLine("asset folder on the headset, then manifest.json at the top of the output folder,");
+    Console.WriteLine("listing them and replacing any manifest there. Modes 0 and 4 are coloured from");
+    Console.WriteLine("a colour upload table in EPISODE3.PRG; with none, they are left out and a notice says why.");
     return 0;
 }
 
@@ -50,6 +51,7 @@ try
     else
     {
         Console.WriteLine($"{Tool}: wrote {result.Files.Count} textures from {result.DiscFiles.Count(f => f.Files.Count > 0)} disc files to {result.Folder}");
+        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count} assets");
     }
 
     foreach (DiscFileResult file in result.DiscFiles)

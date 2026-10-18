@@ -114,6 +114,16 @@ class Rules(unittest.TestCase):
                      "Images/a.png", "images//a.png", "images/a b.png", "images/é.png"):
             self.assertIsNotNone(manifest.path_problem(path), path)
 
+    def test_the_extraction_manifest_recorded_for_the_decoding_tests_is_this_writers_text(self):
+        # The decoding library writes manifest.json itself; its test compares against this file,
+        # so the two writers give the same bytes for the same document.
+        recorded = Path(__file__).resolve().parents[1] / "Decoding.Tests" / "expected" / "fixed-disc-manifest.json"
+        raw = recorded.read_bytes()
+        document = json.loads(raw.decode("utf-8"))
+        self.assertEqual(manifest.dumps(document), raw)
+        self.assertEqual(list(document), ["format", "generator", "source", "assets"])
+        self.assertEqual([list(a) for a in document["assets"]], [["id", "kind", "path", "bytes", "sha256"]] * 3)
+
     def test_kind_from_extension(self):
         self.assertEqual(manifest.kind_of("images/e03.floor.png"), "image")
         self.assertEqual(manifest.kind_of("models/e03.flyer.glb"), "model")
@@ -402,13 +412,20 @@ class Checking(FolderCase):
         self.write_manifest(document)
         self.assertEqual(manifest.check(self.folder), [])
 
-    def test_empty_assets_is_allowed(self):
+    def test_empty_assets_is_a_problem(self):
         document = self.read_manifest()
         document["assets"] = []
         self.write_manifest(document)
-        status, out, _ = self.run_command("--check", self.folder)
-        self.assertEqual(status, 0)
-        self.assertIn("0 assets checked", out)
+        lines = self.check_fails(count=1)
+        self.assertEqual(lines, ["write_manifest: error: manifest.json: lists no assets"])
+
+    def test_unsupported_format_with_empty_assets_is_the_unsupported_format(self):
+        document = self.read_manifest()
+        document["format"] = 2
+        document["assets"] = []
+        self.write_manifest(document)
+        lines = self.check_fails("unsupported format 2", count=1)
+        self.assertNotIn("lists no assets", lines[0])
 
     def test_missing_file(self):
         os.unlink(os.path.join(self.folder, "images/e03.floor.png"))
