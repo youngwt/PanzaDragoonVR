@@ -3,7 +3,7 @@ title: 'The game cannot ask Android for its files folder on the Quest 3'
 type: 'bugfix'
 ticket: '8'
 created: '2026-10-18'
-status: 'built'
+status: done
 baseline_revision: '53e6e5ef652acac05b5a2fafc672a5b4ac4b53cf'
 route: 'full'
 route_source: 'auto'
