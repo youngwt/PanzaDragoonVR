@@ -349,27 +349,28 @@ public sealed class AssetFolder
             return string.IsNullOrEmpty(named) ? null : named;
         }
 
+        string? asked = null;
+        string? failure = null;
         try
         {
-            string? asked = AskAndroid();
-            if (!string.IsNullOrEmpty(asked))
-            {
-                return asked;
-            }
-
-            Log($"Android gave no external files folder; using {FixedAndroidPath}");
+            asked = AskAndroid();
         }
         catch (Exception e)
         {
-            Log($"Android could not be asked for the external files folder ({e.Message}); using {FixedAndroidPath}");
+            failure = e.Message;
         }
 
-        return FixedAndroidPath;
+        AndroidFolder chosen = AndroidFolderChoice.Choose(asked, failure, FixedAndroidPath);
+        Log(chosen.Line);
+        return chosen.Path;
     }
 
     /// <summary>
-    /// <c>getApplicationContext().getExternalFilesDir(null).getAbsolutePath()</c>, which also creates
+    /// <c>getApplicationContext().getExternalFilesDir("").getAbsolutePath()</c>, which also creates
     /// the folder when it is absent. Null when the bridge is not there or gives nothing.
+    /// The argument is an empty string, not null: Godot's Java bridge cannot match the method's
+    /// <c>String</c> parameter to a null Variant and returns nothing without an exception
+    /// (seen on the Quest 3, ticket 2.8). Android treats an empty type as the folder itself.
     /// </summary>
     private static string? AskAndroid()
     {
@@ -379,18 +380,33 @@ public sealed class AssetFolder
         }
 
         GodotObject runtime = Engine.GetSingleton("AndroidRuntime");
-        if (runtime.Call("getApplicationContext").AsGodotObject() is not GodotObject context)
+        Variant contextValue = runtime.Call("getApplicationContext");
+        ThrowIfJavaThrew("getApplicationContext");
+        if (contextValue.AsGodotObject() is not GodotObject context)
         {
             return null;
         }
 
-        if (context.Call("getExternalFilesDir", new Variant()).AsGodotObject() is not GodotObject folder)
+        Variant folder = context.Call("getExternalFilesDir", "");
+        ThrowIfJavaThrew("getExternalFilesDir");
+        if (folder.AsGodotObject() is not GodotObject file)
         {
             return null;
         }
 
-        string path = folder.Call("getAbsolutePath").AsString();
+        string path = file.Call("getAbsolutePath").AsString();
+        ThrowIfJavaThrew("getAbsolutePath");
         return string.IsNullOrEmpty(path) ? null : path;
+    }
+
+    /// <summary>Turns a Java exception from the last bridge call into one, so the fallback says why.</summary>
+    private static void ThrowIfJavaThrew(string method)
+    {
+        if (JavaClassWrapper.GetException() is JavaObject thrown)
+        {
+            string name = thrown.GetJavaClass()?.GetJavaClassName() ?? "an exception";
+            throw new InvalidOperationException($"{method} threw {name}");
+        }
     }
 
     private static void Log(string line) => GD.Print($"{LogTag} {line}");
