@@ -3,7 +3,7 @@ title: 'The colour-bank textures come out in colour'
 type: 'feature'
 ticket: '6'
 created: '2026-10-18'
-status: 'in-review'
+status: 'built'
 baseline_revision: '688159410156e6ac8de974ad8a6a92f6b50acc4e'
 route: 'full'
 route_source: 'auto'
@@ -87,7 +87,7 @@ Quick lens, 2026-10-18: high 0, medium 1, low 2, false 0, maybe-false 0. Three p
 - medium, patched: a damaged `EPISODE3.PRG` threw out of `Run` before any texture decoded, so nothing was written where modes 1 and 5 were written before; against the "No table" row. Reading it is now caught and treated as a missing program file, with a notice; test added.
 - low, patched: `ColourRam.Describe` named the table from the choice rule, not from the table it was built from. `ColourRam` now stores the table's index; test added.
 - low, patched: "1 blocks" now reads "1 block".
-- carried: the author's look at the contact sheet of the new textures.
+- carried: the author's look at the contact sheet of the new textures. Met on 2026-10-18: the author judged them right ("lgtm").
 
 Also: `zwei-disc-formats.md`'s colour modes table no longer says mode 4 is "not yet in the extractor".
 
