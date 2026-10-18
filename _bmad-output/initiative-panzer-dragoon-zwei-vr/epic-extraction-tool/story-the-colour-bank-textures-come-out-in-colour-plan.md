@@ -3,7 +3,7 @@ title: 'The colour-bank textures come out in colour'
 type: 'feature'
 ticket: '6'
 created: '2026-10-18'
-status: 'built'
+status: done
 baseline_revision: '688159410156e6ac8de974ad8a6a92f6b50acc4e'
 route: 'full'
 route_source: 'auto'
