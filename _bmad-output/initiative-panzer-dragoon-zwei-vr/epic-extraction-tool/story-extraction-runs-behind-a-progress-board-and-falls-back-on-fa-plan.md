@@ -3,7 +3,7 @@ title: 'Extraction runs behind a progress board and falls back on failure'
 type: 'feature'
 ticket: '9'
 created: '2026-10-18'
-status: 'in-review'
+status: 'built'
 baseline_revision: 'a9587f3aa5e01dfb9ea7ca474e8cb0673a9532b5'
 route: 'full'
 route_source: 'auto'
@@ -89,6 +89,9 @@ context:
 - Quest 3 (`tools/build-quest.sh`): OpenXR at 90 Hz at 43.34 s, before extraction ended at 43.69 s (log: 0.2 s); the 19 progress lines (9 reading, 9 writing, 1 moving) in logcat; the pulled `images/` and `manifest.json` match the PC output; no `extracting/` left; the APK holds `PdzDecoding.dll` and no disc data.
 - Still to do: the damaged-image check on the headset. The truncated copy was staged, but the relaunch was blocked by a Guardian dialog on top (needs a person in the headset); `disc/` was restored to the original. No screen capture of the progress board was taken.
 
+- **Damaged-image check on the headset, 2026-10-18, with the author.** `files/disc/` was moved to `files/disc-good/`, and a copy with track 1 cut to 100 MB (`head -c` on the headset) and the other tracks put in `disc/`. The author launched the app. Logcat: `extracting: reading E03CMN (1 of 9)`, then `extraction failed on E03CMN: ... (Track 1).bin: the image ends inside sector 50310; nothing moved into place, the previous contents are kept`, then the folder read again. A capture (`extracted/headset-9-caps/cap-21.png`, git-ignored) shows the board: "Nothing was extracted from the disc image / Extraction failed on E03CMN: ... the image ends inside sector 50310. The previous contents are kept. / The scene shows what the asset folder already holds", with the scene and the readout at 90 Hz. `manifest.json`'s md5 (b247830991a3e79f549b68212d795ef2) was the same before and after. The real disc image was put back in `disc/` and the proximity sensor restored.
+- **Seen by the author:** the board stands behind them when the app starts facing another way, because it is placed in the world at a fixed spot ahead of the play area's origin, not ahead of where the head faces. Recorded in `deferred-work.md`.
+
 ## Plan Change Log
 
 ## Review Triage Log
@@ -99,7 +102,7 @@ Quick lens, 2026-10-18: high 0, medium 0, low 4, false 0, maybe-false 0. All fou
 - low, patched: a failure part way through moving files into place was reported as "nothing moved into place". Now its own wording ("some new files may already be in place; the previous manifest is kept"), with a test that blocks a move part way.
 - low, patched: errors not belonging to a disc file (emptying staging, writing the manifest) named the last progress step's file. A disc file is now named only when the exception carries one.
 - low, patched: an exception while following the extraction left the board on its progress text. The catch now puts a failure report on the board.
-- carried: acceptance criterion 2 (damaged image on the headset) was blocked by a Guardian dialog; to be run with the author.
+- carried: acceptance criterion 2 (damaged image on the headset) was blocked by a Guardian dialog at review. Met on 2026-10-18 with the author: see the damaged-image check in Implementation Notes.
 
 Re-verified after the patches: `tools/test.sh` (97 Python, 209 GameLogic, 107 Decoding) passes; `pdz-extract` on the Japanese disc gives output identical to story 7's, with no `extracting/` left.
 

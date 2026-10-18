@@ -55,3 +55,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-every-accepted-disc-image-layout-is-read-plan.md`
   summary: A `disc/` folder holding a cue sheet and the `.iso` it names (`FILE "game.iso" BINARY`, `TRACK 01 MODE1/2048`) counts as two disc images and extracts nothing, though the cue path could read it; decide whether an `.iso` named by the one cue sheet belongs to it.
   evidence: Review of ticket 2.4, 2026-10-17. The asset contract accepts "a .cue with the .bin files it names, or one .iso", so this follows the contract as written; the README now tells the player to keep only the `.iso`. Some dumps ship this way.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-extraction-runs-behind-a-progress-board-and-falls-back-on-fa-plan.md`
+  summary: The launch report and progress board can stand behind the player: it is placed at a fixed spot ahead of the play area's origin, not ahead of where the headset faces when the app starts. Place it in front of the head's starting direction.
+  evidence: The author, 2026-10-18, on the Quest 3 during ticket 2.9's damaged-image check: "the board is behind me when I view it, can you move it to the front in future?"
