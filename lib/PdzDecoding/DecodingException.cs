@@ -17,6 +17,14 @@ public sealed class DecodingException : Exception
     }
 
     /// <summary>
+    /// The disc file, as <see cref="Extraction.TextureFiles"/> names it (<c>E03B0N0</c>), that
+    /// <see cref="Extraction.Run"/> was reading when this was thrown; null when the error is the disc
+    /// image's as a whole, such as no file system or none of the files looked for. The message does
+    /// not name it, so the PC command's error line is the same either way.
+    /// </summary>
+    public string? DiscFile { get; init; }
+
+    /// <summary>
     /// A message from .NET made fit to quote in one of these lines: one line, with any closing full
     /// stop removed, as in "Access to the path '...' is denied".
     /// </summary>

@@ -13,7 +13,9 @@ namespace PdzDecoding.Tests;
 /// nine Episode 3 files, mode 5, a file missing, none present and a file with no textures; then the
 /// colour-bank modes from <c>EPISODE3.PRG</c>'s tables: two, one, none, a bad pair, and modes 1 and 5
 /// unchanged; then the manifest: recorded bytes, every PNG listed, an old manifest replaced and none
-/// when nothing is written; then each disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs.
+/// when nothing is written; then each disc image layout: per-track and single-file cue sheets, MODE1/2048 tracks and plain ISOs;
+/// then staging and progress: no staging folder left, progress by disc file, the previous extraction kept while writing and
+/// replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error.
 /// </summary>
 public sealed class ExtractionTests : IDisposable
 {
@@ -667,6 +669,186 @@ public sealed class ExtractionTests : IDisposable
         Assert.Equal(DiscFolderState.Several, search.State);
         Assert.Null(search.ImagePath);
         Assert.Equal(new[] { "Game.cue", "Game.iso" }, search.Names);
+    }
+
+    // ------------------------------------------------------------ staging and progress (story 9)
+
+    private string Staging => Path.Combine(_assets, Extraction.StagingFolder);
+
+    /// <summary>An earlier extraction's manifest and a PNG at a path the new run writes too.</summary>
+    private (string Manifest, string Png) PreviousExtraction()
+    {
+        File.WriteAllText(ManifestFile, "{ \"format\": 1, \"assets\": [ \"the previous manifest\" ] }\n");
+        string png = Path.Combine(TextureFolder, "0000.png");
+        Directory.CreateDirectory(TextureFolder);
+        File.WriteAllBytes(png, new byte[] { 1, 2, 3 });
+        return (File.ReadAllText(ManifestFile), png);
+    }
+
+    [Fact]
+    public void Run_DiscPresent_PutsEverythingInPlaceAndLeavesNoStagingFolder()
+    {
+        ExtractionResult result = Extraction.Run(FixedDisc(), _assets);
+
+        Assert.False(Directory.Exists(Staging));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "fixed-disc-manifest.json")), File.ReadAllBytes(ManifestFile));
+        Assert.All(result.Files, f => Assert.True(File.Exists(Path.Combine(_assets, f.Path)), f.Path));
+    }
+
+    [Fact]
+    public void Run_DiscPresent_ReportsEachDiscFileReadThenWrittenThenTheMove()
+    {
+        var steps = new System.Collections.Generic.List<ExtractionProgress>();
+        string cue = new SyntheticDisc()
+            .With("E03CMN.MDB", Mdb(Record())).With("E03CMN.CGB", Cgb())
+            .With("E03B0N0.MDB", Mdb(Record(pmod: 0x0420))).With("E03B0N0.CGB", Cgb())
+            .With("E03END.MDB", Mdb(Record())).With("E03END.CGB", Cgb())
+            .WriteCue(_disc);
+
+        Extraction.Run(cue, _assets, steps.Add);
+
+        var expected = Extraction.TextureFiles.Select((name, i) => new ExtractionProgress(ExtractionStage.Reading, name, i + 1, 9)).ToList();
+        // E03B0N0 has only a mode 4 texture and no colours, so it has nothing to write.
+        expected.Add(new ExtractionProgress(ExtractionStage.Writing, "E03CMN", 1, 9));
+        expected.Add(new ExtractionProgress(ExtractionStage.Writing, "E03END", 9, 9));
+        expected.Add(new ExtractionProgress(ExtractionStage.MovingIntoPlace, null, 9, 9));
+        Assert.Equal(expected, steps);
+    }
+
+    [Fact]
+    public void Run_WhileWriting_TheOutputFolderStillHoldsThePreviousExtraction()
+    {
+        (string manifest, string png) = PreviousExtraction();
+        var seen = new System.Collections.Generic.List<(string, byte[])>();
+
+        Extraction.Run(FixedDisc(), _assets, p =>
+        {
+            if (p.Stage != ExtractionStage.Reading)
+            {
+                seen.Add((File.ReadAllText(ManifestFile), File.ReadAllBytes(png)));
+            }
+        });
+
+        Assert.Equal(2, seen.Count);
+        Assert.All(seen, s =>
+        {
+            Assert.Equal(manifest, s.Item1);
+            Assert.Equal(new byte[] { 1, 2, 3 }, s.Item2);
+        });
+        // Then replaced, now that the new extraction is fully written.
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "fixed-disc-manifest.json")), File.ReadAllBytes(ManifestFile));
+        Assert.NotEqual(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
+    }
+
+    [Fact]
+    public void Run_FailurePartWay_MovesNothingAndKeepsThePreviousContents()
+    {
+        (string manifest, string png) = PreviousExtraction();
+        string cue = DiscWith(Mdb(Record()), Cgb(), new SyntheticDisc().With("E03CMN.MDB", Mdb(Record())).With("E03CMN.CGB", Cgb()));
+        string[] stagedBefore = Array.Empty<string>();
+
+        // E03CMN is written into staging; the failure comes as E03B0N0 is about to be.
+        var e = Assert.Throws<IOException>(() => Extraction.Run(cue, _assets, p =>
+        {
+            if (p is { Stage: ExtractionStage.Writing, DiscFile: "E03B0N0" })
+            {
+                stagedBefore = Directory.GetFiles(Staging, "*", SearchOption.AllDirectories);
+                throw new IOException("No space left on device");
+            }
+        }));
+
+        Assert.Equal("No space left on device", e.Message);
+        Assert.Equal(new[] { Path.Combine(Staging, "images", "e03", "e03cmn", "0000.png") }, stagedBefore);
+        Assert.Equal(manifest, File.ReadAllText(ManifestFile));
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
+        Assert.False(Directory.Exists(Path.Combine(_assets, "images", "e03", "e03cmn")));
+        Assert.False(Directory.Exists(Staging));
+    }
+
+    [Fact]
+    public void Run_FailureMovingIntoPlace_IsBeforeAnythingMoves()
+    {
+        (string manifest, string png) = PreviousExtraction();
+
+        Assert.Throws<IOException>(() => Extraction.Run(FixedDisc(), _assets, p =>
+        {
+            if (p.Stage == ExtractionStage.MovingIntoPlace)
+            {
+                Assert.True(File.Exists(Path.Combine(Staging, Manifest.FileName)));
+                throw new IOException("stopped");
+            }
+        }));
+
+        Assert.Equal(manifest, File.ReadAllText(ManifestFile));
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
+        Assert.False(Directory.Exists(Staging));
+    }
+
+    [Fact]
+    public void Run_MoveBlockedPartWay_LeavesThePreviousManifest()
+    {
+        (string manifest, string png) = PreviousExtraction();
+        // A folder where the second PNG goes: the first moves into place, the second cannot.
+        Directory.CreateDirectory(Path.Combine(TextureFolder, "0001.png"));
+        ExtractionStage? last = null;
+
+        Assert.ThrowsAny<IOException>(() => Extraction.Run(FixedDisc(), _assets, p => last = p.Stage));
+
+        Assert.Equal(ExtractionStage.MovingIntoPlace, last);
+        Assert.NotEqual(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
+        Assert.Equal(manifest, File.ReadAllText(ManifestFile));
+        Assert.False(File.Exists(Path.Combine(TextureFolder, "0003.png")));
+        Assert.False(Directory.Exists(Staging));
+    }
+
+    [Fact]
+    public void Run_LeftoverStaging_IsEmptiedThenUsed()
+    {
+        string leftover = Path.Combine(Staging, "images", "e03", "e03b0n0", "0099.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(leftover)!);
+        File.WriteAllBytes(leftover, new byte[] { 9 });
+        File.WriteAllText(Path.Combine(Staging, Manifest.FileName), "half a manifest");
+
+        Extraction.Run(FixedDisc(), _assets);
+
+        Assert.False(Directory.Exists(Staging));
+        Assert.False(File.Exists(Path.Combine(TextureFolder, "0099.png")));
+        Assert.Equal(new[] { "0000.png", "0001.png", "0003.png" }, Directory.GetFiles(TextureFolder).Select(Path.GetFileName).OrderBy(n => n, StringComparer.Ordinal));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "fixed-disc-manifest.json")), File.ReadAllBytes(ManifestFile));
+    }
+
+    [Fact]
+    public void Run_DiscFileCutShort_NamesTheDiscFileAndKeepsThePreviousContents()
+    {
+        (string manifest, string png) = PreviousExtraction();
+        // E03B0N0.CGB is the last file, so cutting the image short leaves part of it past the end.
+        byte[] track = new SyntheticDisc()
+            .With("E03CMN.MDB", Mdb(Record())).With("E03CMN.CGB", Cgb())
+            .With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb())
+            .Build(DiscImage.SectorSize);
+        string iso = Path.Combine(_disc, "Game.iso");
+        File.WriteAllBytes(iso, track.AsSpan(0, track.Length - DiscImage.SectorSize / 2).ToArray());
+
+        var e = Assert.Throws<DecodingException>(() => Extraction.Run(iso, _assets));
+
+        Assert.Equal("E03B0N0", e.DiscFile);
+        Assert.StartsWith("Game.iso: the image ends inside sector ", e.Message);
+        Assert.Equal(manifest, File.ReadAllText(ManifestFile));
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
+    }
+
+    [Fact]
+    public void Run_ImageWithNoFileSystem_NamesNoDiscFileAndKeepsThePreviousContents()
+    {
+        (string manifest, string png) = PreviousExtraction();
+        string iso = Path.Combine(_disc, "Game.iso");
+        File.WriteAllBytes(iso, new byte[40 * DiscImage.SectorSize]);
+
+        var e = Assert.Throws<DecodingException>(() => Extraction.Run(iso, _assets));
+
+        Assert.Null(e.DiscFile);
+        Assert.Equal(manifest, File.ReadAllText(ManifestFile));
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
     }
 
     [Fact]

@@ -147,6 +147,27 @@ public sealed class LaunchReport
     public static LaunchReport Failed(string? folder, string reason, IEnumerable<string>? foundBefore = null) =>
         AllPlaceholders("The asset folder could not be loaded", folder ?? "(not found)", reason, foundBefore);
 
+    /// <summary>The heading of a report that leads with an extraction problem.</summary>
+    public const string NothingExtracted = "Nothing was extracted from the disc image";
+
+    /// <summary>
+    /// This report with an extraction problem (see <see cref="ExtractionLines"/>) at its head: the problem
+    /// and that the folder's own contents are shown, then this report's heading and details, then its
+    /// problems. The extraction problem is a detail, not a problem, so it is always on the board however
+    /// many problems the folder has.
+    /// </summary>
+    public LaunchReport WithExtractionProblem(string problem)
+    {
+        var details = new List<string> { problem, "The scene shows what the asset folder already holds." };
+        if (Kind != LaunchReportKind.None)
+        {
+            details.Add(Heading);
+            details.AddRange(Details);
+        }
+
+        return new LaunchReport(LaunchReportKind.Problems, NothingExtracted, details, Problems);
+    }
+
     private static LaunchReport AllPlaceholders(string heading, string where, string? reason, IEnumerable<string>? foundBefore = null) =>
         new(LaunchReportKind.Problems, heading,
             new[] { "Running on placeholders for everything.", $"Asset folder: {where}" },

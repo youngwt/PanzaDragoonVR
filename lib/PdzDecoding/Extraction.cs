@@ -149,17 +149,44 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
     public string ColourLine() => Colours?.Describe() ?? $"no colours for modes 0 and 4: {ColourNotice}";
 }
 
+/// <summary>What <see cref="Extraction.Run"/> is doing when it reports progress.</summary>
+public enum ExtractionStage
+{
+    /// <summary>Reading and decoding one disc file's <c>.MDB</c> and <c>.CGB</c>; nothing is written yet.</summary>
+    Reading,
+
+    /// <summary>Writing one disc file's PNGs into the staging folder.</summary>
+    Writing,
+
+    /// <summary>Every file is written in the staging folder: moving them into place, <c>manifest.json</c> last.</summary>
+    MovingIntoPlace,
+}
+
+/// <summary>One step of <see cref="Extraction.Run"/>, reported as it starts.</summary>
+/// <param name="Stage">What is being done.</param>
+/// <param name="DiscFile">The disc file it is done to, as <see cref="Extraction.TextureFiles"/> names it; null for <see cref="ExtractionStage.MovingIntoPlace"/>.</param>
+/// <param name="Number">The disc file's place in <see cref="Extraction.TextureFiles"/>, from 1; <paramref name="Count"/> for <see cref="ExtractionStage.MovingIntoPlace"/>.</param>
+/// <param name="Count">How many disc files there are: <see cref="Extraction.TextureFiles"/>' length.</param>
+public readonly record struct ExtractionProgress(ExtractionStage Stage, string? DiscFile, int Number, int Count);
+
 /// <summary>
 /// The one entry point the game and the PC command call: reads the disc image and writes the
 /// textures of the nine Episode 3 files as PNGs, numbered and placed as the asset contract's
 /// "Extracted textures" says: modes 1 and 5 from their own colours, modes 4 and 0 from the colour RAM
 /// <c>EPISODE3.PRG</c>'s upload table fills (see <see cref="ColourBanks"/>), then <c>manifest.json</c>
-/// listing them (see <see cref="Manifest"/>). Staging comes later.
+/// listing them (see <see cref="Manifest"/>), through the staging folder of the contract's
+/// "What extraction writes" (see <see cref="StagingFolder"/>).
 /// </summary>
 public static class Extraction
 {
     /// <summary>The library's version, as <c>generator</c> will give it: <c>pdz-extract 0.1</c>.</summary>
     public const string Version = "0.1";
+
+    /// <summary>
+    /// The staging folder inside the output folder, fixed by the asset contract: extraction writes
+    /// every file here first and moves them into place only when all are written.
+    /// </summary>
+    public const string StagingFolder = "extracting";
 
     /// <summary>The disc files this version extracts, as the asset contract names them, in its order.</summary>
     public static readonly IReadOnlyList<string> TextureFiles = new[]
@@ -173,27 +200,39 @@ public static class Extraction
     /// A file of <see cref="TextureFiles"/> the disc lacks is left out and named in the result; a disc
     /// with none of them is an error. Colour RAM for modes 4 and 0 is built once, from <c>EPISODE3.PRG</c>;
     /// a disc without it, or without an upload table in it, leaves those modes out and says why in the
-    /// result. Every texture of every file is decoded before any file is written,
-    /// so a decoding error writes nothing; a write that fails part way may leave some PNGs written, until
-    /// staging (story 9). A folder is created only for a disc file with a PNG to write. After every PNG,
-    /// <c>manifest.json</c> is written at the top of <paramref name="outputFolder"/>, listing every PNG
-    /// written and replacing any manifest there; files extraction did not write stay, unlisted. With no
-    /// PNG written, no manifest is written and any already there is left alone.
-    /// Throws <see cref="DecodingException"/> for a disc image or disc file it cannot read.
+    /// result. Every texture of every file is decoded before any file is written, so a decoding error
+    /// writes nothing. The PNGs, then <c>manifest.json</c> listing them, are written into
+    /// <see cref="StagingFolder"/> inside <paramref name="outputFolder"/>, which is emptied first (so a
+    /// leftover from an interrupted run is cleared); only when every one is written are they moved into
+    /// place, the manifest last, replacing any manifest there, and the staging folder removed. A failure
+    /// before that moves nothing, leaves the previous files and manifest as they were, and removes the
+    /// staging folder when it can. A failure while moving into place (reported as
+    /// <see cref="ExtractionStage.MovingIntoPlace"/>) may leave some new PNGs in place, but never the new
+    /// manifest, which moves last, so the previous manifest is kept. A folder is created only for a disc file with a PNG to write. Files
+    /// extraction did not write stay, unlisted. With no PNG written, no manifest is written and any
+    /// already there is left alone.
+    /// <paramref name="progress"/>, when given, is called on the calling thread as each step starts: each
+    /// disc file read, each disc file written, then the move into place. An exception it throws stops
+    /// extraction as any other failure does.
+    /// Throws <see cref="DecodingException"/> for a disc image or disc file it cannot read, with
+    /// <see cref="DecodingException.DiscFile"/> naming the disc file when the error is one file's.
     /// </summary>
-    public static ExtractionResult Run(string imagePath, string outputFolder)
+    public static ExtractionResult Run(string imagePath, string outputFolder, Action<ExtractionProgress>? progress = null)
     {
         SaturnHeader header;
-        var decoded = new List<(DiscFileResult Result, List<byte[]> Pngs)>();
+        var decoded = new List<(DiscFileResult Result, List<byte[]> Pngs, int Number)>();
         var missing = new List<MissingDiscFile>();
         ColourRam? colours;
         string? notice;
+        int count = TextureFiles.Count;
         using (DiscImage disc = DiscImage.OpenImage(imagePath))
         {
             header = disc.Header();
             (colours, notice) = ColourBanks.FromDisc(disc);
-            foreach (string name in TextureFiles)
+            for (int i = 0; i < count; i++)
             {
+                string name = TextureFiles[i];
+                progress?.Invoke(new ExtractionProgress(ExtractionStage.Reading, name, i + 1, count));
                 DiscFile? mdb = disc.Find(name + ".MDB");
                 DiscFile? cgb = disc.Find(name + ".CGB");
                 if (mdb == null || cgb == null)
@@ -202,10 +241,19 @@ public static class Extraction
                     continue;
                 }
 
-                DecodedFile file = Decode(disc.ReadFile(mdb.Value), disc.ReadFile(cgb.Value), name, colours);
+                DecodedFile file;
+                try
+                {
+                    file = Decode(disc.ReadFile(mdb.Value), disc.ReadFile(cgb.Value), name, colours);
+                }
+                catch (DecodingException e) when (e.DiscFile == null)
+                {
+                    throw new DecodingException(e.Message, e) { DiscFile = name };
+                }
+
                 string folder = Path.GetFullPath(Path.Combine(outputFolder, FolderFor(name)));
                 decoded.Add((new DiscFileResult(name, folder, file.Pngs.Select(p => p.File).ToList(), file.LeftOut),
-                    file.Pngs.Select(p => p.Png).ToList()));
+                    file.Pngs.Select(p => p.Png).ToList(), i + 1));
             }
         }
 
@@ -214,30 +262,90 @@ public static class Extraction
             throw new DecodingException($"the disc has none of the Episode 3 texture files ({string.Join(", ", TextureFiles)}, each a .MDB and a .CGB)");
         }
 
+        string staging = Path.Combine(outputFolder, StagingFolder);
         var entries = new List<ManifestEntry>();
-        foreach ((DiscFileResult result, List<byte[]> pngs) in decoded)
+        string? manifestPath = null;
+        try
         {
-            if (result.Files.Count > 0)
+            Empty(staging);
+            foreach ((DiscFileResult result, List<byte[]> pngs, int number) in decoded)
+            {
+                if (result.Files.Count == 0)
+                {
+                    continue;
+                }
+
+                progress?.Invoke(new ExtractionProgress(ExtractionStage.Writing, result.Name, number, count));
+                Directory.CreateDirectory(Path.Combine(staging, FolderFor(result.Name)));
+                for (int i = 0; i < pngs.Count; i++)
+                {
+                    File.WriteAllBytes(Path.Combine(staging, result.Files[i].Path), pngs[i]);
+                    entries.Add(new ManifestEntry(result.Files[i].Id, result.Files[i].Path, pngs[i]));
+                }
+            }
+
+            if (entries.Count > 0)
+            {
+                File.WriteAllBytes(Path.Combine(staging, Manifest.FileName), Manifest.Write(header, entries));
+            }
+
+            // Every file is written: only now does anything in the output folder change.
+            progress?.Invoke(new ExtractionProgress(ExtractionStage.MovingIntoPlace, null, count, count));
+            foreach (DiscFileResult result in decoded.Select(d => d.Result).Where(r => r.Files.Count > 0))
             {
                 Directory.CreateDirectory(result.Folder);
+                foreach (ExtractedFile file in result.Files)
+                {
+                    File.Move(Path.Combine(staging, file.Path), Path.Combine(outputFolder, file.Path), overwrite: true);
+                }
             }
 
-            for (int i = 0; i < pngs.Count; i++)
+            if (entries.Count > 0)
             {
-                File.WriteAllBytes(Path.Combine(outputFolder, result.Files[i].Path), pngs[i]);
-                entries.Add(new ManifestEntry(result.Files[i].Id, result.Files[i].Path, pngs[i]));
+                manifestPath = Path.GetFullPath(Path.Combine(outputFolder, Manifest.FileName));
+                File.Move(Path.Combine(staging, Manifest.FileName), manifestPath, overwrite: true);
             }
         }
-
-        string? manifestPath = null;
-        if (entries.Count > 0)
+        catch
         {
-            manifestPath = Path.GetFullPath(Path.Combine(outputFolder, Manifest.FileName));
-            File.WriteAllBytes(manifestPath, Manifest.Write(header, entries));
+            TryRemove(staging);
+            throw;
         }
 
+        // Everything is in place; a staging folder that cannot be removed now is emptied by the next run.
+        TryRemove(staging);
         return new ExtractionResult(header, decoded.Select(d => d.Result).ToList(), missing,
             Path.GetFullPath(Path.Combine(outputFolder, "images", "e03")), colours, notice, manifestPath);
+    }
+
+    /// <summary>Makes <paramref name="folder"/> an empty folder, removing whatever was there.</summary>
+    private static void Empty(string folder)
+    {
+        if (File.Exists(folder))
+        {
+            File.Delete(folder);
+        }
+        else if (Directory.Exists(folder))
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+
+        Directory.CreateDirectory(folder);
+    }
+
+    private static void TryRemove(string folder)
+    {
+        try
+        {
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Left for the next extraction to empty, as the asset contract allows.
+        }
     }
 
     /// <summary>
