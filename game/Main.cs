@@ -32,6 +32,7 @@ public partial class Main : Node3D
     private string? _folder;
     private bool _located;
     private DiscExtraction? _extraction;
+    private bool _boardPlaced;
     private LaunchReport _report = LaunchReport.Nothing;
 
     public override void _Ready()
@@ -67,6 +68,8 @@ public partial class Main : Node3D
         _openXr.SessionSynchronized += PauseMeasuring;
         _openXr.SessionStopping += PauseMeasuring;
         _openXr.SessionLossPending += PauseMeasuring;
+        // The board goes in front of the head once it is tracked, and again when the view is recentred.
+        _openXr.PoseRecentered += OnPoseRecentered;
         if (SessionHasBegun(_openXr))
         {
             RequestRefreshRate();
@@ -84,6 +87,11 @@ public partial class Main : Node3D
     /// </summary>
     public override void _Process(double delta)
     {
+        if (_openXr != null && !_boardPlaced)
+        {
+            PlaceBoard();
+        }
+
         if (_extraction == null)
         {
             return;
@@ -273,7 +281,33 @@ public partial class Main : Node3D
             _openXr.SessionSynchronized -= PauseMeasuring;
             _openXr.SessionStopping -= PauseMeasuring;
             _openXr.SessionLossPending -= PauseMeasuring;
+            _openXr.PoseRecentered -= OnPoseRecentered;
         }
+    }
+
+    private void OnPoseRecentered() => _boardPlaced = false;
+
+    /// <summary>
+    /// Stands the launch report board in front of where the head faces, once the headset tracks it:
+    /// the head pose is not tracked on the first frames, so this is tried each frame until it is.
+    /// </summary>
+    private void PlaceBoard()
+    {
+        if (XRServer.GetTracker("head") is not XRPositionalTracker head || head.GetPose("default") is not XRPose pose || !pose.HasTrackingData)
+        {
+            return;
+        }
+
+        Transform3D camera = GetNode<XRCamera3D>("XROrigin3D/XRCamera3D").GlobalTransform;
+        Vector3 forward = -camera.Basis.Z;
+        if (BoardPlacement.InFrontOf(camera.Origin.X, camera.Origin.Y, camera.Origin.Z, forward.X, forward.Y, forward.Z) is not BoardPose place)
+        {
+            return;
+        }
+
+        GetNode<Node3D>("LaunchReport").GlobalTransform = new Transform3D(new Basis(Vector3.Up, place.Yaw), new Vector3(place.X, place.Y, place.Z));
+        _boardPlaced = true;
+        GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} board placed in front of the head at ({place.X:0.00}, {place.Y:0.00}, {place.Z:0.00})"));
     }
 
     private OpenXRInterface? StartOpenXr()
