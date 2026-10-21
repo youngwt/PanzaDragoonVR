@@ -319,7 +319,7 @@ tools/push-assets.sh --clear my-assets      # the same, emptying the headset's f
 tools/push-assets.sh --clear                # only empty it: the game runs on placeholders (also with a folder holding no files)
 ```
 
-`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the two scripts share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
+`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the device scripts (`build-quest.sh`, `push-assets.sh` and `compare-headset.sh`) share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
 
 The app is not restarted. Start it again to see the change, with `tools/build-quest.sh` or from the headset's library.
 
@@ -529,6 +529,16 @@ adb pull /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03 
 | `extraction could not be started (<error>); carrying on with what the folder holds` | `disc/` could not be looked in. A warning. |
 
 Every report line that follows is logged too, as `PDZ-ASSETS report: <line>`. The code is in `game/DiscExtraction.cs`, started from `_Ready` and followed from `_Process` in `game/Main.cs`; the board's words are in `game/Logic/ExtractionLines.cs` and `LaunchReport.WithExtractionProblem`; the mode decision and its log lines are in `game/Logic/ExtractionMode.cs`, and the list of an image's files in `DiscFolder.ImageFiles` in the library.
+
+### The PC and the headset write the same files
+
+`tools/compare-headset.sh <disc.cue|disc.iso>` shows it. Launch the app on the headset first, so it has extracted, then give the same disc image as it holds:
+
+```sh
+tools/compare-headset.sh "rom/JP/Panzer Dragoon II Zwei (Japan).cue"
+```
+
+It pulls the headset's `manifest.json` and `images/`, sets aside any file under `images/` that the headset's manifest does not list (such as one left by an earlier push), runs `pdz-extract` on the disc image on this computer, and compares the two byte for byte. Both copies go under `extracted/compare-headset/` (git-ignored), as `headset/` and `pc/`. It exits 0 and says `identical` when every file matches, the manifest included; otherwise it exits 1 and lists the files that differ (the full list is in `differences.txt` there). This is also the only check that runs the library's .NET 9 build, the one the APK carries: the unit tests run on .NET 10.
 
 ## Extraction scripts
 
