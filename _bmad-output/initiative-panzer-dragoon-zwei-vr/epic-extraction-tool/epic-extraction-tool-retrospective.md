@@ -182,3 +182,11 @@ A human decision overrides this verdict. The epic file's `status` is unchanged; 
 1. Should a cue sheet that names an `.iso` count as one image, so a common dump layout extracts? (R5)
 2. In release mode, should an extraction that wrote nothing keep the disc image, rather than delete it as the contract says? (R6)
 3. Should the release skip compare the extractor's version too, so an app update can re-extract? It cannot today, because the image is deleted. (R7)
+
+## Decisions (author, 2026-10-21)
+
+- **Verdict: accepted-with-open-items**, the machine verdict, accepted.
+- **Yes:** a cue sheet that names an `.iso` counts as one disc image. (R5)
+- **Yes:** in release mode, an extraction that wrote nothing keeps the disc image. This changes the asset contract's rule. (R6)
+- **Yes:** the release skip also compares the extractor's version, so an app update can re-extract. This changes the asset contract's rule. (R7)
+
