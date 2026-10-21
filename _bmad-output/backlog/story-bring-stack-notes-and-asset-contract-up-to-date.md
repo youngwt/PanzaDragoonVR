@@ -15,7 +15,7 @@ risk: low
 
 ## Description
 
-`stack.md` and the asset contract stop saying things the engine spike proved false or settled, and the contract records where it and the code differ, with the author choosing which wins in each case.
+`stack.md` and the asset contract stop saying things the engine spike proved false or settled, and the contract records where it and the code differ, with the author choosing which wins in each case; the extractor gains the contract's "not a Saturn disc" check.
 
 ## Acceptance Criteria
 
@@ -35,4 +35,4 @@ Verify: every stale statement and every difference listed in the retrospective's
 - Hitl: the contract is the author's agreement; changes to it need the author's yes.
 - The empty asset list is story 1, not this one.
 - Added at the in-game extraction epic's close (author, 2026-10-21): also the extraction epic's doc items: add `extracting/` to the contract's fixed folder names; record the texture numbering rule (the record scan and the fits-the-`.CGB` filter) in the contract or the formats notes; `stack.md` saying the library is "not built yet"; `zwei-disc-formats.md` calling mode 5 "Not handled"; the spec's answered palette question; the contract's "Story 1.4 settles that".
-- Open question: the contract's "not a Saturn disc" row has no check in the code; keep the row and add a check, or drop it.
+- Decision: keep the contract's "not a Saturn disc" row and add the check to the extractor: a disc image whose header does not start with the Saturn's `SEGA SEGASATURN` mark is reported as not a Saturn disc and nothing is extracted (author, 2026-10-21). This makes the ticket a code change as well as a document one.
