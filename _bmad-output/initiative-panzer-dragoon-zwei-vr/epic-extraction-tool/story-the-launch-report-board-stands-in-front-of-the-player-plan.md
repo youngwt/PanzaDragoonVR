@@ -3,7 +3,7 @@ title: 'The launch report board stands in front of the player'
 type: 'feature'
 ticket: '13'
 created: '2026-10-21'
-status: 'built'
+status: done
 baseline_revision: '47a56413faad33593bd2e284055fd16dd51985dc'
 route: 'oneshot'
 route_source: 'auto'
