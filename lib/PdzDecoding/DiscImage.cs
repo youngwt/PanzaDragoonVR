@@ -49,11 +49,18 @@ public sealed class DiscImage : IDisposable
     /// Opens the disc image at <paramref name="path"/>: a <c>.cue</c> sheet, through the file holding
     /// its track 1, or an <c>.iso</c> of 2048-byte sectors. Any other extension is an error.
     /// </summary>
-    public static DiscImage OpenImage(string path) =>
+    public static DiscImage OpenImage(string path) => IsCueSheet(path) ? OpenCue(path) : OpenIso(path);
+
+    /// <summary>
+    /// Whether the disc image at <paramref name="path"/> is a <c>.cue</c> sheet (true) or an <c>.iso</c>
+    /// (false), by its extension, matched without regard to case. Throws <see cref="DecodingException"/>
+    /// for any other extension.
+    /// </summary>
+    internal static bool IsCueSheet(string path) =>
         Path.GetExtension(path).ToLowerInvariant() switch
         {
-            ".cue" => OpenCue(path),
-            ".iso" => OpenIso(path),
+            ".cue" => true,
+            ".iso" => false,
             _ => throw new DecodingException($"{path}: not a disc image: only a .cue sheet or an .iso is read"),
         };
 
@@ -115,13 +122,7 @@ public sealed class DiscImage : IDisposable
     /// </summary>
     public static SaturnHeader ReadHeader(string path)
     {
-        string extension = Path.GetExtension(path).ToLowerInvariant();
-        DataTrack track = extension switch
-        {
-            ".cue" => CueSheet.Read(path),
-            ".iso" => new DataTrack(path, 0, SectorSize),
-            _ => throw new DecodingException($"{path}: not a disc image: only a .cue sheet or an .iso is read"),
-        };
+        DataTrack track = IsCueSheet(path) ? CueSheet.Read(path) : new DataTrack(path, 0, SectorSize);
         using var image = new DiscImage(OpenFile(track.BinPath), track.StartSector, track.SectorSize, Path.GetFileName(track.BinPath));
         return image.Header();
     }

@@ -777,7 +777,7 @@ public sealed class ExtractionTests : IDisposable
         Assert.Equal(new[] { "Game.cue", "Game.iso" }, search.Names);
     }
 
-    // ------------------------------------------------------------ staging and progress (story 9)
+    // ------------------------------------------------------------ staging and progress
 
     private string Staging => Path.Combine(_assets, Extraction.StagingFolder);
 

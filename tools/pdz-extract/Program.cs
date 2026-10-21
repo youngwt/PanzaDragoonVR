@@ -50,7 +50,7 @@ try
     }
     else
     {
-        Console.WriteLine($"{Tool}: wrote {result.Files.Count} textures from {result.DiscFiles.Count(f => f.Files.Count > 0)} disc files to {result.Folder}");
+        Console.WriteLine($"{Tool}: wrote {result.Files.Count} textures from {result.DiscFilesWritten} disc files to {result.Folder}");
         Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count} assets");
     }
 

@@ -6,8 +6,8 @@ using Xunit;
 namespace PanzaDragoonVR.Logic.Tests;
 
 /// <summary>
-/// The progress board and the extraction failure lines, one or more tests per row of story 9's matrix
-/// that the game words: disc present (progress by disc file), no disc (the launch report as before),
+/// The progress board and the extraction failure lines, one or more tests per case the game words:
+/// disc present (progress by disc file), no disc (the launch report as before),
 /// a damaged image (cannot be read, or failed on a disc file) and a failure part way, as the asset
 /// contract's extraction rows word them.
 /// </summary>

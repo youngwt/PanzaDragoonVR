@@ -46,9 +46,6 @@ public sealed class AssetFolder
     /// <summary>The asset folder, or null on a desktop with <c>PDZ_ASSETS</c> unset.</summary>
     public string? Path { get; }
 
-    /// <summary>Finds the folder and reads its manifest, logging what came of it.</summary>
-    public static AssetFolder Open() => Open(Locate());
-
     /// <summary>
     /// Reads the manifest of the folder <see cref="Locate"/> found, logging what came of it; null
     /// for no folder. Extraction runs on the same folder before this.

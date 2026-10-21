@@ -6,93 +6,6 @@ using System.Linq;
 
 namespace PdzDecoding;
 
-/// <summary>What <see cref="DiscFolder.Find"/> found in an asset folder's <c>disc/</c>.</summary>
-public enum DiscFolderState
-{
-    /// <summary><c>disc/</c> is absent or holds no disc image: no <c>.cue</c> sheet and no <c>.iso</c>.</summary>
-    None,
-
-    /// <summary>One disc image, a <c>.cue</c> sheet or an <c>.iso</c>, in <see cref="DiscSearch.ImagePath"/>.</summary>
-    One,
-
-    /// <summary>More than one, named in <see cref="DiscSearch.Names"/>: nothing is extracted.</summary>
-    Several,
-}
-
-/// <summary>The disc image found in <c>disc/</c>, if any: the <c>.cue</c> sheet or the <c>.iso</c>.</summary>
-public readonly record struct DiscSearch(DiscFolderState State, string DiscFolder, string? ImagePath, IReadOnlyList<string> Names);
-
-/// <summary>The <c>disc/</c> folder inside the asset folder, where the asset contract puts the player's disc image.</summary>
-public static class DiscFolder
-{
-    /// <summary>The folder's name inside the asset folder, fixed by the asset contract.</summary>
-    public const string Name = "disc";
-
-    /// <summary>The extensions of a disc image: a cue sheet, which names its <c>.bin</c> files, or a plain ISO.</summary>
-    public static readonly IReadOnlyList<string> ImageExtensions = new[] { ".cue", ".iso" };
-
-    /// <summary>
-    /// Looks for a disc image in <c>disc/</c> inside <paramref name="assetFolder"/>: a <c>.cue</c> sheet
-    /// (its <c>.bin</c> files are part of it, not images of their own) or an <c>.iso</c>, matched without
-    /// regard to case.
-    /// </summary>
-    public static DiscSearch Find(string assetFolder)
-    {
-        string folder = Path.Combine(assetFolder, Name);
-        if (!Directory.Exists(folder))
-        {
-            return new DiscSearch(DiscFolderState.None, folder, null, Array.Empty<string>());
-        }
-
-        string[] images = Directory.EnumerateFiles(folder)
-            .Where(f => ImageExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
-            .OrderBy(f => f, StringComparer.Ordinal)
-            .ToArray();
-        string[] names = images.Select(f => Path.GetFileName(f)).ToArray();
-        return images.Length switch
-        {
-            0 => new DiscSearch(DiscFolderState.None, folder, null, names),
-            1 => new DiscSearch(DiscFolderState.One, folder, images[0], names),
-            _ => new DiscSearch(DiscFolderState.Several, folder, null, names),
-        };
-    }
-
-    /// <summary>
-    /// The files the disc image at <paramref name="imagePath"/> consists of, in full, the image itself
-    /// first: for a <c>.cue</c> sheet, the sheet and every file it names that exists inside the sheet's
-    /// folder, at any depth (a file named outside it is not the image's own and is left out); for an
-    /// <c>.iso</c>, the ISO alone. What release mode deletes. Throws <see cref="DecodingException"/>
-    /// when the cue sheet cannot be read, or for any other extension.
-    /// </summary>
-    public static IReadOnlyList<string> ImageFiles(string imagePath)
-    {
-        string image = Path.GetFullPath(imagePath);
-        switch (Path.GetExtension(image).ToLowerInvariant())
-        {
-            case ".iso":
-                return new[] { image };
-            case ".cue":
-                string folder = Path.GetDirectoryName(image) ?? ".";
-                var files = new List<string> { image };
-                files.AddRange(CueSheet.ReadFiles(image).Where(f =>
-                    !string.Equals(f, image, StringComparison.Ordinal) &&
-                    IsInside(f, folder) &&
-                    File.Exists(f)));
-                return files;
-            default:
-                throw new DecodingException($"{imagePath}: not a disc image: only a .cue sheet or an .iso is read");
-        }
-    }
-
-    /// <summary>Whether the full path <paramref name="file"/> lies inside <paramref name="folder"/>, at any depth.</summary>
-    private static bool IsInside(string file, string folder)
-    {
-        string relative = Path.GetRelativePath(folder, file);
-        return !Path.IsPathRooted(relative) && relative != ".." &&
-            !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
-    }
-}
-
 /// <summary>One PNG extraction wrote: its asset ID and its path relative to the output folder.</summary>
 public readonly record struct ExtractedFile(string Id, string Path, int Width, int Height);
 
@@ -100,7 +13,7 @@ public readonly record struct ExtractedFile(string Id, string Path, int Width, i
 /// <param name="Name">The pair's name, as on the disc: <c>E03B0N0</c>.</param>
 /// <param name="Folder">The folder its PNGs go in, in full; created only when <see cref="Files"/> is not empty.</param>
 /// <param name="Files">The PNGs written, in number order.</param>
-/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode not decoded yet, or a colour-bank mode (0 or 4) with no colour table.</param>
+/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode extraction does not decode (any but 0, 1, 4 and 5), or in a colour-bank mode (0 or 4) with no colour table.</param>
 public sealed record DiscFileResult(string Name, string Folder, IReadOnlyList<ExtractedFile> Files, IReadOnlyDictionary<int, int> LeftOut)
 {
     /// <summary>Textures numbered but not written, in all modes.</summary>
@@ -128,6 +41,9 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
 {
     /// <summary>Every PNG written, file by file, in number order.</summary>
     public IReadOnlyList<ExtractedFile> Files => DiscFiles.SelectMany(f => f.Files).ToList();
+
+    /// <summary>How many disc files had at least one PNG written.</summary>
+    public int DiscFilesWritten => DiscFiles.Count(f => f.Files.Count > 0);
 
     /// <summary>Textures numbered but not written, in all files and modes.</summary>
     public int Skipped => DiscFiles.Sum(f => f.Skipped);
@@ -214,7 +130,7 @@ public readonly record struct ExtractionProgress(ExtractionStage Stage, string? 
 /// </summary>
 public static class Extraction
 {
-    /// <summary>The library's version, as <c>generator</c> will give it: <c>pdz-extract 0.1</c>.</summary>
+    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.1</c>.</summary>
     public const string Version = "0.1";
 
     /// <summary>
@@ -222,6 +138,9 @@ public static class Extraction
     /// every file here first and moves them into place only when all are written.
     /// </summary>
     public const string StagingFolder = "extracting";
+
+    /// <summary>The folder inside the output folder that the disc files' folders go in.</summary>
+    private const string ImageFolder = "images/e03";
 
     /// <summary>The disc files this version extracts, as the asset contract names them, in its order.</summary>
     public static readonly IReadOnlyList<string> TextureFiles = new[]
@@ -350,7 +269,7 @@ public static class Extraction
         // Everything is in place; a staging folder that cannot be removed now is emptied by the next run.
         TryRemove(staging);
         return new ExtractionResult(header, decoded.Select(d => d.Result).ToList(), missing,
-            Path.GetFullPath(Path.Combine(outputFolder, "images", "e03")), colours, notice, manifestPath);
+            Path.GetFullPath(Path.Combine(outputFolder, ImageFolder)), colours, notice, manifestPath);
     }
 
     /// <summary>Makes <paramref name="folder"/> an empty folder, removing whatever was there.</summary>
@@ -384,19 +303,9 @@ public static class Extraction
     }
 
     /// <summary>
-    /// The PNGs of one pair's textures in colour modes 0, 1, 4 and 5, and how many were left out by
-    /// mode, with modes 0 and 4 coloured from the disc's <c>EPISODE3.PRG</c> as <see cref="Run"/> does.
-    /// </summary>
-    public static DecodedFile Decode(DiscImage disc, string name)
-    {
-        byte[] mdb = Read(disc, name + ".MDB");
-        byte[] cgb = Read(disc, name + ".CGB");
-        return Decode(mdb, cgb, name, ColourBanks.FromDisc(disc).Colours);
-    }
-
-    /// <summary>
-    /// As <see cref="Decode(DiscImage, string)"/>, on the two files' bytes, with modes 0 and 4 coloured
-    /// from <paramref name="colours"/>, or left out when it is null.
+    /// The PNGs of one pair's textures in colour modes 0, 1, 4 and 5, from the two files' bytes, and how
+    /// many were left out by mode, with modes 0 and 4 coloured from <paramref name="colours"/>, or left
+    /// out when it is null.
     /// </summary>
     public static DecodedFile Decode(byte[] mdb, byte[] cgb, string name, ColourRam? colours = null)
     {
@@ -447,12 +356,7 @@ public static class Extraction
     public static string TexturePath(string discFile, int number) =>
         string.Create(CultureInfo.InvariantCulture, $"{FolderFor(discFile)}/{number:D4}.png");
 
-    private static string FolderFor(string discFile) => $"images/e03/{discFile.ToLowerInvariant()}";
-
-    private static byte[] Read(DiscImage disc, string path) =>
-        disc.Find(path) is DiscFile file
-            ? disc.ReadFile(file)
-            : throw new DecodingException($"the disc has no {path}");
+    private static string FolderFor(string discFile) => $"{ImageFolder}/{discFile.ToLowerInvariant()}";
 }
 
 /// <summary>One pair's decoded PNGs, in number order, and the textures left out, by colour mode.</summary>

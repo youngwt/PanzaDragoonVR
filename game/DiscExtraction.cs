@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using PanzaDragoonVR.Logic;
@@ -103,7 +102,7 @@ public sealed class DiscExtraction
         }
         catch (Exception e)
         {
-            string reason = $"{e.GetType().Name}: {DecodingException.OneLine(e.Message)}";
+            string reason = Reason(e);
             Warn($"extraction could not be started ({reason}); carrying on with what the folder holds");
             problem = ExtractionLines.Failed(null, reason);
             return null;
@@ -170,7 +169,7 @@ public sealed class DiscExtraction
                 return;
             default:
                 // Something the checks did not foresee, such as a full disk. It names no disc file: the error is not one file's.
-                string reason = $"{error.GetType().Name}: {DecodingException.OneLine(error.Message)}";
+                string reason = Reason(error);
                 if (_last?.Stage == ExtractionStage.MovingIntoPlace)
                 {
                     // Some new files may already have been moved; the manifest goes last, so the previous one stays.
@@ -194,7 +193,7 @@ public sealed class DiscExtraction
             return;
         }
 
-        GD.Print($"{AssetFolder.LogTag} extracted {result.Files.Count} textures from {result.DiscFiles.Count(f => f.Files.Count > 0)} disc files " +
+        GD.Print($"{AssetFolder.LogTag} extracted {result.Files.Count} textures from {result.DiscFilesWritten} disc files " +
             $"of {result.Source.Product} {result.Source.Version} into {result.Folder}, listed in {result.ManifestPath}, " +
             $"in {seconds} s ({result.Details()})");
     }
@@ -243,7 +242,8 @@ public sealed class DiscExtraction
         }
     }
 
-    private static string Reason(Exception e) => $"{e.GetType().Name}: {DecodingException.OneLine(e.Message)}";
+    /// <summary>An exception as a log or board line quotes it: its type and its message on one line, with no closing full stop.</summary>
+    public static string Reason(Exception e) => $"{e.GetType().Name}: {DecodingException.OneLine(e.Message)}";
 
     private static ExtractionStep Step(ExtractionStage stage) => stage switch
     {

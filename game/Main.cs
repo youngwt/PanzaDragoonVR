@@ -125,18 +125,14 @@ public partial class Main : Node3D
         {
             // The scene carries on with what it shows; the extraction is not watched any further.
             _extraction = null;
-            string reason = $"following it failed ({e.GetType().Name}: {e.Message})";
+            string reason = $"following it failed ({DiscExtraction.Reason(e)})";
             GD.PushWarning($"{AssetFolder.LogTag} extraction {reason}; carrying on with what the scene shows");
-            try
+            OnBoard("the launch report", () =>
             {
                 LaunchReport report = _report.WithExtractionProblem(ExtractionLines.Failed(null, reason));
                 AssetFolder.LogReport(report);
-                GetNode<LaunchReportPanel>("LaunchReport").Display(report);
-            }
-            catch (Exception shown)
-            {
-                GD.PushWarning($"{AssetFolder.LogTag} the launch report could not be shown ({shown.GetType().Name}: {shown.Message})");
-            }
+                Board.Display(report);
+            });
         }
     }
 
@@ -155,16 +151,25 @@ public partial class Main : Node3D
         return extraction;
     }
 
-    /// <summary>Puts extraction's progress on the board; a board that fails to show must not stop the scene.</summary>
-    private void ShowProgress(System.Collections.Generic.IReadOnlyList<string> lines)
+    /// <summary>Puts extraction's progress on the board.</summary>
+    private void ShowProgress(System.Collections.Generic.IReadOnlyList<string> lines) =>
+        OnBoard("extraction's progress", () => Board.DisplayProgress(lines));
+
+    private LaunchReportPanel Board => GetNode<LaunchReportPanel>("LaunchReport");
+
+    /// <summary>
+    /// Runs <paramref name="show"/>, which puts <paramref name="what"/> on the board. A board that fails
+    /// to show must not stop the scene or OpenXR: the failure is one warning and the scene carries on.
+    /// </summary>
+    private static void OnBoard(string what, Action show)
     {
         try
         {
-            GetNode<LaunchReportPanel>("LaunchReport").DisplayProgress(lines);
+            show();
         }
         catch (Exception e)
         {
-            GD.PushWarning($"{AssetFolder.LogTag} extraction's progress could not be shown ({e.GetType().Name}: {e.Message})");
+            GD.PushWarning($"{AssetFolder.LogTag} {what} could not be shown ({DiscExtraction.Reason(e)})");
         }
     }
 
@@ -176,15 +181,8 @@ public partial class Main : Node3D
     {
         _report = report;
         // What the launch check found, readable in the headset; it stays for as long as the app runs.
-        // A panel that fails to show must not stop OpenXR from starting; the report is in the log already.
-        try
-        {
-            GetNode<LaunchReportPanel>("LaunchReport").Display(report);
-        }
-        catch (Exception e)
-        {
-            GD.PushWarning($"{AssetFolder.LogTag} the launch report could not be shown ({e.GetType().Name}: {e.Message})");
-        }
+        // The report is in the log already.
+        OnBoard("the launch report", () => Board.Display(report));
 
         Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
         Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
@@ -196,7 +194,7 @@ public partial class Main : Node3D
         catch (Exception e)
         {
             // The grey cube flies instead; the ground and sky keep what they loaded.
-            GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({e.GetType().Name}: {e.Message}); using the placeholder");
+            GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({DiscExtraction.Reason(e)}); using the placeholder");
             if (flyer != null && IsInstanceValid(flyer))
             {
                 flyer.Free();
@@ -240,7 +238,7 @@ public partial class Main : Node3D
             sky = null;
             flyer?.Free();
             flyer = null;
-            string reason = $"{e.GetType().Name}: {e.Message}";
+            string reason = DiscExtraction.Reason(e);
             GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
             report = FailedReport(assets, reason);
         }

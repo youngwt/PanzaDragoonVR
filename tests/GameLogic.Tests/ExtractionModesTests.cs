@@ -7,8 +7,8 @@ using Xunit;
 namespace PanzaDragoonVR.Logic.Tests;
 
 /// <summary>
-/// The development and release modes of the asset contract, one or more tests per row of story 10's
-/// matrix that the decision covers: development (twice), release on a first launch, already extracted,
+/// The development and release modes of the asset contract, one or more tests per case the decision
+/// covers: development (twice), release on a first launch, already extracted,
 /// a different disc, release failure (the image kept), no disc, deletion failing, and a hand-written manifest.
 /// </summary>
 public sealed class ExtractionModesTests : IDisposable

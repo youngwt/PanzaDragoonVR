@@ -61,3 +61,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/epic-extraction-tool.md`
   summary: The item about the board standing behind the player moved into the extraction epic as story 2.13.
   evidence: The author asked for it as its own entry in the epic, 2026-10-18.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-the-launch-report-board-stands-in-front-of-the-player-plan.md`
+  summary: The item about the board standing behind the player is closed; the board now stands in front of where the head faces once the headset tracks it, and again after a recentre.
+  evidence: Built as story 2.13 in commit f615b97, marked done on 2026-10-21 (commit 8cc9fa1).

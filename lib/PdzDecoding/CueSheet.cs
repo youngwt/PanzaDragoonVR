@@ -26,25 +26,12 @@ public static class CueSheet
     public const string CookedMode = "MODE1/2048";
 
     /// <summary>Finds track 1 in the cue sheet at <paramref name="cuePath"/>; file names are relative to its folder.</summary>
-    public static DataTrack Read(string cuePath)
-    {
-        string text;
-        try
-        {
-            text = File.ReadAllText(cuePath);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            throw new DecodingException($"{cuePath}: the cue sheet cannot be read: {DecodingException.OneLine(e.Message)}", e);
-        }
-
-        return Parse(text, cuePath);
-    }
+    public static DataTrack Read(string cuePath) => Parse(ReadText(cuePath), cuePath);
 
     /// <summary>Finds track 1 in cue sheet text; <paramref name="cuePath"/> names it in errors and anchors its file names.</summary>
     public static DataTrack Parse(string text, string cuePath)
     {
-        string folder = Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? ".";
+        string folder = FolderOf(cuePath);
         string? file = null;
         bool inTrack1 = false;
         int sectorSize = 0;
@@ -113,25 +100,12 @@ public static class CueSheet
     /// Every file the cue sheet at <paramref name="cuePath"/> names in its <c>FILE</c> lines, in full,
     /// in the order named and each once, whether or not it exists; file names are relative to its folder.
     /// </summary>
-    public static IReadOnlyList<string> ReadFiles(string cuePath)
-    {
-        string text;
-        try
-        {
-            text = File.ReadAllText(cuePath);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            throw new DecodingException($"{cuePath}: the cue sheet cannot be read: {DecodingException.OneLine(e.Message)}", e);
-        }
-
-        return Files(text, cuePath);
-    }
+    public static IReadOnlyList<string> ReadFiles(string cuePath) => Files(ReadText(cuePath), cuePath);
 
     /// <summary>Every file cue sheet text names in its <c>FILE</c> lines, in full, in order and each once; <paramref name="cuePath"/> anchors the names.</summary>
     public static IReadOnlyList<string> Files(string text, string cuePath)
     {
-        string folder = Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? ".";
+        string folder = FolderOf(cuePath);
         var files = new List<string>();
         foreach (string raw in text.Split('\n'))
         {
@@ -148,6 +122,22 @@ public static class CueSheet
 
         return files;
     }
+
+    /// <summary>The text of the cue sheet at <paramref name="cuePath"/>; one that cannot be read throws <see cref="DecodingException"/>.</summary>
+    private static string ReadText(string cuePath)
+    {
+        try
+        {
+            return File.ReadAllText(cuePath);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new DecodingException($"{cuePath}: the cue sheet cannot be read: {DecodingException.OneLine(e.Message)}", e);
+        }
+    }
+
+    /// <summary>The folder, in full, that the file names in the cue sheet at <paramref name="cuePath"/> are relative to.</summary>
+    private static string FolderOf(string cuePath) => Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? ".";
 
     /// <summary>A cue time <c>mm:ss:ff</c> as a count of 75-a-second frames, which are sectors.</summary>
     private static long Frames(string time, string cuePath)
