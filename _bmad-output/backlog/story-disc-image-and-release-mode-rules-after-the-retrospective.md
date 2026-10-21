@@ -15,7 +15,7 @@ risk: medium
 
 ## Description
 
-Three rule changes the author decided on 2026-10-21, in the asset contract and the code: a cue sheet that names an `.iso` counts as one disc image with it, so that dump layout extracts; in release mode an extraction that wrote nothing keeps the disc image; and the release-mode skip also compares the extractor's version, so an app update can extract again (which needs the image, so how an update gets a disc again is part of the work).
+Three rule changes the author decided on 2026-10-21, in the asset contract and the code: a cue sheet that names an `.iso` counts as one disc image with it, so that dump layout extracts; in release mode an extraction that wrote nothing keeps the disc image; and the release-mode skip also compares the extractor's version, so an app update can extract again once the player copies the disc image back; the image is not kept on the headset.
 
 ## Acceptance Criteria
 
@@ -31,5 +31,5 @@ Verify: the contract states the three rules and the author has agreed it; tests 
 
 - Source: carried out of the in-game extraction epic at its close (author, 2026-10-21); kept in the backlog.
 - Decision: a cue naming an `.iso` is one image; release mode keeps the image when nothing was written; the skip compares the extractor version (author, 2026-10-21).
-- Open question: with the image deleted after a release extraction, a newer extractor version has nothing to extract from; whether release mode keeps the image, or the player copies it again, is for the author to settle at the start of this ticket.
+- Decision: release mode still deletes the disc image after a successful extraction; to pick up a newer extractor, the player copies the image to the headset again, and the version check then lets it extract (author, 2026-10-21).
 - Hitl: contract changes need the author's yes; headset check.
