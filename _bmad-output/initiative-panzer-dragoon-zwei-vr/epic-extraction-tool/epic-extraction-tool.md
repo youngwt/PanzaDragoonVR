@@ -6,6 +6,7 @@ covers: [CAP-3]
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # In-game extraction
@@ -37,8 +38,8 @@ The C# decoding library, the in-game extraction step and the PC command, for tex
 - Waits on Engine spike because: it writes the manifest in the format agreed there, and story 1.4 settles how the game reaches its asset folder.
 - Unknown: how other discs than the Japanese GS-9049 V1.001 behave; they are attempted, not refused.
 - Decision: re-scoped on 2026-10-14 from a PC extraction tool to in-game extraction with a shared C# decoding library, following the spec update; Done when 4 (identical output on PC and headset) added so checking by eye on the PC holds for the headset (user approved, 2026-10-14).
-- Source conflict: Done when 1 — "textures ... with a manifest" vs the asset contract, which defines no per-texture IDs and says loose PNGs need no manifest entry; only `e03.floor`, `e03.canopy` and `e03.flyer` exist.
-- Source conflict: spec CAP-3 and Constraints — disc image location (assumed `disc/`), development and release modes, the "do not extract again" marker, and progress and failure reporting vs the asset contract, which defines none of them.
+- Source conflict (settled by the decisions of 2026-10-16 below and story 1): Done when 1 — "textures ... with a manifest" vs the asset contract, which defines no per-texture IDs and says loose PNGs need no manifest entry; only `e03.floor`, `e03.canopy` and `e03.flyer` exist.
+- Source conflict (settled by the decisions of 2026-10-16 below and story 1): spec CAP-3 and Constraints — disc image location (assumed `disc/`), development and release modes, the "do not extract again" marker, and progress and failure reporting vs the asset contract, which defines none of them.
 - Decision: the 256-colour palette location is settled by an early hitl spike, right after the tracer bullet; the colour story waits on its answer (user, 2026-10-16).
 - Decision: extracted textures get per-texture IDs and are all listed in the manifest; a contract decision story defines the ID scheme (user, 2026-10-16).
 - Decision: the same contract story also fixes the disc image location, development and release modes, the extraction marker, and progress and failure reporting (user, 2026-10-16).
@@ -50,6 +51,7 @@ The C# decoding library, the in-game extraction step and the PC command, for tex
 - Note: backlog ticket 7 (stack notes and asset contract) must not run alongside story 1; both edit the asset contract.
 - Decision: re-sliced after spike 3. Story 6 colours mode 4 and mode 0 from the 0xE23C table, found by its pattern, leaving them out with a notice on a disc with no table; mode 0 moves from story 5 (greyscale) to story 6; the 0x288 table stays a lead; story 7's manifest lists whatever the extraction writes. The 2026-10-16 decision on what to do if the spike found no palette no longer applies (user approved, 2026-10-17).
 - Decision: story 13 added (board placed in front of the head's starting direction), from the deferred-work item of 2026-10-18; it waits on story 10 to avoid concurrent edits to the game's launch code, and the refactor sweep waits on it (user, 2026-10-18).
+- Decision: epic closed (author, 2026-10-21). The closure check found CAP-3 and Done when 1 to 6 met, with these limits: only the per-track bin/cue layout ran on the headset (single `.bin` and ISO on the PC and desktop, the ISO with the European disc only); progress on the board was seen in the log, not on screen; development mode's headset check predates 2.10's review fixes. The retrospective's verdict is accepted-with-open-items; its follow-ups are backlog tickets 11 to 15, and its document items were added to backlog ticket 7.
 
 ## References
 
