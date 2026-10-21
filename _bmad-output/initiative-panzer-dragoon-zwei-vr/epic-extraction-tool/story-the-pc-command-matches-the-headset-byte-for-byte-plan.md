@@ -3,7 +3,7 @@ title: 'The PC command matches the headset byte for byte'
 type: 'feature'
 ticket: '11'
 created: '2026-10-21'
-status: 'built'
+status: done
 baseline_revision: '433eebce7b2b341d919dd664ef068c48b2bb8625'
 route: 'oneshot'
 route_source: 'auto'
