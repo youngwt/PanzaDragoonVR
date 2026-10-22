@@ -308,7 +308,7 @@ PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
 
 ### What the game uses
 
-For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and one model, `e03.flyer` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the placeholder's tile size: one copy per 2 metres of ground and one per 20 metres of sky. Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and one model, `e03.flyer` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the tuning's tile size, by default one copy per 2 metres of ground and one per 20 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
 
 ### Copying a folder to the headset
 
@@ -319,9 +319,31 @@ tools/push-assets.sh --clear my-assets      # the same, emptying the headset's f
 tools/push-assets.sh --clear                # only empty it: the game runs on placeholders (also with a folder holding no files)
 ```
 
-`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the device scripts (`build-quest.sh`, `push-assets.sh` and `compare-headset.sh`) share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
+`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the device scripts (`build-quest.sh`, `push-assets.sh`, `push-tuning.sh` and `compare-headset.sh`) share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
 
 The app is not restarted. Start it again to see the change, with `tools/build-quest.sh` or from the headset's library.
+
+`--clear` empties the whole folder, so it removes a pushed `tuning.json` too; push it again afterwards.
+
+### Tuning the scene
+
+How deep the floor is, how high the canopy, how fast they scroll and their tile sizes come from an optional `tuning.json` at the top of the asset folder; whatever it leaves out, or gets wrong, keeps its built-in value. The fields, their ranges and what they mean are in the asset contract's "Tuning" section. `tools/tuning.example.json` holds the built-in values: copy it outside `tools/`, edit it, and push it:
+
+```sh
+cp tools/tuning.example.json my-tuning.json   # then edit, for example "floor_depth": 8
+tools/push-tuning.sh my-tuning.json           # copy it to files/tuning.json on the headset
+tools/push-tuning.sh --remove                 # remove it: the game uses the built-in values
+```
+
+`push-tuning.sh` checks that the file is JSON and copies it, under the name `tuning.json` whatever it was called, through `adb exec-in` as `push-assets.sh` does. The game checks each setting when it starts; nothing changes until the app is started again (`tools/build-quest.sh`, or from the headset's library), and nothing can be changed from inside the headset. On a desktop run, put `tuning.json` in the `PDZ_ASSETS` folder.
+
+The game logs what it uses at launch, for example:
+
+```
+PDZ-ASSETS tuning (from tuning.json and the built-ins): floor_depth 8, canopy_height 40, flight_speed 4, canopy_speed_scale 1, floor_tile 2, canopy_tile 20
+```
+
+or `tuning (built-in, no tuning.json): ...` when there is no file. A setting that is out of range or not a number, a field that is not a setting (a misspelt name, say) and a file that cannot be read each give a `PDZ-ASSETS tuning.json: ...` warning and a line on the board. The rules are in `game/Logic/Tuning.cs`.
 
 ### Reading what the game made of the folder
 
@@ -341,6 +363,8 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep PDZ-ASS
 | `<id>: using <file>` | That model is in use. |
 | `<id>: <reason>; using the placeholder for <id>` | That image or model had a problem: missing, wrong size, invalid entry, duplicate ID, wrong kind, not a PNG that can be decoded, or a model problem from the table in [Your own model in the headset](#your-own-model-in-the-headset). A warning. |
 | `supplied: <ids>; placeholders: <ids>` or `no asset was supplied: running on placeholders (...)` | The summary, last. |
+| `tuning (...): floor_depth <n>, ...` | The tuning the scene uses; see [Tuning the scene](#tuning-the-scene). |
+| `tuning.json: <problem>` | A problem with the tuning file; that setting, or every setting when the file cannot be read, keeps its built-in value. A warning. |
 
 An ID the manifest does not list gets its placeholder with no warning: that is the normal state before an image is supplied.
 
@@ -357,6 +381,7 @@ Its wording follows the launch table in the asset contract:
 | `The assets were made by a newer or older tool than this build understands` (amber) | `format` is not 1. Run the matching tool again. Everything is a placeholder. |
 | `<n> problems with the assets` (amber) | One line per problem, each starting with its ID: missing, incomplete or changed (size differs from `bytes`), invalid entry, duplicate ID, wrong kind, an image that cannot be decoded, or a model problem (see [Your own model in the headset](#your-own-model-in-the-headset)). Each affected ID shows its placeholder; the others load. |
 | `The asset folder could not be loaded` (amber) | Something the checks did not foresee went wrong; the reason is shown and everything is a placeholder. |
+| `<n> problems with tuning.json` (amber) | Only the tuning file has problems: one line each, naming the setting and its range, or the field that is not a setting, or why the file cannot be read. Those settings keep their built-in values. With other problems, the tuning file's are listed first, and a pale-blue notice turns amber. See [Tuning the scene](#tuning-the-scene). |
 | `Nothing was extracted from the disc image` (amber) | Extraction from the disc image in `disc/` could not run or failed; the next line says why, and the folder's own report follows. See [The board while extracting, and when it fails](#the-board-while-extracting-and-when-it-fails). While extraction runs, the board shows its progress instead. |
 
 The board shows at most 6 problems, then `and <n> more; the full list is in the log under PDZ-ASSETS`. Every line of the report, with nothing left out, is also logged as `PDZ-ASSETS report: <line>`:

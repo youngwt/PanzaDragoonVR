@@ -29,10 +29,11 @@ files/                 the asset folder (the output folder's contents on the PC)
   models/              suggested, not required
   disc/                the player's disc image, read by extraction on the headset; see Extraction
   development          an empty marker file: development mode; see Extraction
+  tuning.json          optional: the scene's tuning; see Tuning
 ```
 
 - There is one `manifest.json`, at the top level.
-- Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines.
+- Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines, and `tuning.json`, which Tuning defines. The manifest does not list `tuning.json`.
 - Files in the folder that the manifest does not list are ignored.
 
 ## The manifest
@@ -289,6 +290,45 @@ Extraction, when it runs, adds these:
 | The disc image cannot be read, or is not a Saturn disc | The disc image cannot be read, with the reason. | What the folder already holds. |
 | Extraction fails part way | Extraction failed, with the disc file and the reason. The previous contents are kept. | What the folder already holds. |
 
+Tuning adds these:
+
+| Situation | What the player is told | What is shown |
+|-----------|-------------------------|---------------|
+| No `tuning.json` | Nothing. | The built-in values. |
+| `tuning.json` cannot be read, is not valid JSON or is not one JSON object | The tuning file cannot be read, with the reason. | The built-in values. |
+| A setting is not a number or is out of its range | The setting's name and its allowed range. | The built-in value for that setting; the others as the file gives them. |
+| A field is not a setting, such as a misspelt name | The field's name. | Nothing changes; the field is ignored. |
+
+A tuning problem alone puts the board up, as an asset problem does; with other problems it is listed ahead of them, so the board always names it.
+
+## Tuning
+
+The floor's depth, the canopy's height, how fast they scroll and how much of each one copy of its image covers belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change is seen when the app is started again. It is never changed in the headset.
+
+`tuning.json` is one JSON object. Every field is optional and every value a number; the example holds the built-in values:
+
+```json
+{
+  "floor_depth": 4,
+  "canopy_height": 40,
+  "flight_speed": 4,
+  "canopy_speed_scale": 1,
+  "floor_tile": 2,
+  "canopy_tile": 20
+}
+```
+
+| Field | Range | Built-in | Meaning |
+|-------|-------|----------|---------|
+| `floor_depth` | 3 to 1000 | 4 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground; 4 m allows about a metre for its body below the rider. |
+| `canopy_height` | 2 to 1000 | 40 | Metres the canopy plane is above the play area's floor, so it is always above the head. |
+| `flight_speed` | 0 to 100 | 4 | Metres a second the floor's image moves past. |
+| `canopy_speed_scale` | 0 to 10 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
+| `floor_tile` | 0.1 to 1000 | 2 | Metres of floor one copy of its image covers. |
+| `canopy_tile` | 0.1 to 1000 | 20 | Metres of canopy one copy of its image covers. |
+
+Ranges include their ends. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
+
 ## Versioning
 
 - `format` rises only when a game built for the old number could misread the new manifest, or the files it lists: for example a change to what a model file contains that an older game would draw wrongly.
@@ -297,6 +337,6 @@ Extraction, when it runs, adds these:
 
 ## Not in the contract
 
-- **Tuning values.** Floor depth, canopy height and scroll speed belong to the game and are set in the headset.
+- **Tuning values in the manifest.** Floor depth, canopy height and scroll speed belong to the game. They are set in `tuning.json` (see Tuning), which the manifest does not list and `format` does not cover; they are never changed in the headset.
 - **Copyrighted files in the repository or the app.** Nothing the tool writes is committed or packed into the APK. The built-in placeholders are the author's own work.
 - **How the game reaches the folder from Godot.** Story 1.4 settles that; the contract fixes only the location.

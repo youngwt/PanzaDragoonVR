@@ -12,18 +12,13 @@ namespace PanzaDragoonVR;
 /// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
 /// 90 Hz and tells the frame-rate readout the rate it is running at. A disc image in the folder is
 /// extracted behind the scene, its progress on the same board, and the folder is read again when it ends.
-/// The ground and sky scroll past as though the player were flying forwards.
+/// The ground and sky scroll past as though the player were flying forwards, placed and paced by the
+/// asset folder's <c>tuning.json</c> or the built-in values.
 /// This file holds the scene and its assets; the other jobs are in the <c>Main.*.cs</c> files beside it:
-/// extraction, the board, the OpenXR session, the refresh rate and the scroll.
+/// extraction, the board, the OpenXR session, the refresh rate, the scroll and the tuning.
 /// </summary>
 public partial class Main : Node3D
 {
-    /// <summary>Metres of ground covered by one copy of the ground image.</summary>
-    private const float GroundTileMetres = 2.0f;
-
-    /// <summary>Metres of sky covered by one copy of the sky image.</summary>
-    private const float SkyTileMetres = 20.0f;
-
     private FrameRateReadout _readout = null!;
     private Shader _tiling = null!;
     private string? _folder;
@@ -81,8 +76,9 @@ public partial class Main : Node3D
         // The report is in the log already.
         OnBoard("the launch report", () => Board.Display(report));
 
-        _groundMaterial = Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
-        _skyMaterial = Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
+        PlacePlanes();
+        _groundMaterial = Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), _tuning.FloorTile);
+        _skyMaterial = Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), _tuning.CanopyTile);
         // The new images carry on from where the old ones had scrolled to.
         ApplyScroll();
         var cube = GetNode<FlyingCube>("Cube");
@@ -105,7 +101,8 @@ public partial class Main : Node3D
 
     /// <summary>
     /// The images and model the asset folder supplies, null for each placeholder, and the launch
-    /// report, for the caller to log once it is complete. The folder is found the first time.
+    /// report with the tuning file's problems, for the caller to log once it is complete. The folder
+    /// is found and the tuning read the first time.
     /// Whatever goes wrong in loading, the scene and OpenXR still start: everything is a placeholder
     /// and the report says loading failed.
     /// </summary>
@@ -142,6 +139,9 @@ public partial class Main : Node3D
             report = FailedReport(assets, reason);
         }
 
+        // The tuning is read once, from the folder found above (or none); its problems join every report.
+        ReadTuning();
+        report = report.WithTuningProblems(_tuningProblems);
         return (ground, sky, flyer, report);
     }
 

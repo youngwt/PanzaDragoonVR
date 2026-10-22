@@ -67,7 +67,7 @@ Build order and track for each capability are in `milestones.md`.
 - No full-body IK. Hands are floating controllers or guns.
 - Information lives in the world, not on a HUD. The radar is the one permitted HUD element.
 - Original assets are used as extracted, however rough they look in VR. No upscaled or redrawn art.
-- Floor depth and canopy height are tuning values set in the headset, not fixed up front.
+- Floor depth and canopy height are tuning values, not fixed up front: a small `tuning.json` in the asset folder, edited on the PC and pushed to the headset, read at launch.
 - Extracted images are checked by eye; there is no formal reference comparison.
 - Rez Infinite is the reference for reticle and aiming feel.
 - Every milestone ends in something that can be recorded in fifteen seconds.

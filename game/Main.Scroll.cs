@@ -7,23 +7,12 @@ namespace PanzaDragoonVR;
 /// <summary>
 /// The scene's scroll job: the ground and sky images slide along the direction of flight, the play
 /// area's forward (-Z), so their patterns travel towards +Z under and over the player. The planes stay
-/// where they are. The ground moves at a steady flight speed; the sky moves as a flat backdrop, at the
-/// same angle a second overhead as the ground below. The offsets outlast a re-dress after extraction.
+/// where they are. The ground moves at the tuning's steady flight speed; the sky moves as a flat backdrop,
+/// at the same angle a second overhead as the ground below, times the tuning's canopy speed scale (see
+/// <see cref="Tuning.CanopySpeed"/>). The offsets outlast a re-dress after extraction.
 /// </summary>
 public partial class Main
 {
-    /// <summary>Metres a second the ground's pattern moves past.</summary>
-    private const float FlightSpeed = 4.0f;
-
-    /// <summary>Metres the eye is assumed to be above the ground: the camera's height in the scene.</summary>
-    private const float EyeHeight = 1.6f;
-
-    /// <summary>Metres the sky plane is above the ground in the scene.</summary>
-    private const float SkyHeight = 40.0f;
-
-    /// <summary>Metres a second the sky's pattern moves past.</summary>
-    private static readonly float SkySpeed = PlaneScroll.SkySpeed(FlightSpeed, EyeHeight, SkyHeight - EyeHeight);
-
     private ShaderMaterial? _groundMaterial;
     private ShaderMaterial? _skyMaterial;
     private float _groundOffset;
@@ -32,8 +21,8 @@ public partial class Main
     /// <summary>Moves both images on by one frame's flight.</summary>
     private void Scroll(double delta)
     {
-        _groundOffset = PlaneScroll.Next(_groundOffset, FlightSpeed, (float)delta, GroundTileMetres);
-        _skyOffset = PlaneScroll.Next(_skyOffset, SkySpeed, (float)delta, SkyTileMetres);
+        _groundOffset = PlaneScroll.Next(_groundOffset, _tuning.FlightSpeed, (float)delta, _tuning.FloorTile);
+        _skyOffset = PlaneScroll.Next(_skyOffset, _tuning.CanopySpeed, (float)delta, _tuning.CanopyTile);
         ApplyScroll();
     }
 

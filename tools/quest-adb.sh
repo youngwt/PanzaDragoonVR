@@ -1,4 +1,4 @@
-# Sourced by build-quest.sh, push-assets.sh and compare-headset.sh: the app's package, adb on the host, and finding the
+# Sourced by build-quest.sh, push-assets.sh, push-tuning.sh and compare-headset.sh: the app's package, adb on the host, and finding the
 # one connected headset. See tools/README.md. Needs ANDROID_HOME (from toolchain-env.sh) and a 'die'
 # function from the script that sources it.
 
