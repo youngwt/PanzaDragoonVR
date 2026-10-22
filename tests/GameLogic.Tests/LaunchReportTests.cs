@@ -172,6 +172,20 @@ public sealed class LaunchReportTests : IDisposable
     }
 
     [Fact]
+    public void EmptyAssetList_CannotBeRead_ItListsNoAssets()
+    {
+        Manifest(WithAssets());
+
+        LaunchReport report = Report();
+
+        Assert.Equal(LaunchReportKind.Problems, report.Kind);
+        Assert.Equal("The asset manifest cannot be read", report.Heading);
+        Assert.Equal("manifest.json: lists no assets", Assert.Single(report.Problems));
+        Assert.Contains(report.ShownLines, line => line.Contains("placeholders for everything"));
+        Assert.Contains("- manifest.json: lists no assets", report.AllLines);
+    }
+
+    [Fact]
     public void ManifestNotUtf8_CannotBeRead()
     {
         Put(AssetManifest.FileName, new byte[] { (byte)'{', 0xFF, (byte)'}' });

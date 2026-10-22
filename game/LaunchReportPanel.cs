@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using Godot;
 using PanzaDragoonVR.Logic;
 
@@ -9,6 +10,7 @@ namespace PanzaDragoonVR;
 /// with the report's lines on it. It is placed in the scene, not on the camera, so it does not follow
 /// the head; the spec allows only the radar as a HUD element. Hidden when there is nothing to say,
 /// and otherwise shown for as long as the app runs (dismissing it comes with controller input).
+/// While extraction runs, the same board shows its progress instead.
 /// </summary>
 public partial class LaunchReportPanel : Node3D
 {
@@ -29,9 +31,21 @@ public partial class LaunchReportPanel : Node3D
             return;
         }
 
+        PutOnBoard(report.ShownLines, report.Kind == LaunchReportKind.Problems);
+    }
+
+    /// <summary>
+    /// Shows extraction's progress on the same board, in the notice colour, while it runs; the launch
+    /// report takes the board back with <see cref="Display"/> when it finishes.
+    /// </summary>
+    public void DisplayProgress(IReadOnlyList<string> lines) => PutOnBoard(lines, problem: false);
+
+    /// <summary>Puts <paramref name="lines"/> on the board, which grows to fit them, and shows it.</summary>
+    private void PutOnBoard(IReadOnlyList<string> lines, bool problem)
+    {
         var text = GetNode<Label3D>("Text");
-        text.Text = string.Join("\n", report.ShownLines);
-        text.Modulate = report.Kind == LaunchReportKind.Notice ? NoticeColour : ProblemColour;
+        text.Text = string.Join("\n", lines);
+        text.Modulate = problem ? ProblemColour : NoticeColour;
 
         // The board grows with the lines on it: a short notice gets a short board.
         var board = GetNode<MeshInstance3D>("Board");

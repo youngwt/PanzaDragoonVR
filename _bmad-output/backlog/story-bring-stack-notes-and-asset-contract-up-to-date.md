@@ -15,7 +15,7 @@ risk: low
 
 ## Description
 
-`stack.md` and the asset contract stop saying things the engine spike proved false or settled, and the contract records where it and the code differ, with the author choosing which wins in each case.
+`stack.md` and the asset contract stop saying things the engine spike proved false or settled, and the contract records where it and the code differ, with the author choosing which wins in each case; the extractor gains the contract's "not a Saturn disc" check.
 
 ## Acceptance Criteria
 
@@ -26,6 +26,7 @@ Verify: every stale statement and every difference listed in the retrospective's
 - parent — none
 - retrospective — _bmad-output/initiative-panzer-dragoon-zwei-vr/epic-engine-spike/epic-engine-spike-retrospective.md, findings S2 and S4; action A5
 - contract — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/asset-contract.md
+- retrospective — _bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/epic-extraction-tool-retrospective.md, findings R8, S2 and S3; action A3
 - stack — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/stack.md
 
 ## Notes
@@ -33,3 +34,5 @@ Verify: every stale statement and every difference listed in the retrospective's
 - Source: carried out of the engine spike epic at its close (author, 2026-10-16); kept in the backlog for a possible backlog epic later.
 - Hitl: the contract is the author's agreement; changes to it need the author's yes.
 - The empty asset list is story 1, not this one.
+- Added at the in-game extraction epic's close (author, 2026-10-21): also the extraction epic's doc items: add `extracting/` to the contract's fixed folder names; record the texture numbering rule (the record scan and the fits-the-`.CGB` filter) in the contract or the formats notes; `stack.md` saying the library is "not built yet"; `zwei-disc-formats.md` calling mode 5 "Not handled"; the spec's answered palette question; the contract's "Story 1.4 settles that".
+- Decision: keep the contract's "not a Saturn disc" row and add the check to the extractor: a disc image whose header does not start with the Saturn's `SEGA SEGASATURN` mark is reported as not a Saturn disc and nothing is extracted (author, 2026-10-21). This makes the ticket a code change as well as a document one.

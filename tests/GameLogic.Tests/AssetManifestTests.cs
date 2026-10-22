@@ -178,14 +178,26 @@ public sealed class AssetManifestTests : IDisposable
     }
 
     [Fact]
-    public void EmptyAssetList_IsReadAndListsNothing()
+    public void EmptyAssetList_IsUnreadable_AndEveryIdIsUnlisted()
     {
         Manifest(WithAssets());
 
         ManifestRead read = Load();
 
-        Assert.Equal(ManifestStatus.Read, read.Status);
+        Assert.Equal(ManifestStatus.Unreadable, read.Status);
+        Assert.Equal("manifest.json: lists no assets", read.Problem);
         Assert.Equal(AssetLookupStatus.NotListed, read.Find(Floor, AssetManifest.ImageKind).Status);
+    }
+
+    [Fact]
+    public void UnsupportedFormatWithAnEmptyAssetList_IsTheUnsupportedFormat()
+    {
+        Manifest("""{ "format": 2, "generator": "test", "source": null, "assets": [] }""");
+
+        ManifestRead read = Load();
+
+        Assert.Equal(ManifestStatus.UnsupportedFormat, read.Status);
+        Assert.Contains("unsupported format 2", read.Problem);
     }
 
     // ------------------------------------------------------------ bad manifest

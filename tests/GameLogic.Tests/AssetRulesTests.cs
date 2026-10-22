@@ -16,6 +16,7 @@ namespace PanzaDragoonVR.Logic.Tests;
 public sealed class AssetRulesTests
 {
     private const string NotValidJsonCase = "unreadable_manifest";
+    private const string WholeLineCase = "whole_line";
 
     public static string CasesFolder { get; } = FindCases();
 
@@ -40,6 +41,7 @@ public sealed class AssetRulesTests
         using JsonDocument expected = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(folder, "expected.json")));
         string[] lines = expected.RootElement.GetProperty("problems").EnumerateArray().Select(line => line.GetString()!).ToArray();
         bool unreadable = expected.RootElement.TryGetProperty(NotValidJsonCase, out JsonElement flag) && flag.GetBoolean();
+        bool wholeLine = expected.RootElement.TryGetProperty(WholeLineCase, out JsonElement whole) && whole.GetBoolean();
 
         ManifestRead read = AssetManifest.Load(folder);
         LaunchReport report = LaunchReport.Build(folder, read, LookUpEveryEntry(folder, read));
@@ -48,7 +50,14 @@ public sealed class AssetRulesTests
         {
             Assert.Equal(ManifestStatus.Unreadable, read.Status);
             string problem = Assert.Single(report.Problems);
-            Assert.StartsWith(Assert.Single(lines), problem, StringComparison.Ordinal);
+            if (wholeLine)
+            {
+                Assert.Equal(Assert.Single(lines), problem);
+            }
+            else
+            {
+                Assert.StartsWith(Assert.Single(lines), problem, StringComparison.Ordinal);
+            }
         }
         else
         {

@@ -52,3 +52,15 @@
 - source_plan: `_bmad-output/backlog/spike-move-off-net-9-before-its-support-ends-plan.md`
   summary: Move to Godot 4.8 stable and target `net10.0` on Android, so the APK leaves .NET 9, which gets no security fixes after 2026-11-10. The toolchain, the unit tests and the desktop build are already on .NET 10.
   evidence: Godot 4.7.2's prebuilt Android export templates need exactly `net9.0`; a `net10.0` project fails to export (godot#118989). The fix, godot#123738, merged to master on 2026-09-26 for 4.8, makes `net10.0` the minimum and moves Android to .NET 10; nothing shows it backported to 4.7.x. Godot 4.8 beta 1 came out on 2026-10-15; stable is expected in Q4 2026 and may land after 2026-11-10. Microsoft ends .NET 9 support on 2026-11-10. Unknown - whether the Meta vendor plugin 5.1.0 works with Godot 4.8. On 2026-10-16 the APK built by the .NET 10 SDK showed ".NET 9.0.21" in the headset.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-every-accepted-disc-image-layout-is-read-plan.md`
+  summary: A `disc/` folder holding a cue sheet and the `.iso` it names (`FILE "game.iso" BINARY`, `TRACK 01 MODE1/2048`) counts as two disc images and extracts nothing, though the cue path could read it; decide whether an `.iso` named by the one cue sheet belongs to it.
+  evidence: Review of ticket 2.4, 2026-10-17. The asset contract accepts "a .cue with the .bin files it names, or one .iso", so this follows the contract as written; the README now tells the player to keep only the `.iso`. Some dumps ship this way.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-extraction-runs-behind-a-progress-board-and-falls-back-on-fa-plan.md`
+  summary: The launch report and progress board can stand behind the player: it is placed at a fixed spot ahead of the play area's origin, not ahead of where the headset faces when the app starts. Place it in front of the head's starting direction.
+  evidence: The author, 2026-10-18, on the Quest 3 during ticket 2.9's damaged-image check: "the board is behind me when I view it, can you move it to the front in future?"
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/epic-extraction-tool.md`
+  summary: The item about the board standing behind the player moved into the extraction epic as story 2.13.
+  evidence: The author asked for it as its own entry in the epic, 2026-10-18.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/story-the-launch-report-board-stands-in-front-of-the-player-plan.md`
+  summary: The item about the board standing behind the player is closed; the board now stands in front of where the head faces once the headset tracks it, and again after a recentre.
+  evidence: Built as story 2.13 in commit f615b97, marked done on 2026-10-21 (commit 8cc9fa1).

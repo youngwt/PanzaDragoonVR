@@ -191,20 +191,24 @@ On a desktop the same lines go to Godot's own output, each starting with `PDZ-FP
 
 ## Unit tests
 
-`test.sh` runs the unit tests on this computer: the Python tests in `tests/tools/`, then the C# tests in `tests/GameLogic.Tests/`. No headset is needed, and it takes a few seconds. It exits non-zero if either set fails.
+`test.sh` runs the unit tests on this computer: the Python tests in `tests/tools/`, then the C# tests in `tests/GameLogic.Tests/` and `tests/Decoding.Tests/`. No headset is needed, and it takes a few seconds. It exits non-zero if any set fails.
 
 ```sh
 tools/test.sh                         # run every test, Python and C#
 tools/test.sh --filter FrameStats     # extra arguments go to `dotnet test`; only the C# tests run
 ```
 
+With a filter, each C# project runs it, so the one with no matching test says so; that is not a failure.
+
 The Python tests cover the scripts in `tools/`, at present the manifest writer and the test model writer. They use `unittest` from the standard library and work in temporary folders.
 
-The C# tests cover the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest and its check of a model file (`game/Logic/GlbCheck.cs`). The test project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside the test project, both git-ignored.
+`tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, its check of a model file (`game/Logic/GlbCheck.cs`), and the development and release mode decision and the deletion of the disc image (`game/Logic/ExtractionMode.cs`), with a case for each: development mode, release mode on a first launch, a folder already extracted from the same disc or from a different one, a failed extraction (the image kept), no disc, a deletion failing and a hand-written manifest. That project compiles those files itself and does not reference Godot. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
+
+`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, finding `EPISODE3.PRG`'s colour upload tables and decoding modes 4 and 0 from them, the PNG writer, and extraction as a whole, with a case for each behaviour (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures; two colour tables, one, none, a bad pair, a colour code no pair filled, and modes 1 and 5 unchanged; the staging folder: none left behind, progress by disc file, the previous extraction kept while writing and replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error; the list of a disc image's own files, which release mode deletes). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
 
 ### Shared asset-rule cases
 
-`tools/manifest.py` and the game's `AssetManifest` apply the same asset contract in two languages. So that they cannot drift apart unseen, both suites run one set of cases on disk, in `tests/fixtures/asset-rules/`. Each case is a small asset folder: a `manifest.json`, the files it lists, and `expected.json` with the problem lines, in order, that the game's launch report gives for it and `write_manifest.py --check` must give too. For a manifest that cannot be read at all, `expected.json` says `"unreadable_manifest": true` and only the start of the one line, `manifest.json: is not valid JSON`, is compared, since the two JSON readers word the detail differently. `"pc_notices"` lists notices only the PC gives.
+`tools/manifest.py` and the game's `AssetManifest` apply the same asset contract in two languages. So that they cannot drift apart unseen, both suites run one set of cases on disk, in `tests/fixtures/asset-rules/`. Each case is a small asset folder: a `manifest.json`, the files it lists, and `expected.json` with the problem lines, in order, that the game's launch report gives for it and `write_manifest.py --check` must give too. For a manifest that cannot be read at all, `expected.json` says `"unreadable_manifest": true` and only the start of the one line, `manifest.json: is not valid JSON`, is compared, since the two JSON readers word the detail differently; with `"whole_line": true` as well, as for the empty asset list (`manifest.json: lists no assets`), the whole line is compared. `"pc_notices"` lists notices only the PC gives.
 
 `tests/tools/test_asset_rules.py` runs every case through `check_report`, runs the model cases through `write_manifest.py --check` and through write mode, checks that the good case's model is `make_test_model.py`'s output byte for byte, and checks that the folders are exactly what `make_cases.py` writes. `tests/GameLogic.Tests/AssetRulesTests.cs` reads every case with `AssetManifest.Load`, looks each entry up with its own kind when that is `image` or `model`, and merges the lines as `LaunchReport.Build` does.
 
@@ -272,7 +276,7 @@ python3 tools/write_manifest.py --check my-assets
 
 This reads `manifest.json` and the files it lists and changes nothing. It is a preview of the launch report: where the game applies a rule too, the line is the one the game shows in the headset, and the lines come in the game's order, first the problems with the entries themselves, then each file's. It reports every problem, not only the first, and exits with status 1 if there is one:
 
-- a manifest that is absent, unreadable or of an unsupported `format`. As in the game, `NaN`, `Infinity` and nesting deeper than 64 arrays and objects make it unreadable, and absent or mistyped top-level fields are reported on one line;
+- a manifest that is absent, unreadable or of an unsupported `format`, or that lists no assets (`manifest.json: lists no assets`; a manifest of another `format` is reported as that even with no assets). As in the game, `NaN`, `Infinity` and nesting deeper than 64 arrays and objects make it unreadable, and absent or mistyped top-level fields are reported on one line;
 - an invalid entry: a field absent or of the wrong type, an invalid ID or path, a negative `bytes`, or an `id` or `path` holding a lone surrogate escape such as `"\ud800"`. All of an entry's field problems share one line;
 - a duplicate ID, which drops every entry with that ID, as the game does;
 - a file that is missing, not a file, of another size (`incomplete or changed`), or not of its kind: an image that is not an 8-bit RGB or RGBA PNG (`unreadable image`), or a model the game rejects, by the whole table in [When a model is rejected](#when-a-model-is-rejected);
@@ -292,9 +296,9 @@ On the headset the asset folder is the app's external files folder:
 /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/
 ```
 
-`manifest.json` goes directly inside `files/`. The game reads the folder once, when it starts. Nothing in the folder is packed into the APK.
+`manifest.json` goes directly inside `files/`. The game reads the folder when it starts, and again when extraction from a disc image in `disc/` ends (see [On the headset](#on-the-headset)). Nothing in the folder is packed into the APK.
 
-How the game reaches it: it asks Android, through Godot's `AndroidRuntime` bridge, for `getApplicationContext().getExternalFilesDir(null)`, which also creates the folder if it is absent. If that cannot be asked or gives nothing, it uses the fixed path `/storage/emulated/0/Android/data/io.github.youngwt.panzadragoonvr/files` (the same folder; `/sdcard` links to `/storage/emulated/0`) and logs that it did. Extraction on the headset (epic 2) writes to this same folder. The code is in `game/AssetFolder.cs`; the manifest rules the game applies are in `game/Logic/AssetManifest.cs`, which follows the asset contract as `tools/manifest.py` does.
+How the game reaches it: it asks Android, through Godot's `AndroidRuntime` bridge, for `getApplicationContext().getExternalFilesDir("")`, which also creates the folder if it is absent, and logs `asset folder from Android: <path>`. The argument is an empty string, not `null`: Godot's bridge cannot match the method's `String` parameter to a null value and returns nothing without an error, which until ticket 2.8 made every Quest launch fall back. If Android cannot be asked or gives nothing, it uses the fixed path `/storage/emulated/0/Android/data/io.github.youngwt.panzadragoonvr/files` (the same folder; `/sdcard` links to `/storage/emulated/0`) and logs that it did. Extraction on the headset (epic 2) writes to this same folder. The code is in `game/AssetFolder.cs`; the manifest rules the game applies are in `game/Logic/AssetManifest.cs`, which follows the asset contract as `tools/manifest.py` does.
 
 On a desktop run the game reads the folder named by the `PDZ_ASSETS` environment variable, and runs on placeholders when it is unset:
 
@@ -315,7 +319,7 @@ tools/push-assets.sh --clear my-assets      # the same, emptying the headset's f
 tools/push-assets.sh --clear                # only empty it: the game runs on placeholders (also with a folder holding no files)
 ```
 
-`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the two scripts share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
+`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the device scripts (`build-quest.sh`, `push-assets.sh` and `compare-headset.sh`) share the app's package name, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
 
 The app is not restarted. Start it again to see the change, with `tools/build-quest.sh` or from the headset's library.
 
@@ -331,7 +335,7 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep PDZ-ASS
 | Line | Meaning |
 |------|---------|
 | `no manifest.json in <folder>: running on placeholders` | The folder is empty or has no manifest. Not an error. |
-| `the manifest cannot be read: <reason>; running on placeholders` | Not JSON, a byte-order mark, or a required field absent or of the wrong type. A warning. |
+| `the manifest cannot be read: <reason>; running on placeholders` | Not JSON, a byte-order mark, a required field absent or of the wrong type, or an empty `assets` list (`manifest.json: lists no assets`). A warning. |
 | `manifest.json: unsupported format <n>; ...` | Made by a newer or older tool; run the matching tool again. A warning. |
 | `<id>: using <file> (<w> x <h>)` | That image is in use. |
 | `<id>: using <file>` | That model is in use. |
@@ -349,10 +353,11 @@ Its wording follows the launch table in the asset contract:
 | Board | Meaning |
 |-------|---------|
 | `Running on placeholders` (pale blue) | There is no `manifest.json` in the folder (on a desktop: `PDZ_ASSETS` is unset). Not an error; the folder path is shown. |
-| `The asset manifest cannot be read` (amber) | Not JSON, not UTF-8, a byte-order mark, or a required field absent or of the wrong type. The reason is on the next line. Everything is a placeholder. |
+| `The asset manifest cannot be read` (amber) | Not JSON, not UTF-8, a byte-order mark, a required field absent or of the wrong type, or an empty `assets` list (`manifest.json: lists no assets`). The reason is on the next line. Everything is a placeholder. |
 | `The assets were made by a newer or older tool than this build understands` (amber) | `format` is not 1. Run the matching tool again. Everything is a placeholder. |
 | `<n> problems with the assets` (amber) | One line per problem, each starting with its ID: missing, incomplete or changed (size differs from `bytes`), invalid entry, duplicate ID, wrong kind, an image that cannot be decoded, or a model problem (see [Your own model in the headset](#your-own-model-in-the-headset)). Each affected ID shows its placeholder; the others load. |
 | `The asset folder could not be loaded` (amber) | Something the checks did not foresee went wrong; the reason is shown and everything is a placeholder. |
+| `Nothing was extracted from the disc image` (amber) | Extraction from the disc image in `disc/` could not run or failed; the next line says why, and the folder's own report follows. See [The board while extracting, and when it fails](#the-board-while-extracting-and-when-it-fails). While extraction runs, the board shows its progress instead. |
 
 The board shows at most 6 problems, then `and <n> more; the full list is in the log under PDZ-ASSETS`. Every line of the report, with nothing left out, is also logged as `PDZ-ASSETS report: <line>`:
 
@@ -398,6 +403,170 @@ Missing files, wrong sizes and the other manifest problems read as they do for i
 
 `write_manifest.py` applies the same checks, in the same order and words, when it writes a manifest and with `--check`, so a model it passes is not rejected for any reason above except two it cannot see: an image inside the file that the engine cannot decode, and a load that fails in the engine.
 
+## Extracting from your own disc
+
+The game extracts the textures from the player's own disc image itself, on the headset, at launch. A PC command runs the same code on the PC, so the files can be looked at and checked there. Both use one C# library, `lib/PdzDecoding/`, which holds everything the project knows about the Saturn disc and uses no Godot types. It targets `net9.0` for the APK and `net10.0` for the desktop game, the PC command and the tests; the game references it as a project, and the APK carries `PdzDecoding.dll`.
+
+### What is extracted
+
+The textures of the nine Episode 3 files the asset contract names (`E03CMN`, `E03B0N0` to `E03B0N2`, `E03B1N0` to `E03B1N2`, `E03BOSS`, `E03END`), in the four colour modes they use: 16 colours through a lookup table (mode 1), true colour (mode 5), and the colour-bank modes, 256 colours (mode 4) and 16 colours (mode 0).
+
+**Disc images.** Any layout the asset contract accepts is read: a cue sheet whose track 1 is MODE1/2352 or MODE1/2048, with one `.bin` per track or one `.bin` holding every track, or a plain `.iso` of 2048-byte sectors (the data track alone). Track 1 is read from its `INDEX 01`; the Saturn header at its sector 0 gives the disc's product and version, and its ISO9660 file system starts at sector 16. CHD and other compressed images, and a MODE2 or audio track 1, are not read.
+
+**Names and numbers.** Each texture is written as `images/e03/<file>/<n>.png`, `<file>` being the disc file's name in lowercase, numbered from `0000` as the asset contract's "Extracted textures" says: in the order its first drawing record appears in the file's `.MDB`, with a record whose four words all equal an earlier one's taking no new number.
+
+**Colours for modes 4 and 0.** The colour-bank modes take their colours from VDP2 colour RAM, which Episode 3 fills from colour upload tables in `EPISODE3.PRG`. The tool finds the tables by their pattern (a destination of `0x25F00000` then a source address `0x060xxxxx`, pairs running until the first destination that is not `0x25Fxxxxx`), builds colour RAM from the second when there are two or more, else from the only one, and colours each pixel as `zwei-disc-formats.md`, "Palettes for colour banks", says; a colour code no pair filled is black, and a pair whose source lies outside the file is skipped and named. The colours come from the disc, never from a save state. On the author's disc the table used is the one at 0xE23C. A disc with no `EPISODE3.PRG`, or no table in it, leaves the mode 4 and mode 0 textures out with a notice saying why; they keep their numbers, so there may be gaps.
+
+**Files the disc lacks.** A file of the nine that the disc lacks (its `.MDB` or its `.CGB`) is left out and named, and the others are still extracted; a disc with none of the nine is an error. A file with nothing to write gets no folder.
+
+On the author's disc that is 420 textures in nine folders, nothing left out: 250 in modes 1 and 5, 161 in mode 4 and 9 in mode 0.
+
+### What is written
+
+**The manifest.** After the PNGs, extraction writes `manifest.json` at the top of the output folder, as the asset contract's "What extraction writes" fixes it: `format` 1, `generator` `pdz-extract 0.1` (the library's version), `source` the disc's product and version, and one `image` entry per PNG written, sorted by ID, with its `bytes` and `sha256`, in the same text `write_manifest.py` writes. It replaces any manifest already there; files extraction did not write stay but are no longer listed. When no texture was written, no manifest is written and any there is left alone. `write_manifest.py --check` passes on the folder.
+
+**The staging folder.** Everything goes through a staging folder, as the contract's "What extraction writes" says: the PNGs and then the manifest are written into `extracting/` inside the output folder, which is emptied first (a leftover from an interrupted run is cleared that way); only when every one is written are they moved into place, `manifest.json` last, and `extracting/` removed. A failure before that, such as a full disk, moves nothing, so the previous files and manifest stay as they were. The PC command and the game share this.
+
+**The PNGs** are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: `E03B0N0`'s 28 textures take 110 KB instead of 15 KB.
+
+The game's scene uses none of the extracted texture IDs: it shows `e03.floor`, `e03.canopy` and `e03.flyer`, or their placeholders, but it reads the manifest with no problem.
+
+### On the PC
+
+```sh
+dotnet run --project tools/pdz-extract -- "rom/JP/Panzer Dragoon II Zwei (Japan).cue" extracted/pdz-extract
+```
+
+```
+pdz-extract: disc GS-9049 V1.001
+pdz-extract: modes 0 and 4 coloured from the colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks
+pdz-extract: wrote 420 textures from 9 disc files to /.../extracted/pdz-extract/images/e03
+pdz-extract: wrote /.../extracted/pdz-extract/manifest.json listing 420 assets
+pdz-extract:   E03CMN: 125 written
+pdz-extract:   E03B0N0: 28 written
+...
+pdz-extract:   E03END: 45 written
+```
+
+Check the folder against its manifest:
+
+```sh
+python3 tools/write_manifest.py --check extracted/pdz-extract
+```
+
+```
+420 assets checked in extracted/pdz-extract: no problems
+```
+
+The European disc's ISO reads the same way, and gives the same 420 files, byte for byte; only the manifest's `source` differs:
+
+```sh
+dotnet run --project tools/pdz-extract -- "rom/PAL/Panzer Dragoon II Zwei (Europe).iso" extracted/pdz-extract-pal
+```
+
+```
+pdz-extract: disc MK-81022 V1.000
+pdz-extract: modes 0 and 4 coloured from the colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks
+pdz-extract: wrote 420 textures from 9 disc files to /.../extracted/pdz-extract-pal/images/e03
+pdz-extract: wrote /.../extracted/pdz-extract-pal/manifest.json listing 420 assets
+...
+```
+
+`pdz-extract <disc.cue|disc.iso> <output folder>` writes the same files, with the same names and bytes, that the game writes in its asset folder, into the output folder, `manifest.json` included. Write it under `extracted/`, which is git-ignored: the files come from the disc. `-h` prints the usage. An error is one line, `pdz-extract: error: <line>`, and the exit status is 1: no such file, a file that is neither a `.cue` nor an `.iso`, a cue sheet naming a missing `.bin` or with another kind of track 1 (the error names the mode found), no ISO9660 volume at sector 16, or a disc with none of the nine files (the error names them). The second line names the colour table used, with any pair skipped (`; skipped: the pair at 0x... (destination 0x..., source 0x...)`), or, when there is none, reads `no colours for modes 0 and 4: the disc has no EPISODE3.PRG; those textures are left out` (or `EPISODE3.PRG holds no colour upload table`, or `EPISODE3.PRG cannot be read (<reason>)`, after which modes 1 and 5 are still written); that is a notice, not an error. One line per disc file follows the total, with any textures left out by mode, such as `E03CMN: 8 written (1 in mode 0, 116 in mode 4 left out)`: a file the disc lacks reads `<file>: not on the disc (no <file>.MDB)` or `(no <file>.CGB)`, naming whichever is absent (the `.MDB` when both are), and one whose `.MDB` holds no record that fits its `.CGB` reads `<file>: no textures`. Every texture of every file is decoded before any file is written, so a decoding error writes nothing, and a file with no texture to write gets no folder. A write that fails part way, such as a full disk, writes only into `extracting/`, so the output folder keeps what it held; no `extracting/` is left behind either way, unless it cannot be removed, when the next run empties it.
+
+### On the headset
+
+The game looks in `disc/` inside its asset folder, `/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc/`. When that holds one disc image, a `.cue` sheet with its `.bin` files or one `.iso`, it extracts at launch and writes the PNGs into `files/images/e03/<file>/` and `manifest.json` into `files/`, through `files/extracting/`, byte for byte as the PC command writes them for the same disc. Whether it extracts, and whether the disc image stays, depends on the mode (see [Development and release modes](#development-and-release-modes)).
+
+#### Putting your disc image on the headset
+
+Copy your disc image there with the host's `adb`: for the Japanese dump about 475 MB, the `.cue` and its four `.bin` files; for the European ISO, the one `.iso` of about 390 MB. The home folder is shared with the host, so the host's `adb` can read the dumps in `rom/JP/` and `rom/PAL/` directly (outside the Flatpak sandbox, drop `flatpak-spawn --host`). Do not use `push-assets.sh` for it, which checks a manifest.
+
+```sh
+. tools/toolchain-env.sh
+adb() { flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" "$@"; }
+dir=/sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/disc
+adb shell mkdir -p "$dir"
+for f in "$PWD/rom/JP"/*.cue "$PWD/rom/JP"/*.bin; do adb push "$f" "$dir/"; done
+# or, instead (one image only in disc/):
+# adb push "$PWD/rom/PAL/Panzer Dragoon II Zwei (Europe).iso" "$dir/"
+```
+
+Then start the app. To check what it extracted against the PC, see [The PC and the headset write the same files](#the-pc-and-the-headset-write-the-same-files).
+
+#### Development and release modes
+
+The asset contract's "Development and release modes" fixes two modes, decided at each launch from the asset folder alone, whatever the build:
+
+- **Development mode** is on when an empty file named `development` sits at the top of the asset folder, `files/development`. The game extracts on every launch and keeps the disc image.
+- **Release mode** is the mode without that file. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the extractor (its `generator` starts `pdz-extract ` with the space) from a disc with the same `source` product and version as the image's Saturn header; then it skips extraction. After a successful extraction, and after such a skip, it deletes the disc image.
+
+What release mode deletes is the image's own files only: the `.cue` and every `.bin` it names that sits inside `disc/` (a subfolder counts, but never anything outside `disc/`), or the `.iso`. `disc/` itself and anything else in it stay. The `.cue` goes first; if it cannot be deleted, the `.bin` files are kept with it. Nothing is deleted after a failed extraction, which keeps the previous contents as before; a successful one deletes the image even when it found nothing to write. A deletion that fails is logged as one warning and the game carries on. A hand-written manifest (`hand-written`, or any `generator` not starting `pdz-extract `) or one from another disc is never a reason to skip. The PC command has no modes: it always extracts and never deletes anything.
+
+Turn development mode on and off on the headset with the host's `adb` (set up as above):
+
+```sh
+adb shell touch /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/development   # on: extract every launch, keep the image
+adb shell rm /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/development      # off: release mode
+```
+
+In release mode the image is gone after the first launch that extracts; push it again (above) to extract again, after removing `manifest.json` or with a disc of another product or version.
+
+#### The board while extracting, and when it fails
+
+The scene does not wait for extraction. The game reads the folder as it is, then starts extraction on a background thread, which runs the decoding library alone (nothing on that thread touches the engine), and at once, without waiting for it, dresses the scene and starts OpenXR and the frame-rate readout. While it runs, the launch report's board shows its progress instead, in pale blue: `Extracting the assets from your disc image`, the disc image's name, the step under way (`Reading E03B0N0 (2 of 9)`, `Writing E03B0N0 (2 of 9)`, then `Moving the new files into place`) and that the scene shows what the folder already holds until then. Each step is also logged, one `PDZ-ASSETS extracting: ...` line each. The full Japanese disc takes about 0.3 s on the Quest 3, so the board may only flash. When extraction ends the game reads the folder again, dresses the ground, sky and flyer in what it now holds, and puts the launch report back on the board.
+
+When extraction cannot run or fails, the board says so and the game carries on with what the folder held, or placeholders. The board's heading is `Nothing was extracted from the disc image` (amber), then one of these lines, worded as the asset contract's extraction rows, then `The scene shows what the asset folder already holds.` and the folder's own report, if it has one:
+
+| Board line | Meaning |
+|------------|---------|
+| `More than one disc image in <folder>/disc (<names>). Nothing is extracted; leave only one.` | More than one `.cue` or `.iso`. |
+| `The disc image cannot be read: <reason>.` | The image as a whole cannot be read: a missing `.bin`, no ISO9660 volume, another kind of track 1, or none of the nine files. |
+| `Extraction failed on <disc file>: <reason>. The previous contents are kept.` | A disc file could not be read, such as one past the end of a cut-short image; nothing was moved into place. |
+| `Extraction failed: <reason>. The previous contents are kept.` | Something else failed before the move, such as a full disk while writing into `extracting/` or emptying a leftover one; nothing was moved into place. |
+| `Extraction failed while moving files into place: <reason>. Some new files may already be in place; the previous manifest is kept.` | A move failed part way. The manifest is moved last, so the previous one stays; a new PNG that replaced an old one at the same path shows as changed against it. |
+
+A damaged image tried on the PC: the Japanese track 1 cut to 30 MB gives `Extraction failed on E03CMN: Panzer Dragoon II Zwei (Japan) (Track 1).bin: the image ends inside sector 50310. The previous contents are kept.`, and the folder's files and manifest are unchanged.
+
+#### Reading the log
+
+Read the log while the app is running (with `adb` set up as above):
+
+```sh
+adb logcat -d | grep PDZ-ASSETS
+adb shell ls /sdcard/Android/data/io.github.youngwt.panzadragoonvr/files/images/e03/
+```
+
+| Line | Meaning |
+|------|---------|
+| `extracted <n> textures from <m> disc files of <product> <version> into <folder>/images/e03, listed in <folder>/manifest.json, in <s> s (<details>)` | Extraction ran; `<n>` PNGs were written, from the `<m>` disc files that gave at least one, and the manifest listing them. `<details>` gives the PNGs per file (`E03CMN 125, E03B0N0 28, ...`), then the colour table modes 0 and 4 came from (`colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks`, with any pair skipped) or why there is none (`no colours for modes 0 and 4: the disc has no EPISODE3.PRG`, or `EPISODE3.PRG holds no colour upload table`), then, when there are any, the textures left out by colour mode (`left out: mode 0 9, mode 4 161`), the files the disc lacks (`missing: E03END (no E03END.MDB)`, or `.CGB`, whichever is absent) and the files with no textures (`no textures in: ...`). |
+| `<mode>: no disc image in <folder>/disc: nothing to extract` | `disc/` is absent or holds no `.cue` and no `.iso`; `<mode>` is `development mode` or `release mode`. Nothing is extracted or deleted. Not an error. |
+| `more than one disc image in <folder>/disc (<names>): nothing extracted` | A warning: more than one `.cue` or `.iso`, such as a cue sheet and an ISO together; remove all but one. A cue sheet's `.bin` files are part of it and do not count, but an `.iso` does, even one the cue sheet names: for a cue sheet that points at an `.iso`, keep only the `.iso`. |
+| `development mode (development is in <folder>): extracting from <image> in the background into <folder>; the disc image is kept` | Development mode: extraction has started in the background; the scene does not wait for it. |
+| `release mode: extracting from <image> in the background into <folder>; the disc image is deleted after a successful extraction` | Release mode, and the folder was not extracted from this disc: extraction has started in the background. |
+| `release mode: <folder> is already extracted from <product> <version>: not extracting again; deleting the disc image <image>` | Release mode, and the folder's manifest is the extractor's from the same disc: nothing is extracted, and the image is deleted. |
+| `release mode: deleted the disc image <image> (<files>)` | Release mode, after a successful extraction or a skip: the files named were deleted. |
+| `release mode: the disc image <image> could not be deleted (<file>: <error>; ...); carrying on` | A warning, one line for every file that could not be deleted. When the `.cue` or `.iso` itself cannot go, nothing else of the image is deleted. The game carries on. |
+| `extracting: reading <file> (<n> of 9)`, `extracting: writing <file> (<n> of 9)`, `extracting: moving the new files into place` | Each step, as the board shows it. A file with nothing to write has no `writing` line. |
+| `the disc image cannot be read: <reason>; nothing extracted, the previous contents are kept` | A warning: the image cannot be read, or it has none of the nine Episode 3 files; the reasons are those of the PC command. The game carries on. |
+| `extraction failed on <file>: <reason>; nothing moved into place, the previous contents are kept` | A warning: a disc file could not be read. |
+| `found no textures to write on <product> <version>: nothing written (<details>)` | The disc was read but gave no texture to write; no manifest is written either. |
+| `extraction failed (<error>); nothing moved into place, the previous contents are kept` | Something the checks did not foresee, such as a full disk, before the move. A warning. |
+| `extraction failed while moving files into place (<error>); some new files may already be in place, the previous manifest is kept` | A move into place failed part way. A warning. |
+| `extraction could not be started (<error>); carrying on with what the folder holds` | `disc/` could not be looked in. A warning. |
+
+Every report line that follows is logged too, as `PDZ-ASSETS report: <line>`. The code is in `game/DiscExtraction.cs`, started from `_Ready` and followed from `_Process` in `game/Main.cs`; the board's words are in `game/Logic/ExtractionLines.cs` and `LaunchReport.WithExtractionProblem`; the mode decision and its log lines are in `game/Logic/ExtractionMode.cs`, and the list of an image's files in `DiscFolder.ImageFiles` in the library.
+
+### The PC and the headset write the same files
+
+`tools/compare-headset.sh <disc.cue|disc.iso>` shows it. Launch the app on the headset first, so it has extracted, then give the same disc image as it holds:
+
+```sh
+tools/compare-headset.sh "rom/JP/Panzer Dragoon II Zwei (Japan).cue"
+```
+
+It pulls the headset's `manifest.json` and `images/`, sets aside any file under `images/` that the headset's manifest does not list (such as one left by an earlier push), runs `pdz-extract` on the disc image on this computer, and compares the two byte for byte. Both copies go under `extracted/compare-headset/` (git-ignored), as `headset/` and `pc/`. It exits 0 and says `identical` when every file matches, the manifest included; otherwise it exits 1 and lists the files that differ (the full list is in `differences.txt` there). This is also the only check that runs the library's .NET 9 build, the one the APK carries: the unit tests run on .NET 10.
+
 ## Extraction scripts
 
-The Python scripts here (`saturn_disc.py`, `cgb_textures.py`, `png.py`, `mednafen_state.py`) read the game disc and emulator save states. `tools/mednafen/` is a local emulator install and is git-ignored.
+The Python scripts here (`saturn_disc.py`, `cgb_textures.py`, `png.py`, `mednafen_state.py`) read the game disc and emulator save states. They are the prototypes the decoding library was ported from, and stay as they are. `tools/mednafen/` is a local emulator install and is git-ignored.

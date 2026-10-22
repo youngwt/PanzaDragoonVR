@@ -12,7 +12,8 @@ namespace PanzaDragoonVR;
 /// asset folder supplies for them, dressing the ground and sky in its images and flying its model in
 /// place of the grey cube, with each one's placeholder for whatever it does not supply; shows what the
 /// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
-/// 90 Hz and tells the frame-rate readout the rate it is running at.
+/// 90 Hz and tells the frame-rate readout the rate it is running at. A disc image in the folder is
+/// extracted behind the scene, its progress on the same board, and the folder is read again when it ends.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -28,42 +29,25 @@ public partial class Main : Node3D
     private RefreshRateChoice? _choice;
     private string _lastWarning = "";
     private bool _askedAgain;
+    private string? _folder;
+    private bool _located;
+    private DiscExtraction? _extraction;
+    private bool _boardPlaced;
+    private LaunchReport _report = LaunchReport.Nothing;
 
     public override void _Ready()
     {
         _readout = GetNode<FrameRateReadout>("XROrigin3D/XRCamera3D/FrameRateReadout");
 
         _tiling = new Shader { Code = TilingShader };
+        // The scene starts on what the folder already holds; extraction, if any, runs behind it.
         (ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report) = LoadAssets();
-
-        // What the launch check found, readable in the headset; it stays for as long as the app runs.
-        // A panel that fails to show must not stop OpenXR from starting; the report is in the log already.
-        try
+        _extraction = StartExtraction(ref report);
+        AssetFolder.LogReport(report);
+        ShowAssets(ground, sky, flyer, report);
+        if (_extraction != null)
         {
-            GetNode<LaunchReportPanel>("LaunchReport").Display(report);
-        }
-        catch (Exception e)
-        {
-            GD.PushWarning($"{AssetFolder.LogTag} the launch report could not be shown ({e.GetType().Name}: {e.Message})");
-        }
-
-        Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
-        Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
-        if (flyer != null)
-        {
-            try
-            {
-                GetNode<FlyingCube>("Cube").Carry(flyer);
-            }
-            catch (Exception e)
-            {
-                // The grey cube flies instead; the ground and sky keep what they loaded.
-                GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({e.GetType().Name}: {e.Message}); using the placeholder");
-                if (IsInstanceValid(flyer))
-                {
-                    flyer.Free();
-                }
-            }
+            ShowProgress(_extraction.Board);
         }
 
         _openXr = StartOpenXr();
@@ -84,6 +68,8 @@ public partial class Main : Node3D
         _openXr.SessionSynchronized += PauseMeasuring;
         _openXr.SessionStopping += PauseMeasuring;
         _openXr.SessionLossPending += PauseMeasuring;
+        // The board goes in front of the head once it is tracked, and again when the view is recentred.
+        _openXr.PoseRecentered += OnPoseRecentered;
         if (SessionHasBegun(_openXr))
         {
             RequestRefreshRate();
@@ -95,11 +81,136 @@ public partial class Main : Node3D
     }
 
     /// <summary>
-    /// The images and model the asset folder supplies, null for each placeholder, and the launch
-    /// report, which is logged here once. Whatever goes wrong in loading, the scene and OpenXR still
-    /// start: everything is a placeholder and the report says loading failed.
+    /// While extraction runs, logs its steps and keeps the board up to date; when it ends, reads the
+    /// asset folder again and dresses the scene in what it now holds, with the launch report on the
+    /// board, led by the extraction problem when it failed.
     /// </summary>
-    private static (ImageTexture? Ground, ImageTexture? Sky, Node3D? Flyer, LaunchReport Report) LoadAssets()
+    public override void _Process(double delta)
+    {
+        if (_openXr != null && !_boardPlaced)
+        {
+            PlaceBoard();
+        }
+
+        if (_extraction == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!_extraction.Update())
+            {
+                return;
+            }
+
+            if (!_extraction.IsFinished)
+            {
+                ShowProgress(_extraction.Board);
+                return;
+            }
+
+            string? problem = _extraction.Problem;
+            _extraction = null;
+            (ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report) = LoadAssets();
+            if (problem != null)
+            {
+                report = report.WithExtractionProblem(problem);
+            }
+
+            AssetFolder.LogReport(report);
+            ShowAssets(ground, sky, flyer, report);
+        }
+        catch (Exception e)
+        {
+            // The scene carries on with what it shows; the extraction is not watched any further.
+            _extraction = null;
+            string reason = $"following it failed ({DiscExtraction.Reason(e)})";
+            GD.PushWarning($"{AssetFolder.LogTag} extraction {reason}; carrying on with what the scene shows");
+            OnBoard("the launch report", () =>
+            {
+                LaunchReport report = _report.WithExtractionProblem(ExtractionLines.Failed(null, reason));
+                AssetFolder.LogReport(report);
+                Board.Display(report);
+            });
+        }
+    }
+
+    /// <summary>
+    /// Starts extraction on the asset folder when its <c>disc/</c> holds one disc image; null when there is
+    /// nothing to run. A problem found before it can start, such as more than one disc image, leads <paramref name="report"/>.
+    /// </summary>
+    private DiscExtraction? StartExtraction(ref LaunchReport report)
+    {
+        DiscExtraction? extraction = DiscExtraction.Start(_folder, out string? problem);
+        if (problem != null)
+        {
+            report = report.WithExtractionProblem(problem);
+        }
+
+        return extraction;
+    }
+
+    /// <summary>Puts extraction's progress on the board.</summary>
+    private void ShowProgress(System.Collections.Generic.IReadOnlyList<string> lines) =>
+        OnBoard("extraction's progress", () => Board.DisplayProgress(lines));
+
+    private LaunchReportPanel Board => GetNode<LaunchReportPanel>("LaunchReport");
+
+    /// <summary>
+    /// Runs <paramref name="show"/>, which puts <paramref name="what"/> on the board. A board that fails
+    /// to show must not stop the scene or OpenXR: the failure is one warning and the scene carries on.
+    /// </summary>
+    private static void OnBoard(string what, Action show)
+    {
+        try
+        {
+            show();
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning($"{AssetFolder.LogTag} {what} could not be shown ({DiscExtraction.Reason(e)})");
+        }
+    }
+
+    /// <summary>
+    /// Shows the launch report on the board, dresses the ground and sky in their images or placeholders
+    /// and flies the model or the grey cube: at launch, and again when the folder is read after extraction.
+    /// </summary>
+    private void ShowAssets(ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report)
+    {
+        _report = report;
+        // What the launch check found, readable in the headset; it stays for as long as the app runs.
+        // The report is in the log already.
+        OnBoard("the launch report", () => Board.Display(report));
+
+        Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
+        Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
+        var cube = GetNode<FlyingCube>("Cube");
+        try
+        {
+            cube.Carry(flyer);
+        }
+        catch (Exception e)
+        {
+            // The grey cube flies instead; the ground and sky keep what they loaded.
+            GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({DiscExtraction.Reason(e)}); using the placeholder");
+            if (flyer != null && IsInstanceValid(flyer))
+            {
+                flyer.Free();
+            }
+
+            cube.Carry(null);
+        }
+    }
+
+    /// <summary>
+    /// The images and model the asset folder supplies, null for each placeholder, and the launch
+    /// report, for the caller to log once it is complete. The folder is found the first time.
+    /// Whatever goes wrong in loading, the scene and OpenXR still start: everything is a placeholder
+    /// and the report says loading failed.
+    /// </summary>
+    private (ImageTexture? Ground, ImageTexture? Sky, Node3D? Flyer, LaunchReport Report) LoadAssets()
     {
         AssetFolder? assets = null;
         ImageTexture? ground = null;
@@ -108,7 +219,13 @@ public partial class Main : Node3D
         LaunchReport report;
         try
         {
-            assets = AssetFolder.Open();
+            if (!_located)
+            {
+                _folder = AssetFolder.Locate();
+                _located = true;
+            }
+
+            assets = AssetFolder.Open(_folder);
             ground = assets.Image(AssetIds.E03Floor);
             sky = assets.Image(AssetIds.E03Canopy);
             flyer = assets.Model(AssetIds.E03Flyer);
@@ -121,12 +238,11 @@ public partial class Main : Node3D
             sky = null;
             flyer?.Free();
             flyer = null;
-            string reason = $"{e.GetType().Name}: {e.Message}";
+            string reason = DiscExtraction.Reason(e);
             GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
             report = FailedReport(assets, reason);
         }
 
-        AssetFolder.LogReport(report);
         return (ground, sky, flyer, report);
     }
 
@@ -163,7 +279,33 @@ public partial class Main : Node3D
             _openXr.SessionSynchronized -= PauseMeasuring;
             _openXr.SessionStopping -= PauseMeasuring;
             _openXr.SessionLossPending -= PauseMeasuring;
+            _openXr.PoseRecentered -= OnPoseRecentered;
         }
+    }
+
+    private void OnPoseRecentered() => _boardPlaced = false;
+
+    /// <summary>
+    /// Stands the launch report board in front of where the head faces, once the headset tracks it:
+    /// the head pose is not tracked on the first frames, so this is tried each frame until it is.
+    /// </summary>
+    private void PlaceBoard()
+    {
+        if (XRServer.GetTracker("head") is not XRPositionalTracker head || head.GetPose("default") is not XRPose pose || !pose.HasTrackingData)
+        {
+            return;
+        }
+
+        Transform3D camera = GetNode<XRCamera3D>("XROrigin3D/XRCamera3D").GlobalTransform;
+        Vector3 forward = -camera.Basis.Z;
+        if (BoardPlacement.InFrontOf(camera.Origin.X, camera.Origin.Y, camera.Origin.Z, forward.X, forward.Y, forward.Z) is not BoardPose place)
+        {
+            return;
+        }
+
+        GetNode<Node3D>("LaunchReport").GlobalTransform = new Transform3D(new Basis(Vector3.Up, place.Yaw), new Vector3(place.X, place.Y, place.Z));
+        _boardPlaced = true;
+        GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} board placed in front of the head at ({place.X:0.00}, {place.Y:0.00}, {place.Z:0.00})"));
     }
 
     private OpenXRInterface? StartOpenXr()

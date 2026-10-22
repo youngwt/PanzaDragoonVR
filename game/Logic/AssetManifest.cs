@@ -19,7 +19,7 @@ public enum ManifestStatus
     /// <summary>The folder has no <c>manifest.json</c>: the game runs on placeholders. Not an error.</summary>
     Absent,
 
-    /// <summary>The manifest is not valid JSON, or a required top-level field is absent or of the wrong type.</summary>
+    /// <summary>The manifest is not valid JSON, a required top-level field is absent or of the wrong type, or it lists no assets.</summary>
     Unreadable,
 
     /// <summary>The manifest's <c>format</c> is not one this build supports.</summary>
@@ -41,6 +41,9 @@ public sealed partial class AssetManifest
 
     /// <summary>The <c>format</c> numbers this build understands.</summary>
     public const int SupportedFormat = 1;
+
+    /// <summary>The problem line for a manifest whose <c>assets</c> list is empty, as <c>tools/manifest.py</c> gives it.</summary>
+    public const string NoAssets = FileName + ": lists no assets";
 
     public const string ImageKind = "image";
     public const string ModelKind = "model";
@@ -145,6 +148,12 @@ public sealed partial class AssetManifest
                 return new ManifestRead(ManifestStatus.UnsupportedFormat, null,
                     $"{FileName}: unsupported format {shown}; this build understands format {SupportedFormat}. " +
                     "The assets were made by a newer or older tool than this build; run the matching tool again");
+            }
+
+            // After the format check, so a newer format with no assets is reported as the newer format.
+            if (root.GetProperty("assets").GetArrayLength() == 0)
+            {
+                return Unreadable(NoAssets);
             }
 
             return new ManifestRead(ManifestStatus.Read, ReadEntries(root.GetProperty("assets"), folder), null);

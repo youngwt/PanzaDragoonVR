@@ -32,3 +32,4 @@ Verify: a pushed manifest with an empty `assets` list shows a board naming the p
 - Source: carried out of the engine spike epic at its close (author, 2026-10-16); kept in the backlog for a possible backlog epic later.
 - Decision: an empty `assets` list is an error (author, 2026-10-16, engine spike retrospective).
 - Today the game shows no board for it, and the contract allows it.
+- Dropped: moved into the In-game extraction epic at its inception (user, 2026-10-16); see `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/tickets.toml`, entries 1 and 7 for the empty asset list, entry 8 for the folder lookup.

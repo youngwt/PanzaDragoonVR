@@ -1,0 +1,150 @@
+# The stories of this epic in build order. tickets.py reads this.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Decide texture IDs and the extraction rules in the asset contract"
+description = "Adds to the asset contract the ID scheme for extracted textures and their folder layout, the `source` and `generator` values, where the disc image goes, what development and release modes do, the marker that stops a second extraction, how progress and a failed extraction are reported, and that an empty asset list is a problem; the `generator` value and the manifest's order are fixed so the PC and the headset write identical files, toward CAP-3."
+verify = "The contract's new sections exist with a worked example manifest listing extracted textures, and the author has agreed them."
+covers = ["CAP-3"]
+after = ["1.2"]
+hitl = true                 # the author's decision
+risk = "low"
+references = ["../../backlog/story-treat-an-empty-asset-list-as-an-error.md"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "One texture file extracted on the headset by the C# library"
+description = "Tracer bullet: a new C# decoding library with its own unit test project under `tests/`, run by `tools/test.sh`, built for the game and for a PC command that follows the `tools/` error and exit rules, reads the ISO9660 file system from a bin/cue disc image where story 1 puts it in the app's folder and decodes the mode 1 (16-colour lookup table) textures of `E03B0N0` to PNG; the game runs it at launch and writes the PNGs into the folder, and the PC command does the same on the PC, toward CAP-3."
+verify = "With the author's disc image copied to the headset, the PNGs of that one file appear in the app's folder after launch, and the PC command writes the same files; the APK contains no disc data."
+covers = ["CAP-3"]
+after = [1, "1.4"]
+hitl = true                 # copying the author's disc image to the headset
+risk = "high"
+
+[[entry]]
+id = 3
+type = "spike"
+title = "Where the 256-colour palettes are on the disc"
+description = "Finds where the palettes for the 256-colour (mode 4) and colour-bank (mode 0) Episode 3 textures come from on the disc, by tracing the game in Ghidra and Mednafen; the answer, with evidence, goes in the disc formats notes and decides how story 6 colours them, toward CAP-3."
+verify = "The palette source and how a texture finds its palette are written in zwei-disc-formats.md with evidence, or the search is written up with what was ruled out, and the author has decided what story 6 does."
+covers = ["CAP-3"]
+after = []
+hitl = true                 # reverse engineering with the author; the author decides
+risk = "high"
+references = ["../spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Every accepted disc image layout is read"
+description = "Extends the library's disc reading, which the tracer bullet built for a per-track bin/cue, to a cue sheet with one `.bin` for all tracks and to a plain 2048-byte-sector ISO, and reads the Saturn header for the manifest's `source`; other discs are attempted, not refused, toward CAP-3."
+verify = "Unit tests on small synthetic images of each layout list the same files and header, and the author's own dump reads on the PC in its per-track form."
+covers = ["CAP-3"]
+after = [2]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 5
+type = "story"
+title = "All Episode 3 textures decoded"
+description = "Ports the rest of the texture decoding from `tools/cgb_textures.py` into the library for every Episode 3 texture file: finding the textures in each `.MDB`, the load base, transparency, and modes 1 (16-colour lookup table) and 5 (RGB), writing deterministic PNGs; modes 4 and 0 stay numbered but unwritten until story 6, toward CAP-3."
+verify = "Unit tests on synthetic `.MDB`/`.CGB` pairs cover modes 1 and 5 and each edge, and the PC command on the author's disc writes every mode 1 and mode 5 Episode 3 texture (about 250 by the prototype's log), looking right by eye."
+covers = ["CAP-3"]
+after = [2]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 6
+type = "story"
+title = "The colour-bank textures come out in colour"
+description = "Finds the colour upload tables in `EPISODE3.PRG` by their pattern (pairs of a `0x25Fxxxxx` destination and a `0x060xxxxx` source, a table running from destination `0x25F00000` to the first other destination; a lead in zwei-disc-formats.md), uses the second of the two the author's disc holds (at 0xE23C), fills colour RAM from the blocks it names, and writes the 256-colour (mode 4) and colour-bank (mode 0) Episode 3 textures in colour under the numbers story 5 already gives them; with no such table it leaves them out with a notice, toward CAP-3."
+verify = "The PC command's mode 4 textures of `E03CMN` and `E03END` match the spike's sheets by eye, `E03BOSS`'s mode 0 shadows come out as one dark colour, the author agrees, and unit tests cover finding the table, a disc with none, and the colour code rules."
+covers = ["CAP-3"]
+after = [3, 5]
+hitl = true                 # the author checks the colours by eye
+risk = "medium"
+references = ["../spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md", "spike-where-the-256-colour-palettes-are-on-the-disc-plan.md"]
+
+[[entry]]
+id = 7
+type = "story"
+title = "The extraction writes a manifest the checker accepts"
+description = "The library writes `manifest.json` for the extracted textures with the IDs from story 1, the `source` read by story 4, `generator` and checksums the contract now defines, and the game reports an empty asset list as a problem, as the contract now says; the manifest lists every texture the extraction writes, whichever stories write them, toward CAP-3."
+verify = "`tools/write_manifest.py --check` passes on the PC command's output folder, and a shared asset-rule case shows an empty asset list reported the same by the PC check and the game."
+covers = ["CAP-3"]
+after = [1, 4, 5]
+hitl = false
+risk = "medium"
+references = ["../../backlog/story-treat-an-empty-asset-list-as-an-error.md"]
+
+[[entry]]
+id = 8
+type = "bug"
+title = "The game cannot ask Android for its files folder on the Quest 3"
+description = "Backlog ticket 6, folded in: the `AndroidRuntime` request for the app's external files folder returns nothing on the Quest 3, so the game always falls back to the fixed path; find why and fix it, or record that the fixed path is the route, so extraction writes where Android says."
+verify = "On the headset the `PDZ-ASSETS` log names the folder Android gives with no fallback line, or the cause is recorded with evidence and the author has chosen the fixed path."
+covers = ["CAP-3"]
+after = [2]
+hitl = true                 # needs the headset
+risk = "low"
+references = ["../../backlog/bug-android-folder-lookup-returns-nothing-on-quest-3.md"]
+
+[[entry]]
+id = 9
+type = "story"
+title = "Extraction runs behind a progress board and falls back on failure"
+description = "Moves the launch extraction off the main thread so the headset shows the scene and a progress board while it runs, reads the asset folder as before once it finishes, and on any failure reports it on the board and carries on with placeholders, as the contract says, toward CAP-3."
+verify = "On the headset a full extraction shows progress and ends with the textures written; with a damaged disc image the board reports the failure and the scene runs on placeholders."
+covers = ["CAP-3"]
+after = [7, 8]
+hitl = true                 # headset check
+risk = "high"
+
+[[entry]]
+id = 10
+type = "story"
+title = "Development and release extraction modes"
+description = "In development mode, as story 1 defines it, the game keeps the disc image and extracts on every launch; in release mode it deletes the disc image after a successful extraction and does not extract again, using the contract's marker, toward CAP-3."
+verify = "On the headset development mode re-extracts on each launch with the image kept, and release mode extracts once, removes the image, and skips extraction on the next launch."
+covers = ["CAP-3"]
+after = [9]
+hitl = true                 # headset check in both modes
+risk = "medium"
+
+[[entry]]
+id = 11
+type = "story"
+title = "The PC command matches the headset byte for byte"
+description = "Completes the PC command for the whole extraction and shows that, given the same disc image, it writes byte-for-byte the same files as the headset, toward CAP-3."
+verify = "The files pulled from the headset after an extraction and the PC command's output compare identical, and nothing extracted is tracked by git or packed in the APK."
+covers = ["CAP-3"]
+after = [4, 6, 7, 9]
+hitl = true                 # pulling the headset's files
+risk = "medium"
+
+[[entry]]
+id = 13
+type = "story"
+title = "The launch report board stands in front of the player"
+description = "Places the launch report and progress board in front of the direction the headset faces when the app starts, at eye height, instead of at a fixed spot ahead of the play area's origin, so a player who starts facing another way still sees it; the head pose may not be tracked on the first frames, so the board is placed once a tracked pose arrives, toward CAP-3."
+verify = "On the headset, starting the app while facing away from the play area's forward direction shows the board straight ahead; the placement from the head's starting yaw has an engine-free test."
+covers = ["CAP-3"]
+after = [10]
+hitl = true                 # headset check facing another way
+risk = "low"
+references = ["../deferred-work.md"]
+
+[[entry]]
+id = 12
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
+verify = "The epic's Done when checks still pass on the headset after the cleanup."
+covers = ["CAP-3"]
+after = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13]
+hitl = false
+risk = "low"

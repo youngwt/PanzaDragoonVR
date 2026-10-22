@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the unit tests on this computer: the Python tests for the scripts in tools/, then the C# tests
-# for the game's engine-free logic. No headset is needed. See tools/README.md.
+# for the game's engine-free logic and for the decoding library. No headset is needed. See tools/README.md.
 #
 #   tools/test.sh                  run every test, Python and C#
 #   tools/test.sh --filter Name    extra arguments go to 'dotnet test'; only the C# tests run
@@ -27,8 +27,10 @@ command -v dotnet >/dev/null 2>&1 || {
     exit 1
 }
 
-dotnet test "$here/../tests/GameLogic.Tests" "$@"
-dotnet_status=$?
+dotnet_status=0
+for project in GameLogic.Tests Decoding.Tests; do
+    dotnet test "$here/../tests/$project" "$@" || dotnet_status=$?
+done
 
 if [ "$python_status" -ne 0 ]; then
     echo "test: error: the Python tests failed" >&2

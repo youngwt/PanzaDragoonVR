@@ -29,15 +29,33 @@ public partial class FlyingCube : MeshInstance3D
     private static readonly Vector3 TumbleAxis = new Vector3(0.3f, 1.0f, 0.2f).Normalized();
 
     private double _lapPosition;
+    private Mesh? _cube;
+    private Node3D? _carried;
 
     public override void _Ready()
     {
+        _cube = Mesh;
         Position = PointOnPath(0.0);
     }
 
-    /// <summary>Flies <paramref name="model"/> in place of the grey cube: the cube is no longer drawn.</summary>
-    public void Carry(Node3D model)
+    /// <summary>
+    /// Flies <paramref name="model"/> in place of the grey cube, which is no longer drawn; or, with null,
+    /// the grey cube again. A model carried before is freed: the asset folder is read again after extraction.
+    /// </summary>
+    public void Carry(Node3D? model)
     {
+        if (_carried != null && IsInstanceValid(_carried))
+        {
+            _carried.QueueFree();
+        }
+
+        _carried = model;
+        if (model == null)
+        {
+            Mesh = _cube;
+            return;
+        }
+
         AddChild(model);
         Mesh = null;
     }
