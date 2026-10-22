@@ -12,8 +12,9 @@ namespace PanzaDragoonVR;
 /// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
 /// 90 Hz and tells the frame-rate readout the rate it is running at. A disc image in the folder is
 /// extracted behind the scene, its progress on the same board, and the folder is read again when it ends.
+/// The ground and sky scroll past as though the player were flying forwards.
 /// This file holds the scene and its assets; the other jobs are in the <c>Main.*.cs</c> files beside it:
-/// extraction, the board, the OpenXR session and the refresh rate.
+/// extraction, the board, the OpenXR session, the refresh rate and the scroll.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -54,7 +55,10 @@ public partial class Main : Node3D
         ConnectOpenXr(_openXr);
     }
 
-    /// <summary>Places the board until the head is tracked, and watches extraction while it runs.</summary>
+    /// <summary>
+    /// Places the board until the head is tracked, watches extraction while it runs and scrolls the
+    /// ground and sky.
+    /// </summary>
     public override void _Process(double delta)
     {
         if (_openXr != null && !_boardPlaced)
@@ -63,6 +67,7 @@ public partial class Main : Node3D
         }
 
         WatchExtraction();
+        Scroll(delta);
     }
 
     /// <summary>
@@ -76,8 +81,10 @@ public partial class Main : Node3D
         // The report is in the log already.
         OnBoard("the launch report", () => Board.Display(report));
 
-        Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
-        Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
+        _groundMaterial = Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), GroundTileMetres);
+        _skyMaterial = Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), SkyTileMetres);
+        // The new images carry on from where the old ones had scrolled to.
+        ApplyScroll();
         var cube = GetNode<FlyingCube>("Cube");
         try
         {
@@ -163,7 +170,7 @@ public partial class Main : Node3D
     /// Tiles an image over a flat plane, unlit. The coordinates are wrapped here rather than left
     /// to the texture's repeat mode: on the Quest 3 a repeating texture came out clamped to its
     /// edge on these planes, showing one flat colour. The gradients keep the smaller copies of the
-    /// image correct across the wrap.
+    /// image correct across the wrap. The offset, in tiles, scrolls the image along the plane.
     /// </summary>
     private const string TilingShader = """
         shader_type spatial;
@@ -171,20 +178,22 @@ public partial class Main : Node3D
 
         uniform sampler2D image : source_color, filter_nearest_mipmap_anisotropic, repeat_enable;
         uniform vec2 tiles = vec2(1.0);
+        uniform vec2 offset = vec2(0.0);
 
         void fragment() {
-            vec2 uv = UV * tiles;
+            vec2 uv = UV * tiles + offset;
             ALBEDO = textureGrad(image, fract(uv), dFdx(uv), dFdy(uv)).rgb;
         }
         """;
 
-    /// <summary>Gives a flat plane a tiling image that needs no light.</summary>
-    private void Dress(MeshInstance3D plane, Texture2D image, float tileMetres)
+    /// <summary>Gives a flat plane a tiling image that needs no light, and returns its material for the scroll.</summary>
+    private ShaderMaterial Dress(MeshInstance3D plane, Texture2D image, float tileMetres)
     {
         Vector2 size = ((PlaneMesh)plane.Mesh).Size;
         var material = new ShaderMaterial { Shader = _tiling };
         material.SetShaderParameter("image", image);
         material.SetShaderParameter("tiles", new Vector2(size.X / tileMetres, size.Y / tileMetres));
         plane.MaterialOverride = material;
+        return material;
     }
 }
