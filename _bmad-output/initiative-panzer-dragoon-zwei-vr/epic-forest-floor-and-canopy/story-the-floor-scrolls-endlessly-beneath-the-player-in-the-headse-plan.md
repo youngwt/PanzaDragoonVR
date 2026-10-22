@@ -3,7 +3,7 @@ title: 'The floor scrolls endlessly beneath the player in the headset'
 type: 'feature'
 ticket: '1'
 created: '2026-10-22'
-status: 'built'
+status: done
 baseline_revision: 'f3bf37325a8cc905b310054ff93fc0d51ca6bdae'
 route: 'full'
 route_source: 'auto'
