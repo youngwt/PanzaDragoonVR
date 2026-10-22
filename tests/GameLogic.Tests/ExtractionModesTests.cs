@@ -9,7 +9,8 @@ namespace PanzaDragoonVR.Logic.Tests;
 /// <summary>
 /// The development and release modes of the asset contract, one or more tests per case the decision
 /// covers: development (twice), release on a first launch, already extracted,
-/// a different disc, release failure (the image kept), no disc, deletion failing, and a hand-written manifest.
+/// a different disc, release failure (the image kept), no disc, deletion failing, and a hand-written manifest;
+/// with the extractor's prefix held to the library's generator, and the one-line rule the deletion lines use.
 /// </summary>
 public sealed class ExtractionModesTests : IDisposable
 {
@@ -270,5 +271,41 @@ public sealed class ExtractionModesTests : IDisposable
         Assert.Equal("release mode: deleted the disc image /f/disc/a.cue (a.cue, a.bin)", ExtractionModes.DeletedLine("/f/disc/a.cue", new[] { "a.cue", "a.bin" }));
         Assert.Equal("release mode: the disc image /f/disc/a.cue could not be deleted (a.bin: IOException: busy); carrying on",
             ExtractionModes.NotDeletedLine("/f/disc/a.cue", "a.bin: IOException: busy"));
+    }
+
+    [Fact]
+    public void ExtractorPrefix_StartsTheLibrarysGenerator()
+    {
+        string generator = PdzDecoding.Manifest.Generator;
+
+        Assert.StartsWith(ExtractionModes.ExtractorPrefix, generator, StringComparison.Ordinal);
+        string version = generator.Substring(ExtractionModes.ExtractorPrefix.Length);
+        Assert.NotEmpty(version);
+        Assert.DoesNotContain(' ', version);
+    }
+
+    [Fact]
+    public void OneLine_LineBreaks_BecomeOneSpace()
+    {
+        Assert.Equal("first second third", OneLine.Of("first\nsecond\rthird"));
+    }
+
+    [Fact]
+    public void OneLine_WindowsLineBreak_BecomesOneSpace()
+    {
+        Assert.Equal("first second", OneLine.Of("first\r\nsecond"));
+    }
+
+    [Fact]
+    public void OneLine_ClosingFullStop_IsDropped()
+    {
+        Assert.Equal("busy", OneLine.Of("busy."));
+        Assert.Equal("busy", OneLine.Of("  busy. \n"));
+    }
+
+    [Fact]
+    public void OneLine_RunsOfSpaces_BecomeOne()
+    {
+        Assert.Equal("a b c", OneLine.Of("a   b \t c"));
     }
 }

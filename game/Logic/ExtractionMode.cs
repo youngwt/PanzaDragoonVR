@@ -158,7 +158,7 @@ public static class ExtractionModes
             }
             catch (Exception e)
             {
-                failed.Add($"{Path.GetFileName(file)}: {e.GetType().Name}: {e.Message.Replace('\n', ' ').Replace('\r', ' ').Trim().TrimEnd('.')}");
+                failed.Add($"{Path.GetFileName(file)}: {e.GetType().Name}: {OneLine.Of(e.Message)}");
                 if (deleted.Count == 0)
                 {
                     // The image itself is still there, so its other files are kept with it.
