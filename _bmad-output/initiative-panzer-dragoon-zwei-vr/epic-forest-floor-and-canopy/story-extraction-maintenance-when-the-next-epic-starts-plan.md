@@ -3,7 +3,7 @@ title: 'Extraction code duplicates are pinned and Main.cs is split'
 type: 'refactor'
 ticket: '7'
 created: '2026-10-22'
-status: 'built'
+status: done
 baseline_revision: '93f940789bcac0079b1ef0d6038897f7b3403303'
 route: 'full'
 route_source: 'auto'
