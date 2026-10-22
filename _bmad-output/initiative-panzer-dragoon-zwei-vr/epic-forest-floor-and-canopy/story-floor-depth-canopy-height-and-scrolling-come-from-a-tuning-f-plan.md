@@ -3,7 +3,7 @@ title: 'Floor depth, canopy height and scrolling come from a tuning file'
 type: 'feature'
 ticket: '3'
 created: '2026-10-22'
-status: 'built'
+status: done
 baseline_revision: '9cdc5320b1d702399e8ae0946c135f1a8a9fb149'
 route: 'full'
 route_source: 'auto'
