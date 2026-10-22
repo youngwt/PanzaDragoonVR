@@ -1,8 +1,8 @@
 ---
-id: 15
+id: 7
 type: story
 title: "Extraction code duplicates are pinned and Main.cs is split"
-parent: none
+parent: epic-forest-floor-and-canopy
 covers: []
 after: []
 assignee: ""
@@ -23,9 +23,10 @@ Verify: every test passes unchanged; the prefix test fails if the two strings dr
 
 ## References
 
-- parent — none
+- parent — _bmad-output/initiative-panzer-dragoon-zwei-vr/epic-forest-floor-and-canopy/epic-forest-floor-and-canopy.md
 - retrospective — _bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/epic-extraction-tool-retrospective.md, findings A-dup and A-size; action A4
 
 ## Notes
 
 - Source: carried out of the in-game extraction epic at its close (author, 2026-10-21); kept in the backlog.
+- Moved into the forest floor and canopy epic (author, 2026-10-22).
