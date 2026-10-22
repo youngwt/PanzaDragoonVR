@@ -327,15 +327,27 @@ The app is not restarted. Start it again to see the change, with `tools/build-qu
 
 ### Tuning the scene
 
-How deep the floor is, how high the canopy, how fast they scroll and their tile sizes come from an optional `tuning.json` at the top of the asset folder; whatever it leaves out, or gets wrong, keeps its built-in value. The fields, their ranges and what they mean are in the asset contract's "Tuning" section. `tools/tuning.example.json` holds the built-in values: copy it outside `tools/`, edit it, and push it:
+How deep the floor is, how high the canopy, how fast they scroll and their tile sizes come from an optional `tuning.json` at the top of the asset folder; whatever it leaves out, or gets wrong, keeps its built-in value.
 
-```sh
-cp tools/tuning.example.json my-tuning.json   # then edit, for example "floor_depth": 8
-tools/push-tuning.sh my-tuning.json           # copy it to files/tuning.json on the headset
-tools/push-tuning.sh --remove                 # remove it: the game uses the built-in values
-```
+| Setting | Means | Built-in | Allowed |
+|---------|-------|----------|---------|
+| `floor_depth` | metres the floor lies below the play area's floor, where the player rides; at least 3 so the dragon clears the ground | 4 | 3 to 1000 |
+| `canopy_height` | metres the canopy is above the play area's floor | 40 | 2 to 1000 |
+| `flight_speed` | metres a second the floor scrolls past | 4 | 0 to 100 |
+| `canopy_speed_scale` | how the canopy moves: 1 crosses the same angle a second as the floor, a flat backdrop; 0 stands still | 1 | 0 to 10 |
+| `floor_tile`, `canopy_tile` | metres one copy of the floor or canopy image covers | 2, 20 | 0.1 to 1000 |
 
-`push-tuning.sh` checks that the file is JSON and copies it, under the name `tuning.json` whatever it was called, through `adb exec-in` as `push-assets.sh` does. The game checks each setting when it starts; nothing changes until the app is started again (`tools/build-quest.sh`, or from the headset's library), and nothing can be changed from inside the headset. On a desktop run, put `tuning.json` in the `PDZ_ASSETS` folder.
+The asset contract's "Tuning" section is the full definition. To try new values:
+
+1. Copy the built-ins somewhere outside `tools/`: `cp tools/tuning.example.json my-tuning.json`.
+2. Edit the settings you want to change, for example `"floor_depth": 8`. Leave out or keep the others.
+3. With the headset connected, push it: `tools/push-tuning.sh my-tuning.json`. It lands as `files/tuning.json` whatever the file was called.
+4. Start the app again, from the headset's library or with `tools/build-quest.sh`; the file is read only at launch.
+5. Check the launch board: a setting that is out of range or misspelt is named there and keeps its built-in value. The log's `PDZ-ASSETS tuning (...)` line shows every value in use (below).
+
+To go back to the built-ins, run `tools/push-tuning.sh --remove`, or push `tools/tuning.example.json` itself.
+
+`push-tuning.sh` checks that the file is JSON and copies it through `adb exec-in` as `push-assets.sh` does. Nothing can be changed from inside the headset. On a desktop run, put `tuning.json` in the `PDZ_ASSETS` folder.
 
 The game logs what it uses at launch, for example:
 
