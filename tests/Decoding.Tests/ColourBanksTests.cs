@@ -92,6 +92,18 @@ public sealed class ColourBanksTests
     }
 
     [Fact]
+    public void FromProgram_EveryPairSkipped_GivesNoColoursAndANotice()
+    {
+        byte[] prg = Program(0x800, new[] { (0x400, 1) }, (0x10, new[]
+        {
+            (0x25F00000u, 0x06090000u),     // its source is past the end of the file
+            (0x25F01000u, 0x06080400u),     // its destination is past colour RAM
+        }));
+
+        Assert.Equal((null, "EPISODE3.PRG's colour table at 0x10 has no block inside the file and colour RAM"), ColourBanks.FromProgram(prg));
+    }
+
+    [Fact]
     public void Colour_CodeNoPairFilled_IsBlack()
     {
         ColourRam colours = ColourBanks.FromProgram(TwoTableProgram()).Colours!;

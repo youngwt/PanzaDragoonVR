@@ -144,7 +144,8 @@ public static class ColourBanks
 
     /// <summary>
     /// Colour RAM from <paramref name="prg"/>'s chosen table (see <see cref="Chosen"/>), or null and a
-    /// one-line notice, with no full stop, saying why there is none.
+    /// one-line notice, with no full stop, saying why there is none. A table none of whose pairs could be
+    /// applied counts as none: its colour RAM would be all black.
     /// </summary>
     public static (ColourRam? Colours, string? Notice) FromProgram(byte[]? prg)
     {
@@ -160,7 +161,13 @@ public static class ColourBanks
         }
 
         int chosen = Chosen(tables.Count);
-        return (Build(prg, tables[chosen], chosen, tables.Count), null);
+        ColourRam colours = Build(prg, tables[chosen], chosen, tables.Count);
+        if (colours.Skipped.Count == tables[chosen].Pairs.Count)
+        {
+            return (null, $"{ProgramFile}'s colour table at 0x{tables[chosen].Offset:X} has no block inside the file and colour RAM");
+        }
+
+        return (colours, null);
     }
 
     /// <summary>

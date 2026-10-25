@@ -13,7 +13,7 @@ public readonly record struct ExtractedFile(string Id, string Path, int Width, i
 /// <param name="Name">The pair's name, as on the disc: <c>E03B0N0</c>.</param>
 /// <param name="Folder">The folder its PNGs go in, in full; created only when <see cref="Files"/> is not empty.</param>
 /// <param name="Files">The PNGs written, in number order.</param>
-/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode extraction does not decode (any but 0, 1, 4 and 5), or in a colour-bank mode (0 or 4) with no colour table.</param>
+/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode extraction does not decode (any but 0, 1, 4 and 5), or in a colour-bank mode (0 or 4) with no colour table, or a table none of whose pairs could be applied.</param>
 public sealed record DiscFileResult(string Name, string Folder, IReadOnlyList<ExtractedFile> Files, IReadOnlyDictionary<int, int> LeftOut)
 {
     /// <summary>Textures numbered but not written, in all modes.</summary>
@@ -153,8 +153,8 @@ public static class Extraction
     /// (see <see cref="DiscImage.OpenImage"/>), into <paramref name="outputFolder"/>.
     /// A file of <see cref="TextureFiles"/> the disc lacks is left out and named in the result; a disc
     /// with none of them is an error. Colour RAM for modes 4 and 0 is built once, from <c>EPISODE3.PRG</c>;
-    /// a disc without it, or without an upload table in it, leaves those modes out and says why in the
-    /// result. Every texture of every file is decoded before any file is written, so a decoding error
+    /// a disc without it, without an upload table in it, or whose chosen table has no pair that can be
+    /// applied, leaves those modes out and says why in the result. Every texture of every file is decoded before any file is written, so a decoding error
     /// writes nothing. The PNGs, then <c>manifest.json</c> listing them, are written into
     /// <see cref="StagingFolder"/> inside <paramref name="outputFolder"/>, which is emptied first (so a
     /// leftover from an interrupted run is cleared); only when every one is written are they moved into

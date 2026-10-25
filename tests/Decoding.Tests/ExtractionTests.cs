@@ -441,6 +441,21 @@ public sealed class ExtractionTests : IDisposable
     }
 
     [Fact]
+    public void Run_TableWithEveryPairSkipped_LeavesModes4And0OutAsWithNoTable()
+    {
+        byte[] prg = Program(0x1000, new[] { (0x400, 1) }, (0x10, new[] { (0x25F00000u, 0x06090000u) }));
+        var others = new SyntheticDisc().With("E03CMN.MDB", Mdb(Record(pmod: Mode5))).With("E03CMN.CGB", Cgb())
+            .With("EPISODE3.PRG", prg);
+
+        ExtractionResult result = Extraction.Run(DiscWith(ColourBankMdb(), CountingCgb(), others), _assets);
+
+        Assert.Null(result.Colours);
+        Assert.Equal("EPISODE3.PRG's colour table at 0x10 has no block inside the file and colour RAM", result.ColourNotice);
+        Assert.Equal(new[] { "e03.tex.e03cmn.0000", "e03.tex.e03b0n0.0002" }, result.Files.Select(f => f.Id));
+        Assert.Equal(new[] { (0, 1), (4, 1) }, result.LeftOut.Select(m => (m.Key, m.Value)));
+    }
+
+    [Fact]
     public void Run_ProgramPastTheImagesEnd_IsNoticedAndModes1And5StillWritten()
     {
         // EPISODE3.PRG is the last file, so cutting the image short leaves its sectors past the end.
