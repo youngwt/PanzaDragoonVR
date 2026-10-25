@@ -3,7 +3,7 @@ title: 'Where the floor and canopy planes are on the disc'
 type: 'chore'
 ticket: '2'
 created: '2026-10-25'
-status: 'built'
+status: done
 baseline_revision: 'f55a17eb9efda2b656e59a22bc6de3b528bea158'
 route: 'full'
 route_source: 'auto'
