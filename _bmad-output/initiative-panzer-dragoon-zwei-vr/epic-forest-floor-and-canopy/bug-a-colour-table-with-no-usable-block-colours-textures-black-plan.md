@@ -3,7 +3,7 @@ title: 'A colour table with no usable block writes the colour-bank textures blac
 type: 'bugfix'
 ticket: '8'
 created: '2026-10-25'
-status: 'built'
+status: done
 baseline_revision: '4005694932af361a7223c435c56d55fbcda4b653'
 route: 'oneshot'
 route_source: 'auto'
