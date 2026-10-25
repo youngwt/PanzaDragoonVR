@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "generator": "pdz-extract 0.1",
+  "generator": "pdz-extract 0.2",
   "source": {
     "product": "GS-9049",
     "version": "V1.001"

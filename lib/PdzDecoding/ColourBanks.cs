@@ -171,26 +171,33 @@ public static class ColourBanks
     }
 
     /// <summary>
-    /// As <see cref="FromProgram(byte[])"/>, reading <c>EPISODE3.PRG</c> from <paramref name="disc"/>. A file
-    /// that cannot be read is treated as missing, with the reason in the notice, so modes 1 and 5 are still written.
+    /// <c>EPISODE3.PRG</c>'s bytes from <paramref name="disc"/>, read once for the colours and the planes;
+    /// or null and a one-line notice, with no full stop: the disc lacks it, or it cannot be read.
     /// </summary>
-    public static (ColourRam? Colours, string? Notice) FromDisc(DiscImage disc)
+    public static (byte[]? Program, string? Notice) ReadProgram(DiscImage disc)
     {
         if (disc.Find(ProgramFile) is not DiscFile file)
         {
-            return FromProgram(null);
+            return (null, $"the disc has no {ProgramFile}");
         }
 
-        byte[] prg;
         try
         {
-            prg = disc.ReadFile(file);
+            return (disc.ReadFile(file), null);
         }
         catch (DecodingException e)
         {
             return (null, $"{ProgramFile} cannot be read ({e.Message})");
         }
+    }
 
-        return FromProgram(prg);
+    /// <summary>
+    /// As <see cref="FromProgram(byte[])"/>, reading <c>EPISODE3.PRG</c> from <paramref name="disc"/>. A file
+    /// that cannot be read is treated as missing, with the reason in the notice, so modes 1 and 5 are still written.
+    /// </summary>
+    public static (ColourRam? Colours, string? Notice) FromDisc(DiscImage disc)
+    {
+        (byte[]? prg, string? notice) = ReadProgram(disc);
+        return prg == null ? (null, notice) : FromProgram(prg);
     }
 }

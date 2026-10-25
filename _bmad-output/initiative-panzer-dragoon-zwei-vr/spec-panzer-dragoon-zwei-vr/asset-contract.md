@@ -43,7 +43,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.1",
+  "generator": "pdz-extract 0.2",
   "source": { "product": "GS-9049", "version": "V1.001" },
   "assets": [
     {
@@ -117,6 +117,17 @@ e03.tex.<file>.<n>
 - The number depends on how the extractor finds and de-duplicates records. A change to either renumbers the textures, which breaks the promise for every ID the game already asks for. Such a change is made only with the author's agreement, and with the game updated to match.
 - The file behind the ID is at `images/e03/<file>/<n>.png`, for example `images/e03/e03b0n0/0007.png`.
 
+#### Extracted floor and canopy
+
+The extractor also writes Episode 3's floor and canopy, the two planes of VDP2's RBG0 layer that `EPISODE3.PRG` holds packed, each as one whole 512x512 page, as `image` assets under the IDs the game already asks for:
+
+| ID | File |
+|----|------|
+| `e03.floor` | `images/e03/floor.png` |
+| `e03.canopy` | `images/e03/canopy.png` |
+
+- They are an addition to the textures: a disc whose planes cannot be found or unpacked still has its textures extracted, and the extractor gives a one-line notice, `no floor and canopy: <reason>`, in place of the line naming where they came from. The manifest then lacks the two IDs, so the game shows its placeholders for them; an earlier run's `floor.png` and `canopy.png` stay in the folder, unlisted, as for any file extraction did not write.
+
 ### Paths
 
 - Relative to the asset folder, with forward slashes.
@@ -155,7 +166,7 @@ The game extracts the assets on the headset at launch, and the PC command does t
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.1",
+  "generator": "pdz-extract 0.2",
   "source": {
     "product": "GS-9049",
     "version": "V1.001"

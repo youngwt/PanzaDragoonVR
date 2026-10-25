@@ -356,7 +356,7 @@ public sealed class ExtractionTests : IDisposable
         byte[] written = Manifest.Write(header, new[] { new ManifestEntry("e03.b", "images/b.png", png), new ManifestEntry("e03.a", "images/a.png", png) });
 
         string sha = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-        string expected = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.1\",\n  \"source\": {\n" +
+        string expected = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.2\",\n  \"source\": {\n" +
             "    \"product\": \"A\\\"B\\\\C\",\n    \"version\": \"\\u0001\\tV\u00e9\u007f\"\n  },\n  \"assets\": [\n" +
             "    {\n      \"id\": \"e03.a\",\n      \"kind\": \"image\",\n      \"path\": \"images/a.png\",\n      \"bytes\": 3,\n      \"sha256\": \"" + sha + "\"\n    },\n" +
             "    {\n      \"id\": \"e03.b\",\n      \"kind\": \"image\",\n      \"path\": \"images/b.png\",\n      \"bytes\": 3,\n      \"sha256\": \"" + sha + "\"\n    }\n" +
@@ -970,6 +970,132 @@ public sealed class ExtractionTests : IDisposable
         Assert.Null(e.DiscFile);
         Assert.Equal(manifest, File.ReadAllText(ManifestFile));
         Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(png));
+    }
+
+    // ------------------------------------------------------------ the floor and canopy
+
+    private string FloorFile => Path.Combine(_assets, "images", "e03", "floor.png");
+
+    private string CanopyFile => Path.Combine(_assets, "images", "e03", "canopy.png");
+
+    [Fact]
+    public void Run_ProgramWithThePlanes_WritesTheFloorAndCanopyBesideTheTextures()
+    {
+        string cue = DiscWith(Mdb(Record()), Cgb(), new SyntheticDisc().With("EPISODE3.PRG", PlaneProgram()));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        PlaneImages planes = Planes.FromProgram(PlaneProgram()).Images!;
+        Assert.Equal(PngWriter.Encode(512, 512, planes.Floor), File.ReadAllBytes(FloorFile));
+        Assert.Equal(PngWriter.Encode(512, 512, planes.Canopy), File.ReadAllBytes(CanopyFile));
+        Assert.Equal(new[] { new ExtractedFile("e03.floor", "images/e03/floor.png", 512, 512), new ExtractedFile("e03.canopy", "images/e03/canopy.png", 512, 512) },
+            result.PlaneFiles);
+        Assert.Equal(new[] { "e03.tex.e03b0n0.0000" }, result.Files.Select(f => f.Id));
+        Assert.Null(result.PlaneNotice);
+        Assert.Equal(0x600, result.PlaneSources!.Cells);
+        Assert.Contains("; floor and canopy from EPISODE3.PRG: cells at 0x600, maps at ", result.Details());
+        Assert.False(Directory.Exists(Staging));
+    }
+
+    [Fact]
+    public void Run_ProgramWithThePlanes_ListsThemInTheManifestSortedById()
+    {
+        string cue = DiscWith(Mdb(Record()), Cgb(), new SyntheticDisc().With("EPISODE3.PRG", PlaneProgram()));
+
+        Extraction.Run(cue, _assets);
+
+        using var manifest = System.Text.Json.JsonDocument.Parse(File.ReadAllBytes(ManifestFile));
+        var assets = manifest.RootElement.GetProperty("assets").EnumerateArray().ToArray();
+        Assert.Equal(new[] { "e03.canopy", "e03.floor", "e03.tex.e03b0n0.0000" }, assets.Select(a => a.GetProperty("id").GetString()));
+        Assert.Equal("images/e03/floor.png", assets[1].GetProperty("path").GetString());
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(FloorFile))), assets[1].GetProperty("sha256").GetString());
+    }
+
+    [Fact]
+    public void Run_ProgramWithThePlanes_AddsNoProgressStage()
+    {
+        var with = new System.Collections.Generic.List<ExtractionProgress>();
+        var without = new System.Collections.Generic.List<ExtractionProgress>();
+
+        Extraction.Run(DiscWith(Mdb(Record()), Cgb(), new SyntheticDisc().With("EPISODE3.PRG", PlaneProgram())), _assets, with.Add);
+        string other = Path.Combine(_assets, "other");
+        Directory.CreateDirectory(other);
+        Extraction.Run(new SyntheticDisc().With("E03CMN.MDB", new byte[8]).With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb()).WriteCue(other),
+            other, without.Add);
+
+        Assert.Equal(without, with);
+    }
+
+    [Fact]
+    public void Run_ProgramWithThePlanes_LeavesTheTexturesAsTheBaselineBuildWroteThem()
+    {
+        // The disc of Run_FixedDisc_WritesE03B0N0AsTheBaselineBuildDid, plus the planes.
+        string cue = DiscWith(Mdb(Record(), Record(lut: 64), Record(pmod: 0x0420), Record(pixels: 32, pmod: Mode1 | 0x40), Record()), Cgb(),
+            new SyntheticDisc().With("EPISODE3.PRG", PlaneProgram()));
+
+        Extraction.Run(cue, _assets);
+
+        var written = Directory.GetFiles(TextureFolder).OrderBy(f => f, StringComparer.Ordinal)
+            .Select(f => (Path.GetFileName(f), Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(f)))));
+        Assert.Equal(new[]
+        {
+            ("0000.png", "d9c8f7e3a4503fcf3966943ab1bdc9dfcf796362131dff5f8fe99709554a4b8e"),
+            ("0001.png", "1d48d8b557d91a51b7711fac2639e02e1c9d666791cc44405c2a4a848bc839f5"),
+            ("0003.png", "bdcf009ba090d9060e6f784288f1b2d947a0082bd15612f658f43d9ea67ee5c4"),
+        }, written);
+    }
+
+    [Fact]
+    public void Run_NoLiteralPool_WritesTheTexturesAndNoticesTheMissingPlanes()
+    {
+        string cue = DiscWith(ColourBankMdb(), CountingCgb(), new SyntheticDisc().With("EPISODE3.PRG", TwoTableProgram()));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Equal(3, result.Files.Count);
+        Assert.Empty(result.PlaneFiles);
+        Assert.Null(result.PlaneSources);
+        Assert.Equal("EPISODE3.PRG holds no literal pool with the cells' and maps' VRAM addresses", result.PlaneNotice);
+        Assert.Contains("2 blocks; no floor and canopy: EPISODE3.PRG holds no literal pool with the cells' and maps' VRAM addresses", result.Details());
+        Assert.False(File.Exists(FloorFile));
+        Assert.DoesNotContain("e03.floor", File.ReadAllText(ManifestFile));
+    }
+
+    [Fact]
+    public void Run_NoProgram_NamesTheMissingFileForThePlanes()
+    {
+        ExtractionResult result = Extraction.Run(FixedDisc(), _assets);
+
+        Assert.Equal("the disc has no EPISODE3.PRG", result.PlaneNotice);
+        Assert.Contains("no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 4 1; no floor and canopy: the disc has no EPISODE3.PRG", result.Details());
+        Assert.Empty(result.PlaneFiles);
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "fixed-disc-manifest.json")), File.ReadAllBytes(ManifestFile));
+    }
+
+    [Fact]
+    public void Run_MapPointerOutsideTheFile_WritesTheTexturesAndNamesThePointer()
+    {
+        string cue = DiscWith(Mdb(Record()), Cgb(), new SyntheticDisc().With("EPISODE3.PRG", PlaneProgram(maps: new[] { 0x06100000u, 0x06100000u })));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Single(result.Files);
+        Assert.Equal("map list entry 0x06100000 at 0x200 is outside EPISODE3.PRG", result.PlaneNotice);
+        Assert.False(File.Exists(FloorFile));
+    }
+
+    [Fact]
+    public void Run_StreamRunningOffTheEnd_WritesTheTexturesAndNamesTheStream()
+    {
+        int full = PlaneProgram().Length;
+        string cue = DiscWith(Mdb(Record()), Cgb(), new SyntheticDisc().With("EPISODE3.PRG", PlaneProgram(size: full - 3)));
+
+        ExtractionResult result = Extraction.Run(cue, _assets);
+
+        Assert.Single(result.Files);
+        Assert.StartsWith("EPISODE3.PRG's map 1: the stream at 0x", result.PlaneNotice);
+        Assert.EndsWith("runs off the end of the file", result.PlaneNotice);
+        Assert.False(File.Exists(CanopyFile));
     }
 
     [Fact]

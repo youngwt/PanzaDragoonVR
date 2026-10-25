@@ -8,7 +8,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>PdzDecoding</RootNamespace>
     <AssemblyName>PdzDecoding</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <IsPackable>false</IsPackable>
     <!-- No machine paths or build times in the DLL, so the APK's copy and the PC's are reproducible. -->
     <Deterministic>true</Deterministic>
