@@ -95,8 +95,8 @@ Build order and track for each capability are in `milestones.md`.
 
 ## Open Questions
 
-- Where on the disc are the floor and canopy tiles, maps and palette? Today they can only be taken from an emulator save state, which CAP-3 does not allow.
-- Is the save state's colour RAM the right palette for the 256-colour textures, and where is that palette on the disc?
+- Answered 2026-10-25 (spike, ticket 2 of the Forest floor and canopy epic): the floor and canopy cells and maps are packed (LZ77) in `EPISODE3.PRG` and their palette is stored plain beside them; unpacked from the disc they equal the save state byte for byte, on the JP and PAL discs. See `zwei-disc-formats.md`, Floor and canopy. Still open: whether story 3.4 takes the planes' VDP2 settings as constants or traces them from the disc.
+- Mostly answered: the save state's colour RAM codes 0x000 to 0x4FF (the 256-colour textures' palette) are `EPISODE3.PRG`'s blocks named by the table at 0xE23C (ticket 2.3), and codes 0x600 to 0x77F are copied from 0x52C44 and 0x53244 by the planes' set-up code (confirmed by `tools/plane_probe.py`'s comparison with the state's colour RAM). Still open: which part of Episode 3 uses the other table, at 0x288, and where codes 0x780 up come from.
 - `.MDB` geometry is undecoded, which blocks CAP-5 and CAP-9. The format the extractor writes is settled (binary glTF, see `asset-contract.md`); several of its conventions are provisional until the geometry is known.
 - Which of the ten dragon forms does the demo use? To be decided once the models are reconstructed and can be viewed, so it waits on `.MDB` geometry.
 - Where does the dragon's wing animation come from?

@@ -607,3 +607,11 @@ It pulls the headset's `manifest.json` and `images/`, sets aside any file under 
 ## Extraction scripts
 
 The Python scripts here (`saturn_disc.py`, `cgb_textures.py`, `png.py`, `mednafen_state.py`) read the game disc and emulator save states. They are the prototypes the decoding library was ported from, and stay as they are. `tools/mednafen/` is a local emulator install and is git-ignored.
+
+`plane_probe.py` unpacks Episode 3's floor and canopy planes (cells, maps and colours) from a disc image, compares them byte for byte with a save state unpacked by `mednafen_state.py`, and renders the two planes. It is the prototype for story 3.4's plane extraction:
+
+```sh
+python3 tools/plane_probe.py "rom/JP/Panzer Dragoon II Zwei (Japan) (Track 1).bin" extracted/plane-probe-jp extracted/state_e03
+```
+
+It takes the data track (a 2352-byte-sector `.bin` or a 2048-byte `.iso`), writes only inside `extracted/`, prints `identical` for each region that matches the state, and exits 1 if one differs. `-h` prints its usage. Leave out the state folder to unpack and render only.
