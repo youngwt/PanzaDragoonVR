@@ -218,3 +218,5 @@ Proposed; the author decides what runs.
 ## Author's decisions
 
 - 2026-10-26: the APK keeps running on .NET 9 after its support ends on 2026-11-10, until Godot 4.8 is released as stable; then it moves to .NET 10 with Godot 4.8. No beta is tried.
+- 2026-10-26: backlog 14 is built next, before the next epic (A1); its notes now carry F12 and the headset checks of R4.
+- 2026-10-26: the tuning-ranges story is written now, as backlog 17 (A2).

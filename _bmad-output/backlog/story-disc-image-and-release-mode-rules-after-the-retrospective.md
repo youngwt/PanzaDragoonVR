@@ -33,3 +33,5 @@ Verify: the contract states the three rules and the author has agreed it; tests 
 - Decision: a cue naming an `.iso` is one image; release mode keeps the image when nothing was written; the skip compares the extractor version (author, 2026-10-21).
 - Decision: release mode still deletes the disc image after a successful extraction; to pick up a newer extractor, the player copies the image to the headset again, and the version check then lets it extract (author, 2026-10-21).
 - Hitl: contract changes need the author's yes; headset check.
+- Priority: build next, before the next epic (author, 2026-10-26). Ticket 3.4 raised the extractor to 0.2 so the floor and canopy reach a release-mode folder extracted by 0.1 only through this version check (forest floor and canopy retrospective, F12 and R1).
+- The headset check also covers what the forest epic never ran on the headset: release mode with the planes, and the European ISO (forest retrospective, R4).
