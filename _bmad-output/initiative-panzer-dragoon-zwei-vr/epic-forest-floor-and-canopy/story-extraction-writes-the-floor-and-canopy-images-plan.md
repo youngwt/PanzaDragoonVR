@@ -3,7 +3,7 @@ title: 'Extraction writes the floor and canopy images'
 type: 'feature'
 ticket: '4'
 created: '2026-10-25'
-status: 'in-review'
+status: 'built'
 baseline_revision: '2c6233e2cb2ca803cfd0662aac6e859b93b2169a'
 route: 'full'
 route_source: 'auto'
@@ -86,6 +86,7 @@ context:
 - A stream is unpacked with a limit of the VRAM left after its destination, so a malformed stream cannot grow without bound; going over is a notice.
 - `PdzDecoding.csproj`'s `Version` rose to 0.2.0 with `Extraction.Version`.
 - Verified on the PC: JP and PAL floor and canopy pixels equal `plane_probe.py`'s renders; every texture PNG is byte-identical to a baseline (2c6233e) run; `write_manifest.py --check` passes with 422 assets. The headset step (`compare-headset.sh`, and the author looking) is not done: no headset was connected.
+- **Headset, 2026-10-26, with the author:** `build-quest.sh` installed and launched in development mode; the log showed "extracted 420 textures ... floor and canopy from EPISODE3.PRG: cells at 0x3FDAC, maps at 0x52608 and 0x5287C, colours at 0x52C44 and 0x53244", then "e03.floor: using .../images/e03/floor.png (512 x 512)" and "supplied: e03.floor, e03.canopy". `compare-headset.sh` reported "identical: 423 files, the manifest included". The author saw the forest floor and canopy in place of the chequers ("it works"), at the placeholders' tile sizes until story 3.5.
 
 ## Plan Change Log
 
