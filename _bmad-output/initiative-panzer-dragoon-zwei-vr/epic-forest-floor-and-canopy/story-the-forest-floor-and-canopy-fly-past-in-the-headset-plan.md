@@ -3,7 +3,7 @@ title: 'The forest floor and canopy fly past in the headset'
 type: 'feature'
 ticket: '5'
 created: '2026-10-26'
-status: 'built'
+status: done
 baseline_revision: '67aeece3862025a799d61e2f2c85e4f760506bbf'
 route: 'oneshot'
 route_source: 'auto'
