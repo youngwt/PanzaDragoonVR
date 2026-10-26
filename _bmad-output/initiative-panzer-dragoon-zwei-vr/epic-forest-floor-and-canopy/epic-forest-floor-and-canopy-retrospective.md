@@ -214,3 +214,7 @@ Proposed; the author decides what runs.
 - Should backlog 14 be built next, ahead of the next epic, given F12? (A1)
 - .NET 9's support ends on 2026-11-10 and the APK still builds for it, waiting on Godot 4.8 (engine-spike A7, `deferred-work.md`). Is running on an unsupported .NET 9 for a while acceptable, or should Godot 4.8's beta be tried?
 - Should the new tuning-ranges story (A2) be written now?
+
+## Author's decisions
+
+- 2026-10-26: the APK keeps running on .NET 9 after its support ends on 2026-11-10, until Godot 4.8 is released as stable; then it moves to .NET 10 with Godot 4.8. No beta is tried.
