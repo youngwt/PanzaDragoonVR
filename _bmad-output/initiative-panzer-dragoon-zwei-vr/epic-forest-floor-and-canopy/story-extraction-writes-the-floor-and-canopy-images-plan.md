@@ -3,7 +3,7 @@ title: 'Extraction writes the floor and canopy images'
 type: 'feature'
 ticket: '4'
 created: '2026-10-25'
-status: 'built'
+status: done
 baseline_revision: '2c6233e2cb2ca803cfd0662aac6e859b93b2169a'
 route: 'full'
 route_source: 'auto'
