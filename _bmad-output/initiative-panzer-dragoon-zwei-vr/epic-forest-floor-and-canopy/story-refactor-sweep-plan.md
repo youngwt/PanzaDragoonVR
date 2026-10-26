@@ -3,7 +3,7 @@ title: 'Refactor sweep'
 type: 'refactor'
 ticket: '6'
 created: '2026-10-26'
-status: 'in-review'
+status: 'built'
 baseline_revision: '5ccc30eb552a3d0064fef9a0109ed630f320ab09'
 route: 'full'
 route_source: 'auto'
@@ -70,7 +70,8 @@ context:
 
 - Done as the Code Map says. Extras in the same spirit: the `AssetIds` doc comments, `LoadAssets()`'s tuple names and the locals in `Main.Extraction.cs` say floor/canopy; `PlaceholderTextures.Ground()`/`Sky()` and the scene's node names stay. The plane builders went into `tests/Decoding.Tests/SyntheticPlanes.cs` (a class cannot share the name of its `PlaneProgram()` method).
 - `PlaneScroll.SkySpeed` became `CanopySpeed`, as the Code Map's rename asked; it is public, so its two tests in `PlaneScrollTests.cs` changed the method they call and their names (`SkySpeed_*` to `CanopySpeed_*`), with the same values asserted. This bends "assertions unchanged, names kept"; raised with the author at presentation.
-- **Checks:** `tools/test.sh` 105 Python, 297 GameLogic (296 plus `TuningTests.ExampleFile_GivesEverySettingAtItsBuiltInValue`), 152 Decoding, all pass; the test lists differ from the baseline only by the moved `OneLine_*` tests, the two renamed tests and the new test. The game, both test projects and `pdz-extract` build with 0 warnings. `pdz-extract` at the baseline (a temporary worktree, removed afterwards) and after, on the JP cue and the PAL ISO: `diff -r` found no difference in `images/` or `manifest.json`, and the console output was the same. On the Quest 3, `build-quest.sh` exited 0, development mode extracted 420 textures, the log showed the same tuning, extraction and plane lines as before, and `compare-headset.sh` on the JP cue reported identical, 423 files. The scene itself was not seen: the headset was asleep.
+- **Checks:** `tools/test.sh` 105 Python, 297 GameLogic (296 plus `TuningTests.ExampleFile_GivesEverySettingAtItsBuiltInValue`), 152 Decoding, all pass; the test lists differ from the baseline only by the moved `OneLine_*` tests, the two renamed tests and the new test. The game, both test projects and `pdz-extract` build with 0 warnings. `pdz-extract` at the baseline (a temporary worktree, removed afterwards) and after, on the JP cue and the PAL ISO: `diff -r` found no difference in `images/` or `manifest.json`, and the console output was the same. On the Quest 3, `build-quest.sh` exited 0, development mode extracted 420 textures, the log showed the same tuning, extraction and plane lines as before, and `compare-headset.sh` on the JP cue reported identical, 423 files. The scene itself was not seen then: the headset was asleep.
+- **Headset, 2026-10-26, with the author:** the forest floor scrolls beneath with the canopy overhead as approved in 3.5 ("confirm").
 
 ## Plan Change Log
 
