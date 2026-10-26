@@ -29,10 +29,11 @@ files/                 the asset folder (the output folder's contents on the PC)
   models/              suggested, not required
   disc/                the player's disc image, read by extraction on the headset; see Extraction
   development          an empty marker file: development mode; see Extraction
+  tuning.json          optional: the scene's tuning; see Tuning
 ```
 
 - There is one `manifest.json`, at the top level.
-- Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines.
+- Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines, and `tuning.json`, which Tuning defines. The manifest does not list `tuning.json`.
 - Files in the folder that the manifest does not list are ignored.
 
 ## The manifest
@@ -42,20 +43,20 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.1",
+  "generator": "pdz-extract 0.2",
   "source": { "product": "GS-9049", "version": "V1.001" },
   "assets": [
     {
       "id": "e03.floor",
       "kind": "image",
-      "path": "images/e03_floor.png",
+      "path": "images/e03/floor.png",
       "bytes": 181234,
       "sha256": "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"
     },
     {
       "id": "e03.canopy",
       "kind": "image",
-      "path": "images/e03_canopy.png",
+      "path": "images/e03/canopy.png",
       "bytes": 204817
     },
     {
@@ -116,6 +117,17 @@ e03.tex.<file>.<n>
 - The number depends on how the extractor finds and de-duplicates records. A change to either renumbers the textures, which breaks the promise for every ID the game already asks for. Such a change is made only with the author's agreement, and with the game updated to match.
 - The file behind the ID is at `images/e03/<file>/<n>.png`, for example `images/e03/e03b0n0/0007.png`.
 
+#### Extracted floor and canopy
+
+The extractor also writes Episode 3's floor and canopy, the two planes of VDP2's RBG0 layer that `EPISODE3.PRG` holds packed, each as one whole 512x512 page, as `image` assets under the IDs the game already asks for:
+
+| ID | File |
+|----|------|
+| `e03.floor` | `images/e03/floor.png` |
+| `e03.canopy` | `images/e03/canopy.png` |
+
+- They are an addition to the textures: a disc whose planes cannot be found or unpacked still has its textures extracted, and the extractor gives a one-line notice, `no floor and canopy: <reason>`, in place of the line naming where they came from. The manifest then lacks the two IDs, so the game shows its placeholders for them; an earlier run's `floor.png` and `canopy.png` stay in the folder, unlisted, as for any file extraction did not write.
+
 ### Paths
 
 - Relative to the asset folder, with forward slashes.
@@ -154,7 +166,7 @@ The game extracts the assets on the headset at launch, and the PC command does t
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.1",
+  "generator": "pdz-extract 0.2",
   "source": {
     "product": "GS-9049",
     "version": "V1.001"
@@ -289,6 +301,45 @@ Extraction, when it runs, adds these:
 | The disc image cannot be read, or is not a Saturn disc | The disc image cannot be read, with the reason. | What the folder already holds. |
 | Extraction fails part way | Extraction failed, with the disc file and the reason. The previous contents are kept. | What the folder already holds. |
 
+Tuning adds these:
+
+| Situation | What the player is told | What is shown |
+|-----------|-------------------------|---------------|
+| No `tuning.json` | Nothing. | The built-in values. |
+| `tuning.json` cannot be read, is not valid JSON or is not one JSON object | The tuning file cannot be read, with the reason. | The built-in values. |
+| A setting is not a number or is out of its range | The setting's name and its allowed range. | The built-in value for that setting; the others as the file gives them. |
+| A field is not a setting, such as a misspelt name | The field's name. | Nothing changes; the field is ignored. |
+
+A tuning problem alone puts the board up, as an asset problem does; with other problems it is listed ahead of them, so the board always names it.
+
+## Tuning
+
+The floor's depth, the canopy's height, how fast they scroll and how much of each one copy of its image covers belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change is seen when the app is started again. It is never changed in the headset.
+
+`tuning.json` is one JSON object. Every field is optional and every value a number; the example holds the built-in values:
+
+```json
+{
+  "floor_depth": 6,
+  "canopy_height": 10,
+  "flight_speed": 6,
+  "canopy_speed_scale": 1,
+  "floor_tile": 24,
+  "canopy_tile": 48
+}
+```
+
+| Field | Range | Built-in | Meaning |
+|-------|-------|----------|---------|
+| `floor_depth` | 3 to 1000 | 6 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground. The built-ins were set by the author in the headset on 2026-10-26 to look like Episode 3. |
+| `canopy_height` | 2 to 1000 | 10 | Metres the canopy plane is above the play area's floor, so it is always above the head. |
+| `flight_speed` | 0 to 100 | 6 | Metres a second the floor's image moves past. |
+| `canopy_speed_scale` | 0 to 10 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
+| `floor_tile` | 0.1 to 1000 | 24 | Metres of floor one copy of its image covers. |
+| `canopy_tile` | 0.1 to 1000 | 48 | Metres of canopy one copy of its image covers. |
+
+Ranges include their ends. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
+
 ## Versioning
 
 - `format` rises only when a game built for the old number could misread the new manifest, or the files it lists: for example a change to what a model file contains that an older game would draw wrongly.
@@ -297,6 +348,6 @@ Extraction, when it runs, adds these:
 
 ## Not in the contract
 
-- **Tuning values.** Floor depth, canopy height and scroll speed belong to the game and are set in the headset.
+- **Tuning values in the manifest.** Floor depth, canopy height and scroll speed belong to the game. They are set in `tuning.json` (see Tuning), which the manifest does not list and `format` does not cover; they are never changed in the headset.
 - **Copyrighted files in the repository or the app.** Nothing the tool writes is committed or packed into the APK. The built-in placeholders are the author's own work.
 - **How the game reaches the folder from Godot.** Story 1.4 settles that; the contract fixes only the location.

@@ -67,7 +67,7 @@ Build order and track for each capability are in `milestones.md`.
 - No full-body IK. Hands are floating controllers or guns.
 - Information lives in the world, not on a HUD. The radar is the one permitted HUD element.
 - Original assets are used as extracted, however rough they look in VR. No upscaled or redrawn art.
-- Floor depth and canopy height are tuning values set in the headset, not fixed up front.
+- Floor depth and canopy height are tuning values, not fixed up front: a small `tuning.json` in the asset folder, edited on the PC and pushed to the headset, read at launch.
 - Extracted images are checked by eye; there is no formal reference comparison.
 - Rez Infinite is the reference for reticle and aiming feel.
 - Every milestone ends in something that can be recorded in fifteen seconds.
@@ -95,8 +95,8 @@ Build order and track for each capability are in `milestones.md`.
 
 ## Open Questions
 
-- Where on the disc are the floor and canopy tiles, maps and palette? Today they can only be taken from an emulator save state, which CAP-3 does not allow.
-- Is the save state's colour RAM the right palette for the 256-colour textures, and where is that palette on the disc?
+- Answered 2026-10-25 (spike, ticket 2 of the Forest floor and canopy epic): the floor and canopy cells and maps are packed (LZ77) in `EPISODE3.PRG` and their palette is stored plain beside them; unpacked from the disc they equal the save state byte for byte, on the JP and PAL discs. See `zwei-disc-formats.md`, Floor and canopy. The author decided story 3.4 takes the planes' VDP2 settings as constants read from the save state (2026-10-25); the code that sets those registers is not traced.
+- Mostly answered: the save state's colour RAM codes 0x000 to 0x4FF (the 256-colour textures' palette) are `EPISODE3.PRG`'s blocks named by the table at 0xE23C (ticket 2.3), and codes 0x600 to 0x77F are copied from 0x52C44 and 0x53244 by the planes' set-up code (confirmed by `tools/plane_probe.py`'s comparison with the state's colour RAM). Still open: which part of Episode 3 uses the other table, at 0x288, and where codes 0x780 up come from.
 - `.MDB` geometry is undecoded, which blocks CAP-5 and CAP-9. The format the extractor writes is settled (binary glTF, see `asset-contract.md`); several of its conventions are provisional until the geometry is known.
 - Which of the ten dragon forms does the demo use? To be decided once the models are reconstructed and can be viewed, so it waits on `.MDB` geometry.
 - Where does the dragon's wing animation come from?

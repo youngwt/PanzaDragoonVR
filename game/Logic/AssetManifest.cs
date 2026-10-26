@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace PanzaDragoonVR.Logic;
 
@@ -121,7 +120,7 @@ public sealed partial class AssetManifest
         }
         catch (JsonException e)
         {
-            return Unreadable($"{FileName}: is not valid JSON: {OneLine(e.Message)}");
+            return Unreadable($"{FileName}: is not valid JSON: {OneLine.Of(e.Message)}");
         }
 
         using (document)
@@ -173,10 +172,6 @@ public sealed partial class AssetManifest
             problems.Add($"{FileName}: field '{field}' must be {wanted}");
         }
     }
-
-    /// <summary>A message on one line with no closing full stop, as it may quote the file's own line breaks.</summary>
-    private static string OneLine(string message) =>
-        Regex.Replace(message, @"\s+", " ").Trim().TrimEnd('.');
 
     /// <summary>
     /// A JSON number written with no fraction or exponent, of any size, as Python's <c>json</c> reads an

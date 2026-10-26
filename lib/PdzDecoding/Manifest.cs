@@ -26,7 +26,7 @@ public static class Manifest
     /// <summary>The contract version written.</summary>
     public const int Format = 1;
 
-    /// <summary>What wrote the manifest: <c>pdz-extract 0.1</c>.</summary>
+    /// <summary>What wrote the manifest: <c>pdz-extract 0.2</c>.</summary>
     public const string Generator = "pdz-extract " + Extraction.Version;
 
     /// <summary>The bytes of <c>manifest.json</c> for <paramref name="entries"/> from the disc with <paramref name="source"/>: UTF-8, no byte-order mark.</summary>

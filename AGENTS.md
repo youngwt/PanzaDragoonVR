@@ -27,10 +27,11 @@ These describe what the code does today. Follow them in new code. The exceptions
   - `test.sh` defines no `die` or `say`, prints its errors with `echo`, passes extra arguments to each `dotnet test` and exits with the status of the last one that failed.
   - `write_manifest.py` with no arguments or an unknown option prints only the usage to stderr and exits 1, with no `error:` line.
   - The older extraction scripts (`saturn_disc.py`, `cgb_textures.py`, `mednafen_state.py`) predate these rules: on `-h` or a bad argument they print the usage to stdout and exit 1, with no `error:` line.
+  - `plane_probe.py` puts its usage inside the error line on a usage error (`plane_probe: error: usage: ...`), and exits 1 when the planes it unpacks differ from the save state's.
 
 ### Python style
 
-- Epic-era Python (`manifest.py`, `write_manifest.py`, `make_test_model.py`) formats strings with `%`. The older extraction scripts use f-strings. Match the file you are in.
+- Epic-era Python (`manifest.py`, `write_manifest.py`, `make_test_model.py`) formats strings with `%`. The older extraction scripts use f-strings, and so does `plane_probe.py`, written beside them. Match the file you are in.
 
 ### The decoding library (`lib/PdzDecoding/`)
 
@@ -43,14 +44,16 @@ These describe what the code does today. Follow them in new code. The exceptions
 ### Game log lines (`game/`)
 
 - Every line starts with a tag, `PDZ-ASSETS` or `PDZ-FPS`, is one line, and ends without a full stop.
-- Known exceptions: the two warnings in `game/Main.cs` (OpenXR not initialised, and the refresh-rate choice warning) have no tag and end in a full stop, and the warning in `game/FrameRateReadout.cs` when Android's log library cannot be called has its tag mid-line and ends in a full stop.
+- Known exceptions: the warning in `game/Main.cs` when OpenXR is not initialised and the refresh-rate choice warning in `game/Main.RefreshRate.cs` have no tag and end in a full stop, and the warning in `game/FrameRateReadout.cs` when Android's log library cannot be called has its tag mid-line and ends in a full stop.
 
 ### Tests
 
 - Python: `unittest`, in `tests/tools/`, with `test_snake_case` names.
-- C#: xUnit, in `tests/GameLogic.Tests/` and `tests/Decoding.Tests/`, with `Subject_Behaviour` names (two older tests, `CasesAreFound` and `NoReportBeforeTheWindowIsFull`, are a single phrase). `game/Logic/` uses no engine code and is compiled straight into `GameLogic.Tests`; `Decoding.Tests` references the library's project. Decoding tests build their own small disc images and `.MDB`/`.CGB` pairs and never read the disc.
+- C#: xUnit, in `tests/GameLogic.Tests/` and `tests/Decoding.Tests/`, with `Subject_Behaviour` names (two older tests, `CasesAreFound` and `NoReportBeforeTheWindowIsFull`, are a single phrase). `game/Logic/` uses no engine code and is compiled straight into `GameLogic.Tests`, which also references the library's project, for the tests only (to check the game's strings against the library's); `game/Logic/` itself references neither the library nor Godot. `Decoding.Tests` references the library's project. Decoding tests build their own small disc images and `.MDB`/`.CGB` pairs and never read the disc.
 - `tools/test.sh` runs all three.
 
 ### Rules kept in two places
 
 The asset rules are in `tools/manifest.py` for the PC and in `game/Logic/` for the game, and the two must agree. A new or changed rule gets a shared case in `tests/fixtures/asset-rules/`, which both test suites run.
+
+The tuning file (`tuning.json`) is read in two places: `tools/push-tuning.sh` checks it is JSON as the game reads it (a byte-order mark allowed, `NaN` and `Infinity` not), and `game/Logic/Tuning.cs` reads it. Its built-in values are in four: `Tuning.BuiltIn` in `game/Logic/Tuning.cs`, `tools/tuning.example.json` (a test holds it to `Tuning.BuiltIn`), the tuning section of `tools/README.md` and the asset contract (`_bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/asset-contract.md`). A change to a setting, a range or a built-in value changes them all.

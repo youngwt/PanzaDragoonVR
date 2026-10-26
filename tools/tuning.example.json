@@ -1,0 +1,8 @@
+{
+  "floor_depth": 6,
+  "canopy_height": 10,
+  "flight_speed": 6,
+  "canopy_speed_scale": 1,
+  "floor_tile": 24,
+  "canopy_tile": 48
+}

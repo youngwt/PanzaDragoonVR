@@ -1,8 +1,8 @@
 ---
-id: 11
+id: 8
 type: bug
 title: "A colour table with no usable block writes the colour-bank textures black"
-parent: none
+parent: epic-forest-floor-and-canopy
 covers: []
 after: []
 assignee: ""
@@ -45,9 +45,10 @@ When `EPISODE3.PRG` holds a colour upload table but every pair in it is skipped 
 
 ## References
 
-- parent — none
+- parent — _bmad-output/initiative-panzer-dragoon-zwei-vr/epic-forest-floor-and-canopy/epic-forest-floor-and-canopy.md
 - retrospective — _bmad-output/initiative-panzer-dragoon-zwei-vr/epic-extraction-tool/epic-extraction-tool-retrospective.md, finding R1; action A1
 
 ## Notes
 
 - Source: carried out of the in-game extraction epic at its close (author, 2026-10-21); kept in the backlog.
+- Moved into the forest floor and canopy epic (author, 2026-10-22).

@@ -13,7 +13,7 @@ public readonly record struct ExtractedFile(string Id, string Path, int Width, i
 /// <param name="Name">The pair's name, as on the disc: <c>E03B0N0</c>.</param>
 /// <param name="Folder">The folder its PNGs go in, in full; created only when <see cref="Files"/> is not empty.</param>
 /// <param name="Files">The PNGs written, in number order.</param>
-/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode extraction does not decode (any but 0, 1, 4 and 5), or in a colour-bank mode (0 or 4) with no colour table.</param>
+/// <param name="LeftOut">Textures numbered but not written, by colour mode: in a mode extraction does not decode (any but 0, 1, 4 and 5), or in a colour-bank mode (0 or 4) with no colour table, or a table none of whose pairs could be applied.</param>
 public sealed record DiscFileResult(string Name, string Folder, IReadOnlyList<ExtractedFile> Files, IReadOnlyDictionary<int, int> LeftOut)
 {
     /// <summary>Textures numbered but not written, in all modes.</summary>
@@ -35,11 +35,15 @@ public readonly record struct MissingDiscFile(string Name, string Absent);
 /// <param name="Folder">The folder the disc files' folders go in, in full: <c>images/e03</c> in the output folder.</param>
 /// <param name="Colours">The colour RAM modes 0 and 4 were coloured from, and the table it came from; null when there is none.</param>
 /// <param name="ColourNotice">Why there is no colour RAM, so modes 0 and 4 are left out: one line, no full stop. Null when there is.</param>
-/// <param name="ManifestPath">The <c>manifest.json</c> written at the top of the output folder, in full; null when no texture was written, and so no manifest.</param>
+/// <param name="ManifestPath">The <c>manifest.json</c> written at the top of the output folder, in full; null when no PNG was written, and so no manifest.</param>
+/// <param name="PlaneFiles">The floor and canopy PNGs written, <c>e03.floor</c> then <c>e03.canopy</c>; empty when there are none.</param>
+/// <param name="PlaneSources">Where in <c>EPISODE3.PRG</c> the floor and canopy came from; null when there are none.</param>
+/// <param name="PlaneNotice">Why there is no floor and canopy: one line, no full stop. Null when there are.</param>
 public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFileResult> DiscFiles, IReadOnlyList<MissingDiscFile> Missing, string Folder,
-    ColourRam? Colours, string? ColourNotice, string? ManifestPath)
+    ColourRam? Colours, string? ColourNotice, string? ManifestPath,
+    IReadOnlyList<ExtractedFile> PlaneFiles, PlaneSources? PlaneSources, string? PlaneNotice)
 {
-    /// <summary>Every PNG written, file by file, in number order.</summary>
+    /// <summary>Every texture PNG written, file by file, in number order; the floor and canopy are in <see cref="PlaneFiles"/>.</summary>
     public IReadOnlyList<ExtractedFile> Files => DiscFiles.SelectMany(f => f.Files).ToList();
 
     /// <summary>How many disc files had at least one PNG written.</summary>
@@ -69,9 +73,10 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
     /// <summary>
     /// One line, with no full stop, for the game's log and the PC command: PNGs written per file, the
     /// colour table modes 0 and 4 were coloured from or why there is none, the textures left out by
-    /// mode, and the files missing or with no textures, for example
-    /// <c>E03CMN 125, E03B0N0 28; colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks; missing: E03END (no E03END.CGB)</c>
-    /// or <c>E03CMN 8; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 116</c>.
+    /// mode, the floor and canopy's sources or why there are none, and the files missing or with no
+    /// textures, for example
+    /// <c>E03CMN 125, E03B0N0 28; colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks; floor and canopy from EPISODE3.PRG: cells at 0x3FDAC, maps at 0x52608 and 0x5287C, colours at 0x52C44 and 0x53244; missing: E03END (no E03END.CGB)</c>
+    /// or <c>E03CMN 8; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 116; no floor and canopy: the disc has no EPISODE3.PRG</c>.
     /// </summary>
     public string Details()
     {
@@ -83,6 +88,7 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
                 string.Join(", ", LeftOut.Select(m => string.Create(CultureInfo.InvariantCulture, $"mode {m.Key} {m.Value}"))));
         }
 
+        parts.Add(PlaneLine());
         if (Missing.Count > 0)
         {
             parts.Add("missing: " + string.Join(", ", Missing.Select(m => $"{m.Name} (no {m.Absent})")));
@@ -98,6 +104,9 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
 
     /// <summary>One line, with no full stop: the colour table used (<see cref="ColourRam.Describe"/>), or <c>no colours for modes 0 and 4: &lt;notice&gt;</c>.</summary>
     public string ColourLine() => Colours?.Describe() ?? $"no colours for modes 0 and 4: {ColourNotice}";
+
+    /// <summary>One line, with no full stop: the floor and canopy's sources (<see cref="PdzDecoding.PlaneSources.Describe"/>), or <c>no floor and canopy: &lt;notice&gt;</c>.</summary>
+    public string PlaneLine() => PlaneSources?.Describe() ?? $"no floor and canopy: {PlaneNotice}";
 }
 
 /// <summary>What <see cref="Extraction.Run"/> is doing when it reports progress.</summary>
@@ -130,8 +139,8 @@ public readonly record struct ExtractionProgress(ExtractionStage Stage, string? 
 /// </summary>
 public static class Extraction
 {
-    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.1</c>.</summary>
-    public const string Version = "0.1";
+    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.2</c>.</summary>
+    public const string Version = "0.2";
 
     /// <summary>
     /// The staging folder inside the output folder, fixed by the asset contract: extraction writes
@@ -141,6 +150,12 @@ public static class Extraction
 
     /// <summary>The folder inside the output folder that the disc files' folders go in.</summary>
     private const string ImageFolder = "images/e03";
+
+    /// <summary>Where the floor (<see cref="Planes.FloorId"/>) goes in the asset folder.</summary>
+    public const string FloorPath = ImageFolder + "/floor.png";
+
+    /// <summary>Where the canopy (<see cref="Planes.CanopyId"/>) goes in the asset folder.</summary>
+    public const string CanopyPath = ImageFolder + "/canopy.png";
 
     /// <summary>The disc files this version extracts, as the asset contract names them, in its order.</summary>
     public static readonly IReadOnlyList<string> TextureFiles = new[]
@@ -153,8 +168,11 @@ public static class Extraction
     /// (see <see cref="DiscImage.OpenImage"/>), into <paramref name="outputFolder"/>.
     /// A file of <see cref="TextureFiles"/> the disc lacks is left out and named in the result; a disc
     /// with none of them is an error. Colour RAM for modes 4 and 0 is built once, from <c>EPISODE3.PRG</c>;
-    /// a disc without it, or without an upload table in it, leaves those modes out and says why in the
-    /// result. Every texture of every file is decoded before any file is written, so a decoding error
+    /// a disc without it, without an upload table in it, or whose chosen table has no pair that can be
+    /// applied, leaves those modes out and says why in the result. The floor and canopy (see <see cref="Planes"/>)
+    /// come from the same <c>EPISODE3.PRG</c>, read once, and are written as <see cref="FloorPath"/> and
+    /// <see cref="CanopyPath"/> with the textures; a disc whose planes cannot be found or unpacked still has
+    /// its textures written, and the result says why. Every texture of every file is decoded before any file is written, so a decoding error
     /// writes nothing. The PNGs, then <c>manifest.json</c> listing them, are written into
     /// <see cref="StagingFolder"/> inside <paramref name="outputFolder"/>, which is emptied first (so a
     /// leftover from an interrupted run is cleared); only when every one is written are they moved into
@@ -178,11 +196,15 @@ public static class Extraction
         var missing = new List<MissingDiscFile>();
         ColourRam? colours;
         string? notice;
+        PlaneImages? planes;
+        string? planeNotice;
         int count = TextureFiles.Count;
         using (DiscImage disc = DiscImage.OpenImage(imagePath))
         {
             header = disc.Header();
-            (colours, notice) = ColourBanks.FromDisc(disc);
+            (byte[]? prg, string? readNotice) = ColourBanks.ReadProgram(disc);
+            (colours, notice) = prg == null ? (null, readNotice) : ColourBanks.FromProgram(prg);
+            (planes, planeNotice) = prg == null ? (null, readNotice) : Planes.FromProgram(prg);
             for (int i = 0; i < count; i++)
             {
                 string name = TextureFiles[i];
@@ -216,6 +238,14 @@ public static class Extraction
             throw new DecodingException($"the disc has none of the Episode 3 texture files ({string.Join(", ", TextureFiles)}, each a .MDB and a .CGB)");
         }
 
+        // The planes are encoded with the textures, before anything is written.
+        var planeFiles = new List<(ExtractedFile File, byte[] Png)>();
+        if (planes != null)
+        {
+            planeFiles.Add((new ExtractedFile(Planes.FloorId, FloorPath, Planes.Size, Planes.Size), PngWriter.Encode(Planes.Size, Planes.Size, planes.Floor)));
+            planeFiles.Add((new ExtractedFile(Planes.CanopyId, CanopyPath, Planes.Size, Planes.Size), PngWriter.Encode(Planes.Size, Planes.Size, planes.Canopy)));
+        }
+
         string staging = Path.Combine(outputFolder, StagingFolder);
         var entries = new List<ManifestEntry>();
         string? manifestPath = null;
@@ -238,6 +268,17 @@ public static class Extraction
                 }
             }
 
+            // The planes go with the textures, in the last disc file's writing stage: no stage of their own.
+            if (planeFiles.Count > 0)
+            {
+                Directory.CreateDirectory(Path.Combine(staging, ImageFolder));
+                foreach ((ExtractedFile file, byte[] png) in planeFiles)
+                {
+                    File.WriteAllBytes(Path.Combine(staging, file.Path), png);
+                    entries.Add(new ManifestEntry(file.Id, file.Path, png));
+                }
+            }
+
             if (entries.Count > 0)
             {
                 File.WriteAllBytes(Path.Combine(staging, Manifest.FileName), Manifest.Write(header, entries));
@@ -249,6 +290,15 @@ public static class Extraction
             {
                 Directory.CreateDirectory(result.Folder);
                 foreach (ExtractedFile file in result.Files)
+                {
+                    File.Move(Path.Combine(staging, file.Path), Path.Combine(outputFolder, file.Path), overwrite: true);
+                }
+            }
+
+            if (planeFiles.Count > 0)
+            {
+                Directory.CreateDirectory(Path.Combine(outputFolder, ImageFolder));
+                foreach ((ExtractedFile file, _) in planeFiles)
                 {
                     File.Move(Path.Combine(staging, file.Path), Path.Combine(outputFolder, file.Path), overwrite: true);
                 }
@@ -269,7 +319,8 @@ public static class Extraction
         // Everything is in place; a staging folder that cannot be removed now is emptied by the next run.
         TryRemove(staging);
         return new ExtractionResult(header, decoded.Select(d => d.Result).ToList(), missing,
-            Path.GetFullPath(Path.Combine(outputFolder, ImageFolder)), colours, notice, manifestPath);
+            Path.GetFullPath(Path.Combine(outputFolder, ImageFolder)), colours, notice, manifestPath,
+            planeFiles.Select(p => p.File).ToList(), planes?.Sources, planeNotice);
     }
 
     /// <summary>Makes <paramref name="folder"/> an empty folder, removing whatever was there.</summary>

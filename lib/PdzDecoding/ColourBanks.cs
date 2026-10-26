@@ -144,7 +144,8 @@ public static class ColourBanks
 
     /// <summary>
     /// Colour RAM from <paramref name="prg"/>'s chosen table (see <see cref="Chosen"/>), or null and a
-    /// one-line notice, with no full stop, saying why there is none.
+    /// one-line notice, with no full stop, saying why there is none. A table none of whose pairs could be
+    /// applied counts as none: its colour RAM would be all black.
     /// </summary>
     public static (ColourRam? Colours, string? Notice) FromProgram(byte[]? prg)
     {
@@ -160,30 +161,34 @@ public static class ColourBanks
         }
 
         int chosen = Chosen(tables.Count);
-        return (Build(prg, tables[chosen], chosen, tables.Count), null);
+        ColourRam colours = Build(prg, tables[chosen], chosen, tables.Count);
+        if (colours.Skipped.Count == tables[chosen].Pairs.Count)
+        {
+            return (null, $"{ProgramFile}'s colour table at 0x{tables[chosen].Offset:X} has no block inside the file and colour RAM");
+        }
+
+        return (colours, null);
     }
 
     /// <summary>
-    /// As <see cref="FromProgram(byte[])"/>, reading <c>EPISODE3.PRG</c> from <paramref name="disc"/>. A file
-    /// that cannot be read is treated as missing, with the reason in the notice, so modes 1 and 5 are still written.
+    /// <c>EPISODE3.PRG</c>'s bytes from <paramref name="disc"/>, read once for the colours and the planes;
+    /// or null and a one-line notice, with no full stop: the disc lacks it, or it cannot be read. A file that
+    /// cannot be read is treated as missing, with the reason in the notice, so modes 1 and 5 are still written.
     /// </summary>
-    public static (ColourRam? Colours, string? Notice) FromDisc(DiscImage disc)
+    public static (byte[]? Program, string? Notice) ReadProgram(DiscImage disc)
     {
         if (disc.Find(ProgramFile) is not DiscFile file)
         {
-            return FromProgram(null);
+            return (null, $"the disc has no {ProgramFile}");
         }
 
-        byte[] prg;
         try
         {
-            prg = disc.ReadFile(file);
+            return (disc.ReadFile(file), null);
         }
         catch (DecodingException e)
         {
             return (null, $"{ProgramFile} cannot be read ({e.Message})");
         }
-
-        return FromProgram(prg);
     }
 }

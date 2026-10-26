@@ -1,0 +1,90 @@
+# The stories of this epic in build order. tickets.py reads this.
+
+[[entry]]
+id = 7
+type = "story"
+title = "Extraction code duplicates are pinned and Main.cs is split"
+description = "Moved from backlog 15 so the split lands before stories 1, 3 and 5 edit Main.cs; the leaf file holds the work."
+verify = "Every test passes unchanged; the prefix test fails if the two strings drift; Main.cs holds one job per file."
+covers = []
+after = []
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 1
+type = "story"
+title = "The floor scrolls endlessly beneath the player in the headset"
+description = "Tracer bullet: the ground plane's image scrolls past beneath the player at a steady speed and repeats with no visible seam, and the sky plane's image scrolls at the same on-screen speed as a flat backdrop, using whatever images the folder supplies or the placeholders, toward CAP-4."
+verify = "In the headset the chequered placeholder floor and sky (or the author's own images) fly past continuously for a minute with no seam, jump or judder, at 90 Hz."
+covers = ["CAP-4"]
+after = [7, "1.4"]
+hitl = true                 # headset check
+risk = "medium"
+
+[[entry]]
+id = 2
+type = "spike"
+title = "Where the floor and canopy planes are on the disc"
+description = "Finds where Episode 3's floor and canopy plane data come from on the disc (the 16x16 cells, the plane maps and their colours; a lead: colour codes 0x500 up, with the block at 0x600-0x6FF appearing in EPISODE3.PRG at 0x52C44), by tracing the save state's VDP2 data to the disc files and, if needed, the game's code in Mednafen and Ghidra; the answer, with evidence, goes in zwei-disc-formats.md, toward CAP-3 and CAP-4."
+verify = "zwei-disc-formats.md names where the cells, maps and colours come from and how they are laid out, each marked confirmed or lead with evidence, or lists what was ruled out; the spec's open questions on the plane data and palette are updated; and the author has decided what story 4 does, including whether a plane image is the whole 512x512 page or its repeating pattern."
+covers = ["CAP-3", "CAP-4"]
+after = []
+hitl = true                 # reverse engineering with the author; the author decides
+risk = "high"
+references = ["../spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Floor depth, canopy height and scrolling come from a tuning file"
+description = "Adds a small tuning file to the asset folder, defined in the asset contract, holding floor depth, canopy height, scroll speed, how the canopy moves, and the metres one floor image and one canopy image cover; the game reads it at launch and falls back to built-in values on a missing or bad file, and the spec's Constraints line and the contract's 'Not in the contract' tuning line are reconciled to it, toward CAP-4."
+verify = "Pushing an edited tuning file with adb and relaunching changes the floor's depth, the canopy's height and the scrolling in the headset; a broken file is reported on the launch board and the built-in values are used; the author has agreed the contract change."
+covers = ["CAP-4"]
+after = [1, "2.13"]
+hitl = true                 # the author agrees the contract change; headset check
+risk = "low"
+
+[[entry]]
+id = 8
+type = "bug"
+title = "A colour table with no usable block writes the colour-bank textures black"
+description = "Moved from backlog 11 so the colour code is fixed before story 4 extends it for the planes; the leaf file holds the work."
+verify = "A decoding test fails on the defect and passes on the fix; the partly skipped case still colours from the pairs that applied."
+covers = []
+after = []
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Extraction writes the floor and canopy images"
+description = "The decoding library extracts the floor and canopy planes found by spike 2 (cells, maps and colours) as repeating PNG images (the whole plane page as the disc holds it, unless spike 2 decided otherwise) under the asset contract's e03.floor and e03.canopy IDs, listed in the manifest, on the PC and the headset, toward CAP-3 and CAP-4."
+verify = "pdz-extract on the author's disc writes e03.floor and e03.canopy PNGs that tile seamlessly and match the save state's planes by eye, with unit tests on synthetic plane data, and compare-headset.sh reports identical."
+covers = ["CAP-3", "CAP-4"]
+after = [2, 8, "2.11"]
+hitl = true                 # the author checks the planes by eye
+risk = "high"
+
+[[entry]]
+id = 5
+type = "story"
+title = "The forest floor and canopy fly past in the headset"
+description = "Brings the extracted planes and the scrolling together in the headset: the extracted floor loops beneath the player with no visible seam at a tile size the author sets in story 3's tuning file and the canopy scrolls overhead without parallax, toward CAP-4."
+verify = "In the headset, with the author's disc extracted, the forest floor scrolls endlessly with no seam and the canopy sits overhead, both looking like Zwei's Episode 3 to the author, and changing the tuning file changes the motion without rebuilding."
+covers = ["CAP-4"]
+after = [3, 4]
+hitl = true                 # the author's look in the headset
+risk = "medium"
+
+[[entry]]
+id = 6
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
+verify = "The epic's Done when checks still pass on the headset after the cleanup."
+covers = ["CAP-3", "CAP-4"]
+after = [7, 1, 2, 3, 8, 4, 5]
+hitl = false
+risk = "low"

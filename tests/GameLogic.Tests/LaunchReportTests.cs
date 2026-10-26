@@ -299,4 +299,75 @@ public sealed class LaunchReportTests : IDisposable
 
         Assert.Equal(new[] { "e03.canopy: c.png: missing", "IOException: boom" }, report.Problems);
     }
+
+    // ------------------------------------------------------------ tuning problems
+
+    private static readonly string[] TuningProblems =
+    {
+        "tuning.json: floor_depth must be a number from 3 to 1000; using the built-in 4",
+    };
+
+    [Fact]
+    public void TuningProblems_None_LeaveTheReportAsItIs()
+    {
+        Assert.Same(LaunchReport.Nothing, LaunchReport.Nothing.WithTuningProblems(Array.Empty<string>()));
+    }
+
+    [Fact]
+    public void TuningProblems_OnTheirOwn_ShowTheBoard()
+    {
+        LaunchReport report = LaunchReport.Nothing.WithTuningProblems(TuningProblems);
+
+        Assert.Equal(LaunchReportKind.Problems, report.Kind);
+        Assert.Equal("1 problem with tuning.json", report.Heading);
+        Assert.Equal(TuningProblems, report.Problems);
+        Assert.Contains(report.ShownLines, line => line.Contains("floor_depth"));
+    }
+
+    [Fact]
+    public void TuningProblems_KeepTheFoldersReport()
+    {
+        Manifest(WithAssets(Entry(Floor, "f.png", 33)));
+        LaunchReport folder = Report();
+        Assert.Equal("1 problem with the assets", folder.Heading);
+
+        LaunchReport report = folder.WithTuningProblems(TuningProblems);
+
+        Assert.Equal(LaunchReportKind.Problems, report.Kind);
+        Assert.Equal(folder.Heading, report.Heading);
+        Assert.Equal(folder.Problems.Count + 1, report.Problems.Count);
+        Assert.Equal(TuningProblems[0], report.Problems[0]);
+        Assert.Contains(report.Details, line => line.StartsWith("1 problem with tuning.json"));
+    }
+
+    [Fact]
+    public void TuningProblems_AreShownWhenTheFolderHasMoreThanTheBoardShows()
+    {
+        LaunchReport folder = LaunchReport.Failed(_folder, "IOException: boom",
+            Enumerable.Range(1, LaunchReport.MaxShownProblems + 2).Select(i => $"e03.x{i}: missing"));
+
+        LaunchReport report = folder.WithTuningProblems(TuningProblems);
+
+        Assert.Contains(report.ShownLines, line => line.Contains("floor_depth"));
+    }
+
+    [Fact]
+    public void TuningProblems_WithANotice_KeepTheNoticeAndShowAsProblems()
+    {
+        LaunchReport report = Report().WithTuningProblems(TuningProblems);
+
+        Assert.Equal(LaunchReportKind.Problems, report.Kind);
+        Assert.Equal("Running on placeholders", report.Heading);
+        Assert.Equal(TuningProblems, report.Problems);
+    }
+
+    [Fact]
+    public void TuningProblems_SurviveAnExtractionProblem()
+    {
+        LaunchReport report = LaunchReport.Nothing.WithTuningProblems(TuningProblems).WithExtractionProblem("disc.iso: boom");
+
+        Assert.Equal(LaunchReport.NothingExtracted, report.Heading);
+        Assert.Equal(TuningProblems, report.Problems);
+        Assert.Contains("1 problem with tuning.json", report.Details);
+    }
 }

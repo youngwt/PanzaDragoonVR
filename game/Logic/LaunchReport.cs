@@ -168,6 +168,33 @@ public sealed class LaunchReport
         return new LaunchReport(LaunchReportKind.Problems, NothingExtracted, details, Problems);
     }
 
+    /// <summary>
+    /// This report with the tuning file's problems (see <see cref="Tuning"/>) ahead of its own, so the
+    /// board names them however many problems the folder has. With none, this report as it is. A report
+    /// with nothing to say becomes one about the tuning file alone, so the board shows; any other keeps
+    /// its heading and details, gains a line saying what the tuning problems mean and is shown as problems.
+    /// </summary>
+    public LaunchReport WithTuningProblems(IReadOnlyList<string> problems)
+    {
+        if (problems.Count == 0)
+        {
+            return this;
+        }
+
+        string count = problems.Count == 1 ? "1 problem" : $"{problems.Count} problems";
+        if (Kind == LaunchReportKind.None)
+        {
+            return new LaunchReport(LaunchReportKind.Problems, $"{count} with {Tuning.FileName}",
+                new[] { TuningMeaning }, problems.ToList());
+        }
+
+        return new LaunchReport(LaunchReportKind.Problems, Heading,
+            Details.Append($"{count} with {Tuning.FileName}: {TuningMeaning.ToLowerInvariant()}").ToList(),
+            problems.Concat(Problems).ToList());
+    }
+
+    private const string TuningMeaning = "Each affected setting uses its built-in value.";
+
     private static LaunchReport AllPlaceholders(string heading, string where, string? reason, IEnumerable<string>? foundBefore = null) =>
         new(LaunchReportKind.Problems, heading,
             new[] { "Running on placeholders for everything.", $"Asset folder: {where}" },

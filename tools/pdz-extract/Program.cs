@@ -20,6 +20,8 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
     Console.WriteLine("asset folder on the headset, then manifest.json at the top of the output folder,");
     Console.WriteLine("listing them and replacing any manifest there. Modes 0 and 4 are coloured from");
     Console.WriteLine("a colour upload table in EPISODE3.PRG; with none, they are left out and a notice says why.");
+    Console.WriteLine($"It also writes the floor and canopy from EPISODE3.PRG as {Extraction.FloorPath} and");
+    Console.WriteLine($"{Extraction.CanopyPath}; when they cannot be found or unpacked, a notice says why.");
     return 0;
 }
 
@@ -44,14 +46,22 @@ try
     Console.WriteLine(result.Colours != null
         ? $"{Tool}: modes 0 and 4 coloured from the {result.ColourLine()}"
         : $"{Tool}: {result.ColourLine()}; those textures are left out");
-    if (result.Files.Count == 0)
+    Console.WriteLine(result.PlaneSources != null
+        ? $"{Tool}: {result.PlaneLine()}"
+        : $"{Tool}: {result.PlaneLine()}; the game keeps its placeholders for them");
+    if (result.Files.Count == 0 && result.PlaneFiles.Count == 0)
     {
         Console.WriteLine($"{Tool}: found no textures to write: nothing written");
     }
     else
     {
         Console.WriteLine($"{Tool}: wrote {result.Files.Count} textures from {result.DiscFilesWritten} disc files to {result.Folder}");
-        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count} assets");
+        if (result.PlaneFiles.Count > 0)
+        {
+            Console.WriteLine($"{Tool}: wrote the floor and canopy as {string.Join(" and ", result.PlaneFiles.Select(f => f.Path))}");
+        }
+
+        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count + result.PlaneFiles.Count} assets");
     }
 
     foreach (DiscFileResult file in result.DiscFiles)
