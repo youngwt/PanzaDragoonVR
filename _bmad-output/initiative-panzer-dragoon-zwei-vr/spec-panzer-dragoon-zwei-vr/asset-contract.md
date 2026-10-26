@@ -49,14 +49,14 @@ files/                 the asset folder (the output folder's contents on the PC)
     {
       "id": "e03.floor",
       "kind": "image",
-      "path": "images/e03_floor.png",
+      "path": "images/e03/floor.png",
       "bytes": 181234,
       "sha256": "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"
     },
     {
       "id": "e03.canopy",
       "kind": "image",
-      "path": "images/e03_canopy.png",
+      "path": "images/e03/canopy.png",
       "bytes": 204817
     },
     {

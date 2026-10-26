@@ -6,6 +6,7 @@ covers: [CAP-4, CAP-3]
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Forest floor and canopy
@@ -44,6 +45,7 @@ The two planes and their motion. For CAP-3 this epic delivers plane extraction o
 - Decision: backlog 15 (now 7, the Main.cs split) runs before story 1, and backlog 11 (now 8, the black colour-bank bug) before story 4, so neither collides with this epic's edits (user, 2026-10-22).
 - Decision: each extracted plane image is the whole 512x512 page as VDP2 holds it, not its repeating unit; the tile size in the tuning file covers the page (user, 2026-10-25).
 - Decision: story 4 fixes the VDP2 plane settings (16x16 cells, 256 colours, the pattern-name bits) as constants in the decoding library, documented as read from the save state; the code that sets the registers is not traced first (user, 2026-10-25).
+- Decision: epic closed (author, 2026-10-26). The closure check found CAP-4, CAP-3 as far as plane extraction, and Done when 1 to 4 met, every item with a headset or byte-comparison record; "no seam" on the extracted floor rests on the author's approval in 3.5 and 3.6 and on the whole page wrapping, not on a check that names it. Fixed at closure: the spec's open question on the VDP2 settings, and the contract's example plane paths. The forest's side walls (likely VDP1 models, seen in Mednafen during 3.5) went to the backlog as ticket 16. The test renames in 3.6 were accepted. Smaller leftovers (rejected review findings, backlog spike 10, the spec's other open questions) are for the retrospective.
 
 ## References
 
