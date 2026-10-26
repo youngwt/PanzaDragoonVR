@@ -27,8 +27,11 @@ public sealed record Tuning(
     /// <summary>Metres the eye is assumed to be above the play area's floor; it enters only the canopy's speed.</summary>
     public const float EyeHeight = 1.6f;
 
-    /// <summary>Every setting at its built-in value.</summary>
-    public static Tuning BuiltIn { get; } = new(4f, 40f, 4f, 1f, 2f, 20f);
+    /// <summary>
+    /// Every setting at its built-in value, set by the author in the headset on 2026-10-26 to look like
+    /// Episode 3 with the extracted planes.
+    /// </summary>
+    public static Tuning BuiltIn { get; } = new(6f, 10f, 6f, 1f, 24f, 48f);
 
     /// <summary>
     /// Each setting the file can give: its name in the file, its allowed range (inclusive), its built-in
@@ -51,7 +54,7 @@ public sealed record Tuning(
     public float CanopySpeed =>
         PlaneScroll.SkySpeed(FlightSpeed, FloorDepth + EyeHeight, CanopyHeight - EyeHeight) * CanopySpeedScale;
 
-    /// <summary>The settings as the file names them, for the log: <c>floor_depth 4, canopy_height 40, ...</c>.</summary>
+    /// <summary>The settings as the file names them, for the log: <c>floor_depth 6, canopy_height 10, ...</c>.</summary>
     public string Describe()
     {
         var parts = new List<string>();

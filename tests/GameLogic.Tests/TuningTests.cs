@@ -70,9 +70,9 @@ public sealed class TuningTests : IDisposable
     [Fact]
     public void SomeFields_UsesThoseAndTheBuiltInsElsewhere()
     {
-        TuningRead read = Tuning.Parse("""{ "flight_speed": 6 }""");
+        TuningRead read = Tuning.Parse("""{ "flight_speed": 8 }""");
 
-        Assert.Equal(Tuning.BuiltIn with { FlightSpeed = 6f }, read.Tuning);
+        Assert.Equal(Tuning.BuiltIn with { FlightSpeed = 8f }, read.Tuning);
         Assert.Empty(read.Problems);
     }
 
@@ -101,9 +101,9 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(Tuning.BuiltIn with { FlightSpeed = 7f }, read.Tuning);
         Assert.Equal(new[]
         {
-            "tuning.json: canopy_height must be a number from 2 to 1000; using the built-in 40",
-            "tuning.json: floor_depth must be a number from 3 to 1000; using the built-in 4",
-            "tuning.json: floor_tile must be a number from 0.1 to 1000; using the built-in 2",
+            "tuning.json: canopy_height must be a number from 2 to 1000; using the built-in 10",
+            "tuning.json: floor_depth must be a number from 3 to 1000; using the built-in 6",
+            "tuning.json: floor_tile must be a number from 0.1 to 1000; using the built-in 24",
         }, read.Problems);
     }
 
@@ -183,8 +183,8 @@ public sealed class TuningTests : IDisposable
     [Fact]
     public void CanopySpeed_WithTheBuiltIns_CrossesTheFloorsAngleFromTheEye()
     {
-        // The floor 5.6 m below the eye and the canopy 38.4 m above it.
-        Assert.Equal(4f * 38.4f / 5.6f, Tuning.BuiltIn.CanopySpeed, 1e-3f);
+        // The floor 7.6 m below the eye and the canopy 8.4 m above it.
+        Assert.Equal(6f * 8.4f / 7.6f, Tuning.BuiltIn.CanopySpeed, 1e-3f);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public sealed class TuningTests : IDisposable
     public void Describe_NamesEverySettingAsTheFileDoes()
     {
         Assert.Equal(
-            "floor_depth 4, canopy_height 40, flight_speed 4, canopy_speed_scale 1, floor_tile 2, canopy_tile 20",
+            "floor_depth 6, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48",
             Tuning.BuiltIn.Describe());
     }
 }

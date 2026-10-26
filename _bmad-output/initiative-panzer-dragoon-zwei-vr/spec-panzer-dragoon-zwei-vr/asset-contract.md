@@ -320,23 +320,23 @@ The floor's depth, the canopy's height, how fast they scroll and how much of eac
 
 ```json
 {
-  "floor_depth": 4,
-  "canopy_height": 40,
-  "flight_speed": 4,
+  "floor_depth": 6,
+  "canopy_height": 10,
+  "flight_speed": 6,
   "canopy_speed_scale": 1,
-  "floor_tile": 2,
-  "canopy_tile": 20
+  "floor_tile": 24,
+  "canopy_tile": 48
 }
 ```
 
 | Field | Range | Built-in | Meaning |
 |-------|-------|----------|---------|
-| `floor_depth` | 3 to 1000 | 4 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground; 4 m allows about a metre for its body below the rider. |
-| `canopy_height` | 2 to 1000 | 40 | Metres the canopy plane is above the play area's floor, so it is always above the head. |
-| `flight_speed` | 0 to 100 | 4 | Metres a second the floor's image moves past. |
+| `floor_depth` | 3 to 1000 | 6 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground. The built-ins were set by the author in the headset on 2026-10-26 to look like Episode 3. |
+| `canopy_height` | 2 to 1000 | 10 | Metres the canopy plane is above the play area's floor, so it is always above the head. |
+| `flight_speed` | 0 to 100 | 6 | Metres a second the floor's image moves past. |
 | `canopy_speed_scale` | 0 to 10 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
-| `floor_tile` | 0.1 to 1000 | 2 | Metres of floor one copy of its image covers. |
-| `canopy_tile` | 0.1 to 1000 | 20 | Metres of canopy one copy of its image covers. |
+| `floor_tile` | 0.1 to 1000 | 24 | Metres of floor one copy of its image covers. |
+| `canopy_tile` | 0.1 to 1000 | 48 | Metres of canopy one copy of its image covers. |
 
 Ranges include their ends. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
 
