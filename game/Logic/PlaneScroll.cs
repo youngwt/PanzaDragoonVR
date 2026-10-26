@@ -4,7 +4,7 @@ using System;
 namespace PanzaDragoonVR.Logic;
 
 /// <summary>
-/// The scroll of the images on the ground and sky planes: each frame an image is shifted along the
+/// The scroll of the images on the floor and canopy planes: each frame an image is shifted along the
 /// direction of flight, and its offset is kept within one tile so the pattern repeats for ever with no
 /// seam and the offset never grows. Engine-free, so it is tested on the PC; the game feeds it each
 /// frame's delta and gives the shader the offset it returns.
@@ -37,14 +37,14 @@ public static class PlaneScroll
     }
 
     /// <summary>
-    /// The sky's speed, in metres a second, that makes it cross the same angle a second overhead as the
-    /// floor does below: the floor's <paramref name="floorSpeed"/> times the sky's
-    /// <paramref name="skyHeight"/> above the eye over the floor's <paramref name="floorDepth"/> below it.
+    /// The canopy's speed, in metres a second, that makes it cross the same angle a second overhead as the
+    /// floor does below: the floor's <paramref name="floorSpeed"/> times the canopy's
+    /// <paramref name="canopyHeight"/> above the eye over the floor's <paramref name="floorDepth"/> below it.
     /// Either distance not a positive number gives the floor's speed.
     /// </summary>
-    public static float SkySpeed(float floorSpeed, float floorDepth, float skyHeight)
+    public static float CanopySpeed(float floorSpeed, float floorDepth, float canopyHeight)
     {
-        bool usable = floorDepth > 0 && float.IsFinite(floorDepth) && skyHeight > 0 && float.IsFinite(skyHeight);
-        return usable ? floorSpeed * skyHeight / floorDepth : floorSpeed;
+        bool usable = floorDepth > 0 && float.IsFinite(floorDepth) && canopyHeight > 0 && float.IsFinite(canopyHeight);
+        return usable ? floorSpeed * canopyHeight / floorDepth : floorSpeed;
     }
 }

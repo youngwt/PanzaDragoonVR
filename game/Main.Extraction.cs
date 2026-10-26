@@ -40,14 +40,14 @@ public partial class Main
 
             string? problem = _extraction.Problem;
             _extraction = null;
-            (ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report) = LoadAssets();
+            (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, LaunchReport report) = LoadAssets();
             if (problem != null)
             {
                 report = report.WithExtractionProblem(problem);
             }
 
             AssetFolder.LogReport(report);
-            ShowAssets(ground, sky, flyer, report);
+            ShowAssets(floor, canopy, flyer, report);
         }
         catch (Exception e)
         {

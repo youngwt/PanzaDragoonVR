@@ -170,10 +170,9 @@ public sealed class LaunchReport
 
     /// <summary>
     /// This report with the tuning file's problems (see <see cref="Tuning"/>) ahead of its own, so the
-    /// board names them however many problems the folder has. With
-    /// none, this report as it is. A report with nothing to say becomes one about the tuning file alone,
-    /// so the board shows; any other keeps its heading and details, gains a line saying what the tuning
-    /// problems mean and is shown as problems.
+    /// board names them however many problems the folder has. With none, this report as it is. A report
+    /// with nothing to say becomes one about the tuning file alone, so the board shows; any other keeps
+    /// its heading and details, gains a line saying what the tuning problems mean and is shown as problems.
     /// </summary>
     public LaunchReport WithTuningProblems(IReadOnlyList<string> problems)
     {

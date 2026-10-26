@@ -5,24 +5,24 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The scene's scroll job: the ground and sky images slide along the direction of flight, the play
+/// The scene's scroll job: the floor and canopy images slide along the direction of flight, the play
 /// area's forward (-Z), so their patterns travel towards +Z under and over the player. The planes stay
-/// where they are. The ground moves at the tuning's steady flight speed; the sky moves as a flat backdrop,
-/// at the same angle a second overhead as the ground below, times the tuning's canopy speed scale (see
+/// where they are. The floor moves at the tuning's steady flight speed; the canopy moves as a flat backdrop,
+/// at the same angle a second overhead as the floor below, times the tuning's canopy speed scale (see
 /// <see cref="Tuning.CanopySpeed"/>). The offsets outlast a re-dress after extraction.
 /// </summary>
 public partial class Main
 {
-    private ShaderMaterial? _groundMaterial;
-    private ShaderMaterial? _skyMaterial;
-    private float _groundOffset;
-    private float _skyOffset;
+    private ShaderMaterial? _floorMaterial;
+    private ShaderMaterial? _canopyMaterial;
+    private float _floorOffset;
+    private float _canopyOffset;
 
     /// <summary>Moves both images on by one frame's flight.</summary>
     private void Scroll(double delta)
     {
-        _groundOffset = PlaneScroll.Next(_groundOffset, _tuning.FlightSpeed, (float)delta, _tuning.FloorTile);
-        _skyOffset = PlaneScroll.Next(_skyOffset, _tuning.CanopySpeed, (float)delta, _tuning.CanopyTile);
+        _floorOffset = PlaneScroll.Next(_floorOffset, _tuning.FlightSpeed, (float)delta, _tuning.FloorTile);
+        _canopyOffset = PlaneScroll.Next(_canopyOffset, _tuning.CanopySpeed, (float)delta, _tuning.CanopyTile);
         ApplyScroll();
     }
 
@@ -32,7 +32,7 @@ public partial class Main
     /// </summary>
     private void ApplyScroll()
     {
-        _groundMaterial?.SetShaderParameter("offset", new Vector2(0, _groundOffset));
-        _skyMaterial?.SetShaderParameter("offset", new Vector2(0, _skyOffset));
+        _floorMaterial?.SetShaderParameter("offset", new Vector2(0, _floorOffset));
+        _canopyMaterial?.SetShaderParameter("offset", new Vector2(0, _canopyOffset));
     }
 }

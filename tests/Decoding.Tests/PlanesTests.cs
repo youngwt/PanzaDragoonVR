@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Text;
 using Xunit;
 using static PdzDecoding.Tests.SyntheticTextures;
+using static PdzDecoding.Tests.SyntheticPlanes;
 
 namespace PdzDecoding.Tests;
 

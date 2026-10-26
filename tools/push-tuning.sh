@@ -18,7 +18,6 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=quest-adb.sh
 . "$here/quest-adb.sh"
 
-REMOTE="/sdcard/Android/data/$PACKAGE/files"
 USAGE="usage: push-tuning.sh <file> | --remove"
 
 die() {

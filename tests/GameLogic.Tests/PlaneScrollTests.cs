@@ -41,9 +41,9 @@ public class PlaneScrollTests
     }
 
     [Fact]
-    public void SkySpeed_CrossesTheSameAnglePerSecondAsTheFloor()
+    public void CanopySpeed_CrossesTheSameAnglePerSecondAsTheFloor()
     {
-        Assert.Equal(120f, PlaneScroll.SkySpeed(5f, 1.6f, 38.4f), 1e-3f);
+        Assert.Equal(120f, PlaneScroll.CanopySpeed(5f, 1.6f, 38.4f), 1e-3f);
     }
 
     [Theory]
@@ -51,8 +51,8 @@ public class PlaneScrollTests
     [InlineData(-1.6f)]
     [InlineData(float.NaN)]
     [InlineData(float.PositiveInfinity)]
-    public void SkySpeed_OnBadDistances_IsTheFloorSpeed(float floorDepth)
+    public void CanopySpeed_OnBadDistances_IsTheFloorSpeed(float floorDepth)
     {
-        Assert.Equal(5f, PlaneScroll.SkySpeed(5f, floorDepth, 38.4f));
+        Assert.Equal(5f, PlaneScroll.CanopySpeed(5f, floorDepth, 38.4f));
     }
 }

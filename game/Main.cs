@@ -6,13 +6,13 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The scene: a ground, a sky and a flyer circling the player, to look all around at. Loads what the
-/// asset folder supplies for them, dressing the ground and sky in its images and flying its model in
+/// The scene: a floor, a canopy and a flyer circling the player, to look all around at. Loads what the
+/// asset folder supplies for them, dressing the floor and canopy in its images and flying its model in
 /// place of the grey cube, with each one's placeholder for whatever it does not supply; shows what the
 /// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
 /// 90 Hz and tells the frame-rate readout the rate it is running at. A disc image in the folder is
 /// extracted behind the scene, its progress on the same board, and the folder is read again when it ends.
-/// The ground and sky scroll past as though the player were flying forwards, placed and paced by the
+/// The floor and canopy scroll past as though the player were flying forwards, placed and paced by the
 /// asset folder's <c>tuning.json</c> or the built-in values.
 /// This file holds the scene and its assets; the other jobs are in the <c>Main.*.cs</c> files beside it:
 /// extraction, the board, the OpenXR session, the refresh rate, the scroll and the tuning.
@@ -30,10 +30,10 @@ public partial class Main : Node3D
 
         _tiling = new Shader { Code = TilingShader };
         // The scene starts on what the folder already holds; extraction, if any, runs behind it.
-        (ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report) = LoadAssets();
+        (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, LaunchReport report) = LoadAssets();
         _extraction = StartExtraction(ref report);
         AssetFolder.LogReport(report);
-        ShowAssets(ground, sky, flyer, report);
+        ShowAssets(floor, canopy, flyer, report);
         if (_extraction != null)
         {
             ShowProgress(_extraction.Board);
@@ -52,7 +52,7 @@ public partial class Main : Node3D
 
     /// <summary>
     /// Places the board until the head is tracked, watches extraction while it runs and scrolls the
-    /// ground and sky.
+    /// floor and canopy.
     /// </summary>
     public override void _Process(double delta)
     {
@@ -66,10 +66,10 @@ public partial class Main : Node3D
     }
 
     /// <summary>
-    /// Shows the launch report on the board, dresses the ground and sky in their images or placeholders
+    /// Shows the launch report on the board, dresses the floor and canopy in their images or placeholders
     /// and flies the model or the grey cube: at launch, and again when the folder is read after extraction.
     /// </summary>
-    private void ShowAssets(ImageTexture? ground, ImageTexture? sky, Node3D? flyer, LaunchReport report)
+    private void ShowAssets(ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, LaunchReport report)
     {
         _report = report;
         // What the launch check found, readable in the headset; it stays for as long as the app runs.
@@ -77,8 +77,8 @@ public partial class Main : Node3D
         OnBoard("the launch report", () => Board.Display(report));
 
         PlacePlanes();
-        _groundMaterial = Dress(GetNode<MeshInstance3D>("Ground"), ground ?? PlaceholderTextures.Ground(), _tuning.FloorTile);
-        _skyMaterial = Dress(GetNode<MeshInstance3D>("Sky"), sky ?? PlaceholderTextures.Sky(), _tuning.CanopyTile);
+        _floorMaterial = Dress(GetNode<MeshInstance3D>("Ground"), floor ?? PlaceholderTextures.Ground(), _tuning.FloorTile);
+        _canopyMaterial = Dress(GetNode<MeshInstance3D>("Sky"), canopy ?? PlaceholderTextures.Sky(), _tuning.CanopyTile);
         // The new images carry on from where the old ones had scrolled to.
         ApplyScroll();
         var cube = GetNode<FlyingCube>("Cube");
@@ -88,7 +88,7 @@ public partial class Main : Node3D
         }
         catch (Exception e)
         {
-            // The grey cube flies instead; the ground and sky keep what they loaded.
+            // The grey cube flies instead; the floor and canopy keep what they loaded.
             GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({DiscExtraction.Reason(e)}); using the placeholder");
             if (flyer != null && IsInstanceValid(flyer))
             {
@@ -106,11 +106,11 @@ public partial class Main : Node3D
     /// Whatever goes wrong in loading, the scene and OpenXR still start: everything is a placeholder
     /// and the report says loading failed.
     /// </summary>
-    private (ImageTexture? Ground, ImageTexture? Sky, Node3D? Flyer, LaunchReport Report) LoadAssets()
+    private (ImageTexture? Floor, ImageTexture? Canopy, Node3D? Flyer, LaunchReport Report) LoadAssets()
     {
         AssetFolder? assets = null;
-        ImageTexture? ground = null;
-        ImageTexture? sky = null;
+        ImageTexture? floor = null;
+        ImageTexture? canopy = null;
         Node3D? flyer = null;
         LaunchReport report;
         try
@@ -122,16 +122,16 @@ public partial class Main : Node3D
             }
 
             assets = AssetFolder.Open(_folder);
-            ground = assets.Image(AssetIds.E03Floor);
-            sky = assets.Image(AssetIds.E03Canopy);
+            floor = assets.Image(AssetIds.E03Floor);
+            canopy = assets.Image(AssetIds.E03Canopy);
             flyer = assets.Model(AssetIds.E03Flyer);
             assets.LogSummary();
             report = assets.Report();
         }
         catch (Exception e)
         {
-            ground = null;
-            sky = null;
+            floor = null;
+            canopy = null;
             flyer?.Free();
             flyer = null;
             string reason = DiscExtraction.Reason(e);
@@ -142,7 +142,7 @@ public partial class Main : Node3D
         // The tuning is read once, from the folder found above (or none); its problems join every report.
         ReadTuning();
         report = report.WithTuningProblems(_tuningProblems);
-        return (ground, sky, flyer, report);
+        return (floor, canopy, flyer, report);
     }
 
     /// <summary>

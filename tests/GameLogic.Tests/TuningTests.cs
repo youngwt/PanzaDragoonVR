@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Text.Json;
 using Xunit;
 
 namespace PanzaDragoonVR.Logic.Tests;
@@ -200,5 +202,35 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(
             "floor_depth 6, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48",
             Tuning.BuiltIn.Describe());
+    }
+
+    // ------------------------------------------------------------ the example file
+
+    [Fact]
+    public void ExampleFile_GivesEverySettingAtItsBuiltInValue()
+    {
+        string text = File.ReadAllText(FindExample());
+
+        TuningRead read = Tuning.Parse(text);
+
+        Assert.Equal(Tuning.BuiltIn, read.Tuning);
+        Assert.Empty(read.Problems);
+        using JsonDocument json = JsonDocument.Parse(text);
+        Assert.Equal(6, json.RootElement.EnumerateObject().Select(field => field.Name).Distinct().Count());
+    }
+
+    /// <summary><c>tools/tuning.example.json</c>, found by walking up from the test build's folder to the repository.</summary>
+    private static string FindExample()
+    {
+        for (DirectoryInfo? here = new(AppContext.BaseDirectory); here != null; here = here.Parent)
+        {
+            string candidate = Path.Combine(here.FullName, "tools", "tuning.example.json");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new FileNotFoundException($"tools/tuning.example.json was not found above {AppContext.BaseDirectory}");
     }
 }

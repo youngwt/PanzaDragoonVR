@@ -172,7 +172,8 @@ public static class ColourBanks
 
     /// <summary>
     /// <c>EPISODE3.PRG</c>'s bytes from <paramref name="disc"/>, read once for the colours and the planes;
-    /// or null and a one-line notice, with no full stop: the disc lacks it, or it cannot be read.
+    /// or null and a one-line notice, with no full stop: the disc lacks it, or it cannot be read. A file that
+    /// cannot be read is treated as missing, with the reason in the notice, so modes 1 and 5 are still written.
     /// </summary>
     public static (byte[]? Program, string? Notice) ReadProgram(DiscImage disc)
     {
@@ -189,15 +190,5 @@ public static class ColourBanks
         {
             return (null, $"{ProgramFile} cannot be read ({e.Message})");
         }
-    }
-
-    /// <summary>
-    /// As <see cref="FromProgram(byte[])"/>, reading <c>EPISODE3.PRG</c> from <paramref name="disc"/>. A file
-    /// that cannot be read is treated as missing, with the reason in the notice, so modes 1 and 5 are still written.
-    /// </summary>
-    public static (ColourRam? Colours, string? Notice) FromDisc(DiscImage disc)
-    {
-        (byte[]? prg, string? notice) = ReadProgram(disc);
-        return prg == null ? (null, notice) : FromProgram(prg);
     }
 }

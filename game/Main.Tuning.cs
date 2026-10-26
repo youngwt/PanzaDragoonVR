@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using Godot;
 using PanzaDragoonVR.Logic;
 
@@ -7,13 +8,13 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// The scene's tuning job: reads <c>tuning.json</c> from the asset folder once, at launch, and places the
-/// ground and sky planes from it. Its problems join the launch report each time it is built, so they
+/// floor and canopy planes from it. Its problems join the launch report each time it is built, so they
 /// survive the board's rebuild after extraction. A change to the file is seen when the app is started again.
 /// </summary>
 public partial class Main
 {
     private Tuning _tuning = Tuning.BuiltIn;
-    private System.Collections.Generic.IReadOnlyList<string> _tuningProblems = Array.Empty<string>();
+    private IReadOnlyList<string> _tuningProblems = Array.Empty<string>();
     private bool _tuningRead;
 
     /// <summary>
@@ -50,7 +51,7 @@ public partial class Main
         GD.Print($"{AssetFolder.LogTag} tuning ({source}): {_tuning.Describe()}");
     }
 
-    /// <summary>Puts the ground <see cref="Tuning.FloorDepth"/> below the play area's floor and the sky <see cref="Tuning.CanopyHeight"/> above it.</summary>
+    /// <summary>Puts the floor plane <see cref="Tuning.FloorDepth"/> below the play area's floor and the canopy plane <see cref="Tuning.CanopyHeight"/> above it.</summary>
     private void PlacePlanes()
     {
         GetNode<Node3D>("Ground").Position = new Vector3(0, -_tuning.FloorDepth, 0);

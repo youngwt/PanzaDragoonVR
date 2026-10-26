@@ -34,8 +34,8 @@ public sealed record Tuning(
     public static Tuning BuiltIn { get; } = new(6f, 10f, 6f, 1f, 24f, 48f);
 
     /// <summary>
-    /// Each setting the file can give: its name in the file, its allowed range (inclusive), its built-in
-    /// value and how it replaces the value in a tuning.
+    /// Each setting the file can give: its name in the file, its allowed range (inclusive), how it reads
+    /// the value from a tuning and how it replaces it; the built-in values are in <see cref="BuiltIn"/>.
     /// </summary>
     private static readonly Setting[] Settings =
     {
@@ -52,7 +52,7 @@ public sealed record Tuning(
     /// overhead as the floor does below, seen from <see cref="EyeHeight"/>, times <see cref="CanopySpeedScale"/>.
     /// </summary>
     public float CanopySpeed =>
-        PlaneScroll.SkySpeed(FlightSpeed, FloorDepth + EyeHeight, CanopyHeight - EyeHeight) * CanopySpeedScale;
+        PlaneScroll.CanopySpeed(FlightSpeed, FloorDepth + EyeHeight, CanopyHeight - EyeHeight) * CanopySpeedScale;
 
     /// <summary>The settings as the file names them, for the log: <c>floor_depth 6, canopy_height 10, ...</c>.</summary>
     public string Describe()

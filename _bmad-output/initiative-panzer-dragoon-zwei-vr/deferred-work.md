@@ -67,3 +67,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-forest-floor-and-canopy/story-extraction-maintenance-when-the-next-epic-starts-plan.md`
   summary: AGENTS.md's Tests convention should say GameLogic.Tests also references the decoding library, for tests only, while game/Logic itself does not.
   evidence: Ticket 3.7 added the reference in tests/GameLogic.Tests/GameLogic.Tests.csproj for the ExtractorPrefix test; AGENTS.md line 51 still names only Decoding.Tests.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-forest-floor-and-canopy/story-refactor-sweep-plan.md`
+  summary: The item asking AGENTS.md's Tests convention to say GameLogic.Tests also references the decoding library, for tests only, is closed.
+  evidence: The refactor sweep (ticket 6 of the forest floor and canopy epic), 2026-10-26, added it to AGENTS.md's Tests convention, with `game/Logic/` itself referencing neither the library nor Godot.

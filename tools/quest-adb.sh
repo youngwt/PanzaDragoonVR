@@ -1,8 +1,11 @@
-# Sourced by build-quest.sh, push-assets.sh, push-tuning.sh and compare-headset.sh: the app's package, adb on the host, and finding the
-# one connected headset. See tools/README.md. Needs ANDROID_HOME (from toolchain-env.sh) and a 'die'
-# function from the script that sources it.
+# Sourced by build-quest.sh, push-assets.sh, push-tuning.sh and compare-headset.sh: the app's package
+# and its folder on the headset, adb on the host, and finding the one connected headset. See
+# tools/README.md. Needs ANDROID_HOME (from toolchain-env.sh) and a 'die' function from the script that
+# sources it.
 
 PACKAGE="io.github.youngwt.panzadragoonvr"
+# The app's own folder on the headset: its asset folder, where the scripts push and pull.
+REMOTE="/sdcard/Android/data/$PACKAGE/files"
 
 # adb runs on the host when this shell is inside the Flatpak sandbox, which has no USB access.
 host_adb() {

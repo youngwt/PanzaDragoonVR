@@ -63,6 +63,9 @@ public static class Planes
 
     private const int VramSize = 0x80000;
 
+    /// <summary>Keeps an offset within VDP2 VRAM.</summary>
+    private const int VramMask = VramSize - 1;
+
     /// <summary>One page of one-word pattern names, as each map unpacks to, one after another from <see cref="MapsVram"/>.</summary>
     private const int MapPage = 0x800;
 
@@ -338,7 +341,7 @@ public static class Planes
         {
             for (int cx = 0; cx < PageCells; cx++)
             {
-                int name = BinaryPrimitives.ReadUInt16BigEndian(vram[((baseAddress + (cy * PageCells + cx) * 2) & 0x7FFFF)..]);
+                int name = BinaryPrimitives.ReadUInt16BigEndian(vram[((baseAddress + (cy * PageCells + cx) * 2) & VramMask)..]);
                 int flip = (name >> 10) & 3;
                 int character = (name & 0x3FF) << 2 | Supplement & 3 | (Supplement & 0x1C) << 10;
                 int palette = (name >> 12) & 7;
@@ -349,7 +352,7 @@ public static class Planes
                     {
                         for (int x = 0; x < 8; x++)
                         {
-                            int colour = palette << 8 | vram[(cell + y * 8 + x) & 0x7FFFF];
+                            int colour = palette << 8 | vram[(cell + y * 8 + x) & VramMask];
                             int px = (sub & 1) * 8 + x;
                             int py = (sub >> 1) * 8 + y;
                             if ((flip & 1) != 0)

@@ -1,4 +1,6 @@
 #nullable enable
+using PdzDecoding;
+
 namespace PanzaDragoonVR;
 
 /// <summary>
@@ -7,11 +9,11 @@ namespace PanzaDragoonVR;
 /// </summary>
 public static class AssetIds
 {
-    /// <summary>Episode 3's ground; its placeholder is the green chequer.</summary>
-    public const string E03Floor = "e03.floor";
+    /// <summary>Episode 3's floor; its placeholder is the green chequer.</summary>
+    public const string E03Floor = Planes.FloorId;
 
-    /// <summary>Episode 3's sky; its placeholder is the blue chequer.</summary>
-    public const string E03Canopy = "e03.canopy";
+    /// <summary>Episode 3's canopy; its placeholder is the blue chequer.</summary>
+    public const string E03Canopy = Planes.CanopyId;
 
     /// <summary>Episode 3's flying enemy; its placeholder is the grey cube.</summary>
     public const string E03Flyer = "e03.flyer";

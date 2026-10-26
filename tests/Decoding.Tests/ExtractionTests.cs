@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using Xunit;
 using static PdzDecoding.Tests.SyntheticTextures;
+using static PdzDecoding.Tests.SyntheticPlanes;
 
 namespace PdzDecoding.Tests;
 
@@ -974,9 +975,9 @@ public sealed class ExtractionTests : IDisposable
 
     // ------------------------------------------------------------ the floor and canopy
 
-    private string FloorFile => Path.Combine(_assets, "images", "e03", "floor.png");
+    private string FloorFile => Path.Combine(_assets, Extraction.FloorPath);
 
-    private string CanopyFile => Path.Combine(_assets, "images", "e03", "canopy.png");
+    private string CanopyFile => Path.Combine(_assets, Extraction.CanopyPath);
 
     [Fact]
     public void Run_ProgramWithThePlanes_WritesTheFloorAndCanopyBesideTheTextures()
