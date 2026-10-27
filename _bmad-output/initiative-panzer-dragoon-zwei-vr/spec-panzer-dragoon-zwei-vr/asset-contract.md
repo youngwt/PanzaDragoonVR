@@ -332,14 +332,14 @@ The floor's depth, the canopy's height, how fast they scroll and how much of eac
 
 | Field | Range | Built-in | Meaning |
 |-------|-------|----------|---------|
-| `floor_depth` | 3 to 1000 | 6 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground. The built-ins were set by the author in the headset on 2026-10-26 to look like Episode 3. |
-| `canopy_height` | 2 to 1000 | 10 | Metres the canopy plane is above the play area's floor, so it is always above the head. |
-| `flight_speed` | 0 to 100 | 6 | Metres a second the floor's image moves past. |
-| `canopy_speed_scale` | 0 to 10 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
-| `floor_tile` | 0.1 to 1000 | 24 | Metres of floor one copy of its image covers. |
-| `canopy_tile` | 0.1 to 1000 | 48 | Metres of canopy one copy of its image covers. |
+| `floor_depth` | 3 to 50 | 6 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground. The built-ins were set by the author in the headset on 2026-10-26 to look like Episode 3. |
+| `canopy_height` | 4 to 100 | 10 | Metres the canopy plane is above the play area's floor, so it is always above a standing head and the flyer. |
+| `flight_speed` | 0 to 30 | 6 | Metres a second the floor's image moves past. |
+| `canopy_speed_scale` | 0 to 2 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
+| `floor_tile` | 4 to 500 | 24 | Metres of floor one copy of its image covers. |
+| `canopy_tile` | 8 to 500 | 48 | Metres of canopy one copy of its image covers. |
 
-Ranges include their ends. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
+Ranges include their ends, and are narrow enough that each allowed value gives a sane picture at 90 Hz on the game's 2000 m planes with the other settings at their built-ins, as do all settings at their low ends together and all at their high ends together (backlog 17, 2026-10-27). Mixing ends can still break the picture: a high canopy, a shallow floor, the top speed, the top canopy speed scale and a small canopy image move the canopy's image more than a tile a frame. At the top `canopy_height` the canopy's edge shows about 6 degrees above the horizon. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
 
 ## Versioning
 

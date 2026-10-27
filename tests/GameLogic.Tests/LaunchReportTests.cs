@@ -304,7 +304,7 @@ public sealed class LaunchReportTests : IDisposable
 
     private static readonly string[] TuningProblems =
     {
-        "tuning.json: floor_depth must be a number from 3 to 1000; using the built-in 4",
+        "tuning.json: floor_depth must be a number from 3 to 50; using the built-in 6",
     };
 
     [Fact]

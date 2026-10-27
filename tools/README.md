@@ -331,11 +331,11 @@ How deep the floor is, how high the canopy, how fast they scroll and their tile 
 
 | Setting | Means | Built-in | Allowed |
 |---------|-------|----------|---------|
-| `floor_depth` | metres the floor lies below the play area's floor, where the player rides; at least 3 so the dragon clears the ground | 6 | 3 to 1000 |
-| `canopy_height` | metres the canopy is above the play area's floor | 10 | 2 to 1000 |
-| `flight_speed` | metres a second the floor scrolls past | 6 | 0 to 100 |
-| `canopy_speed_scale` | how the canopy moves: 1 crosses the same angle a second as the floor, a flat backdrop; 0 stands still | 1 | 0 to 10 |
-| `floor_tile`, `canopy_tile` | metres one copy of the floor or canopy image covers | 24, 48 | 0.1 to 1000 |
+| `floor_depth` | metres the floor lies below the play area's floor, where the player rides; at least 3 so the dragon clears the ground | 6 | 3 to 50 |
+| `canopy_height` | metres the canopy is above the play area's floor | 10 | 4 to 100 |
+| `flight_speed` | metres a second the floor scrolls past | 6 | 0 to 30 |
+| `canopy_speed_scale` | how the canopy moves: 1 crosses the same angle a second as the floor, a flat backdrop; 0 stands still | 1 | 0 to 2 |
+| `floor_tile`, `canopy_tile` | metres one copy of the floor or canopy image covers | 24, 48 | 4 to 500, 8 to 500 |
 
 The asset contract's "Tuning" section is the full definition. To try new values:
 

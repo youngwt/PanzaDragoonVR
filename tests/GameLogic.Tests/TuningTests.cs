@@ -59,12 +59,12 @@ public sealed class TuningTests : IDisposable
     {
         Write("""
             { "floor_depth": 10, "canopy_height": 60.5, "flight_speed": 8,
-              "canopy_speed_scale": 0.5, "floor_tile": 3, "canopy_tile": 30 }
+              "canopy_speed_scale": 0.5, "floor_tile": 5, "canopy_tile": 30 }
             """);
 
         TuningRead read = Tuning.Load(_folder);
 
-        Assert.Equal(new Tuning(10f, 60.5f, 8f, 0.5f, 3f, 30f), read.Tuning);
+        Assert.Equal(new Tuning(10f, 60.5f, 8f, 0.5f, 5f, 30f), read.Tuning);
         Assert.Empty(read.Problems);
         Assert.True(read.Found);
     }
@@ -103,9 +103,9 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(Tuning.BuiltIn with { FlightSpeed = 7f }, read.Tuning);
         Assert.Equal(new[]
         {
-            "tuning.json: canopy_height must be a number from 2 to 1000; using the built-in 10",
-            "tuning.json: floor_depth must be a number from 3 to 1000; using the built-in 6",
-            "tuning.json: floor_tile must be a number from 0.1 to 1000; using the built-in 24",
+            "tuning.json: canopy_height must be a number from 4 to 100; using the built-in 10",
+            "tuning.json: floor_depth must be a number from 3 to 50; using the built-in 6",
+            "tuning.json: floor_tile must be a number from 4 to 500; using the built-in 24",
         }, read.Problems);
     }
 
@@ -155,12 +155,12 @@ public sealed class TuningTests : IDisposable
     // ------------------------------------------------------------ range ends
 
     [Theory]
-    [InlineData("floor_depth", 3, 1000)]
-    [InlineData("canopy_height", 2, 1000)]
-    [InlineData("flight_speed", 0, 100)]
-    [InlineData("canopy_speed_scale", 0, 10)]
-    [InlineData("floor_tile", 0.1, 1000)]
-    [InlineData("canopy_tile", 0.1, 1000)]
+    [InlineData("floor_depth", 3, 50)]
+    [InlineData("canopy_height", 4, 100)]
+    [InlineData("flight_speed", 0, 30)]
+    [InlineData("canopy_speed_scale", 0, 2)]
+    [InlineData("floor_tile", 4, 500)]
+    [InlineData("canopy_tile", 8, 500)]
     public void RangeEnds_AreAllowedAndJustBeyondAreNot(string name, double min, double max)
     {
         string Shown(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
