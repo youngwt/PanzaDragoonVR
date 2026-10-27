@@ -148,13 +148,14 @@ The game extracts the assets on the headset at launch, and the PC command does t
 ### The disc image
 
 - The player copies their own disc image into `disc/` inside the asset folder: one `.cue` sheet with the `.bin` file or files it names, or one `.iso` of 2048-byte sectors. Any file names.
+- A `.cue` sheet that names an `.iso` in `disc/` (its name matched without regard to case) is one disc image with it: the sheet is the image and the ISO is its file, as a `.bin` would be. A sheet that cannot be read names nothing, so an `.iso` beside it is an image of its own.
 - More than one disc image in `disc/` is a problem: it is reported and nothing is extracted.
 - A disc other than the Japanese GS-9049 V1.001 is attempted, not refused. What it yields is whatever the decoders find.
 
 ### Development and release modes
 
 - **Development mode** is on when an empty file named `development` sits at the top of the asset folder. The game then keeps the disc image and extracts again on every launch.
-- **Release mode** is the mode without that file, whatever the build. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the extractor (its `generator` starts `pdz-extract ` with the space) from a disc with the same `source` product and version. After a successful extraction, and whenever extraction is skipped for that reason, the game deletes the disc image.
+- **Release mode** is the mode without that file, whatever the build. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the current extractor (its whole `generator` is the game's own, `pdz-extract` and the decoding library's version) from a disc with the same `source` product and version. A newer extractor therefore extracts again when the player copies the image back; nothing is extracted again without the image. After a successful extraction that wrote something (a texture or a plane), and whenever extraction is skipped for that reason, the game deletes the disc image. An extraction that succeeds but writes nothing keeps the image, with a log line saying so, as a failed one does.
 
 ### What extraction writes
 

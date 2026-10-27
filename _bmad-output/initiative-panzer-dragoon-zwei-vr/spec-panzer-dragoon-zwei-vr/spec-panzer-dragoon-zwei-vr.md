@@ -60,7 +60,7 @@ Build order and track for each capability are in `milestones.md`.
 - The two tracks share only the external asset folder and manifest, as defined in `asset-contract.md`. Flight work runs on own example images and grey cubes, so it never waits on extraction.
 - Extraction runs on the headset, at launch, from the player's own disc image.
 - Accepted disc images: bin/cue (one `.bin` for all tracks or one per track, read through the cue sheet) and plain 2048-byte-sector ISO.
-- One setting is development mode, set by a marker file in the asset folder (asset contract, Extraction): it keeps the disc image and re-extracts on every launch, so improved decoders take effect at once. In release mode the disc image is deleted after a successful extraction, and extraction does not run again for the same disc.
+- One setting is development mode, set by a marker file in the asset folder (asset contract, Extraction): it keeps the disc image and re-extracts on every launch, so improved decoders take effect at once. In release mode the disc image is deleted after a successful extraction, and extraction does not run again for the same disc and the same extractor version.
 - Platform is standalone Quest 3, Godot 4.7, with C# from the first line (`stack.md`).
 - The known folder is the app's own `Android/data/<package>/files`. Quest's scoped storage rules out arbitrary `/sdcard` paths.
 - The game stays on rails as in the original: the dragon always moves forward.

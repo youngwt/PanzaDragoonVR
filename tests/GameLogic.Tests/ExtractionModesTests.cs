@@ -8,14 +8,17 @@ namespace PanzaDragoonVR.Logic.Tests;
 
 /// <summary>
 /// The development and release modes of the asset contract, one or more tests per case the decision
-/// covers: development (twice), release on a first launch, already extracted,
-/// a different disc, release failure (the image kept), no disc, deletion failing, and a hand-written manifest;
-/// with the extractor's prefix held to the library's generator.
+/// covers: development (twice), release on a first launch, already extracted by this extractor or by an
+/// older or newer one, a different disc, release failure (the image kept), an extraction that wrote nothing
+/// (the image kept), no disc, deletion failing, and a hand-written manifest; with the generator the game
+/// passes held to the library's.
 /// </summary>
 public sealed class ExtractionModesTests : IDisposable
 {
     private static readonly DiscSource Japanese = new("GS-9049", "V1.001");
-    private static readonly ManifestOrigin Extracted = new("pdz-extract 0.1", Japanese);
+    /// <summary>The current extractor's generator, as the game passes it to <see cref="ExtractionModes.Decide"/>.</summary>
+    private const string Current = "pdz-extract 0.2";
+    private static readonly ManifestOrigin Extracted = new(Current, Japanese);
 
     private readonly string _folder;
 
@@ -53,28 +56,28 @@ public sealed class ExtractionModesTests : IDisposable
     public void Decide_Development_ExtractsAndKeepsTheImage()
     {
         Assert.Equal(new ExtractionDecision(ExtractionMode.Development, true, false),
-            ExtractionModes.Decide(ExtractionMode.Development, null, null));
+            ExtractionModes.Decide(ExtractionMode.Development, null, null, Current));
     }
 
     [Fact]
     public void Decide_DevelopmentAgain_ExtractsEvenFromTheSameDisc()
     {
         Assert.Equal(new ExtractionDecision(ExtractionMode.Development, true, false),
-            ExtractionModes.Decide(ExtractionMode.Development, Extracted, Japanese));
+            ExtractionModes.Decide(ExtractionMode.Development, Extracted, Japanese, Current));
     }
 
     [Fact]
     public void Decide_ReleaseFirstLaunch_ExtractsAndDeletes()
     {
         Assert.Equal(new ExtractionDecision(ExtractionMode.Release, true, true),
-            ExtractionModes.Decide(ExtractionMode.Release, null, Japanese));
+            ExtractionModes.Decide(ExtractionMode.Release, null, Japanese, Current));
     }
 
     [Fact]
     public void Decide_ReleaseAlreadyExtracted_SkipsAndDeletes()
     {
         Assert.Equal(new ExtractionDecision(ExtractionMode.Release, false, true),
-            ExtractionModes.Decide(ExtractionMode.Release, Extracted, Japanese));
+            ExtractionModes.Decide(ExtractionMode.Release, Extracted, Japanese, Current));
     }
 
     [Theory]
@@ -82,7 +85,7 @@ public sealed class ExtractionModesTests : IDisposable
     [InlineData("GS-9049", "V1.000")]
     public void Decide_ReleaseDifferentDisc_Extracts(string product, string version)
     {
-        ExtractionDecision decision = ExtractionModes.Decide(ExtractionMode.Release, Extracted, new DiscSource(product, version));
+        ExtractionDecision decision = ExtractionModes.Decide(ExtractionMode.Release, Extracted, new DiscSource(product, version), Current);
 
         Assert.True(decision.Extract);
         Assert.True(decision.DeleteImage);
@@ -92,46 +95,74 @@ public sealed class ExtractionModesTests : IDisposable
     [InlineData("hand-written")]
     [InlineData("pdz-extractor 1.0")]
     [InlineData("pdz-extract")]
-    [InlineData("PDZ-EXTRACT 0.1")]
+    [InlineData("PDZ-EXTRACT 0.2")]
+    [InlineData("pdz-extract 0.2 ")]
     public void Decide_ReleaseManifestNotByTheExtractor_Extracts(string generator)
     {
-        Assert.True(ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin(generator, Japanese), Japanese).Extract);
+        Assert.True(ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin(generator, Japanese), Japanese, Current).Extract);
     }
 
     [Fact]
     public void Decide_ReleaseManifestWithNoSource_Extracts()
     {
-        Assert.True(ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin("pdz-extract 0.1", null), Japanese).Extract);
+        Assert.True(ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin(Current, null), Japanese, Current).Extract);
     }
 
     [Fact]
     public void Decide_ReleaseUnreadableHeader_Extracts()
     {
-        Assert.True(ExtractionModes.Decide(ExtractionMode.Release, Extracted, null).Extract);
+        Assert.True(ExtractionModes.Decide(ExtractionMode.Release, Extracted, null, Current).Extract);
+    }
+
+    [Theory]
+    [InlineData("pdz-extract 0.1")]
+    [InlineData("pdz-extract 0.3")]
+    public void Decide_ReleaseAnotherExtractorVersion_ExtractsAndDeletes(string generator)
+    {
+        Assert.Equal(new ExtractionDecision(ExtractionMode.Release, true, true),
+            ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin(generator, Japanese), Japanese, Current));
     }
 
     [Fact]
-    public void Decide_ReleaseAnotherExtractorVersion_SkipsOnTheSameDisc()
+    public void Decide_ReleaseSameExtractorVersion_SkipsAndDeletes()
     {
-        Assert.False(ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin("pdz-extract 0.2", Japanese), Japanese).Extract);
+        Assert.Equal(new ExtractionDecision(ExtractionMode.Release, false, true),
+            ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin("pdz-extract 0.2", Japanese), Japanese, "pdz-extract 0.2"));
     }
+
+    private static readonly ExtractionDecision ReleaseExtract = new(ExtractionMode.Release, true, true);
 
     [Fact]
     public void DeleteAfterExtraction_ReleaseSuccess_Deletes()
     {
-        Assert.True(ExtractionModes.DeleteAfterExtraction(new ExtractionDecision(ExtractionMode.Release, true, true), succeeded: true));
+        Assert.True(ExtractionModes.DeleteAfterExtraction(ReleaseExtract, succeeded: true, wroteAnything: true));
+        Assert.Null(ExtractionModes.NothingWrittenLine(ReleaseExtract, succeeded: true, wroteAnything: true, "/f/disc/a.cue"));
     }
 
     [Fact]
     public void DeleteAfterExtraction_ReleaseFailure_KeepsTheImage()
     {
-        Assert.False(ExtractionModes.DeleteAfterExtraction(new ExtractionDecision(ExtractionMode.Release, true, true), succeeded: false));
+        Assert.False(ExtractionModes.DeleteAfterExtraction(ReleaseExtract, succeeded: false, wroteAnything: false));
+        Assert.Null(ExtractionModes.NothingWrittenLine(ReleaseExtract, succeeded: false, wroteAnything: false, "/f/disc/a.cue"));
     }
 
     [Fact]
-    public void DeleteAfterExtraction_Development_KeepsTheImage()
+    public void DeleteAfterExtraction_ReleaseNothingWritten_KeepsTheImageAndSaysWhy()
     {
-        Assert.False(ExtractionModes.DeleteAfterExtraction(new ExtractionDecision(ExtractionMode.Development, true, false), succeeded: true));
+        Assert.False(ExtractionModes.DeleteAfterExtraction(ReleaseExtract, succeeded: true, wroteAnything: false));
+        Assert.Equal("release mode: the extraction wrote nothing, so the disc image /f/disc/a.cue is kept",
+            ExtractionModes.NothingWrittenLine(ReleaseExtract, succeeded: true, wroteAnything: false, "/f/disc/a.cue"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void DeleteAfterExtraction_Development_KeepsTheImageWithNoLine(bool wroteAnything)
+    {
+        var development = new ExtractionDecision(ExtractionMode.Development, true, false);
+
+        Assert.False(ExtractionModes.DeleteAfterExtraction(development, succeeded: true, wroteAnything));
+        Assert.Null(ExtractionModes.NothingWrittenLine(development, succeeded: true, wroteAnything, "/f/disc/a.cue"));
     }
 
     [Fact]
@@ -207,7 +238,7 @@ public sealed class ExtractionModesTests : IDisposable
     [Fact]
     public void ParseOrigin_ExtractorManifest_GivesGeneratorAndSource()
     {
-        const string json = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.1\",\n  \"source\": {\n    \"product\": \"GS-9049\",\n    \"version\": \"V1.001\"\n  },\n  \"assets\": []\n}\n";
+        const string json = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.2\",\n  \"source\": {\n    \"product\": \"GS-9049\",\n    \"version\": \"V1.001\"\n  },\n  \"assets\": []\n}\n";
 
         Assert.Equal(Extracted, ExtractionModes.ParseOrigin(Encoding.UTF8.GetBytes(json)));
     }
@@ -242,7 +273,7 @@ public sealed class ExtractionModesTests : IDisposable
     public void LoadOrigin_Manifest_ReadsIt()
     {
         File.WriteAllText(Path.Combine(_folder, "manifest.json"),
-            "{\"generator\": \"pdz-extract 0.1\", \"source\": {\"product\": \"GS-9049\", \"version\": \"V1.001\"}}");
+            "{\"generator\": \"pdz-extract 0.2\", \"source\": {\"product\": \"GS-9049\", \"version\": \"V1.001\"}}");
 
         Assert.Equal(Extracted, ExtractionModes.LoadOrigin(_folder));
     }
@@ -252,7 +283,7 @@ public sealed class ExtractionModesTests : IDisposable
     {
         Assert.Equal("development mode (development is in /f): extracting from /f/disc/a.cue in the background into /f; the disc image is kept",
             ExtractionModes.DecisionLine(new ExtractionDecision(ExtractionMode.Development, true, false), "/f/disc/a.cue", "/f", null));
-        Assert.Equal("release mode: extracting from /f/disc/a.cue in the background into /f; the disc image is deleted after a successful extraction",
+        Assert.Equal("release mode: extracting from /f/disc/a.cue in the background into /f; the disc image is deleted after a successful extraction that writes something",
             ExtractionModes.DecisionLine(new ExtractionDecision(ExtractionMode.Release, true, true), "/f/disc/a.cue", "/f", Japanese));
         Assert.Equal("release mode: /f is already extracted from GS-9049 V1.001: not extracting again; deleting the disc image /f/disc/a.cue",
             ExtractionModes.DecisionLine(new ExtractionDecision(ExtractionMode.Release, false, true), "/f/disc/a.cue", "/f", Japanese));
@@ -274,13 +305,35 @@ public sealed class ExtractionModesTests : IDisposable
     }
 
     [Fact]
-    public void ExtractorPrefix_StartsTheLibrarysGenerator()
+    public void Generator_TheGamePassesIsTheLibrarys()
     {
-        string generator = PdzDecoding.Manifest.Generator;
+        // The game's call, as written in game/DiscExtraction.cs: the library's generator is what it passes.
+        string game = File.ReadAllText(Path.Combine(RepositoryRoot(), "game", "DiscExtraction.cs"));
+        Assert.Contains("ExtractionModes.Decide(mode, ExtractionModes.LoadOrigin(assetFolder), disc, generator: Manifest.Generator)", game);
+        // The tests' current generator is the library's, so the cases above are the ones the game meets.
+        Assert.Equal(PdzDecoding.Manifest.Generator, Current);
+    }
 
-        Assert.StartsWith(ExtractionModes.ExtractorPrefix, generator, StringComparison.Ordinal);
-        string version = generator.Substring(ExtractionModes.ExtractorPrefix.Length);
-        Assert.NotEmpty(version);
-        Assert.DoesNotContain(' ', version);
+    [Fact]
+    public void Decide_ReleaseManifestTheLibraryWrote_SkipsOnTheSameDisc()
+    {
+        byte[] written = PdzDecoding.Manifest.Write(
+            new PdzDecoding.SaturnHeader("SEGA SEGASATURN", "SEGA ENTERPRISES", "GS-9049", "V1.001", "19960101", ""), Array.Empty<PdzDecoding.ManifestEntry>());
+
+        Assert.False(ExtractionModes.Decide(ExtractionMode.Release, ExtractionModes.ParseOrigin(written), Japanese, PdzDecoding.Manifest.Generator).Extract);
+    }
+
+    /// <summary>The repository's root: the nearest folder above the test's output that holds <c>game/DiscExtraction.cs</c>.</summary>
+    private static string RepositoryRoot()
+    {
+        for (DirectoryInfo? d = new(AppContext.BaseDirectory); d != null; d = d.Parent)
+        {
+            if (File.Exists(Path.Combine(d.FullName, "game", "DiscExtraction.cs")))
+            {
+                return d.FullName;
+            }
+        }
+
+        throw new InvalidOperationException("the repository's root was not found above " + AppContext.BaseDirectory);
     }
 }
