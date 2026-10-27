@@ -39,12 +39,12 @@ public sealed record Tuning(
     /// </summary>
     private static readonly Setting[] Settings =
     {
-        new("floor_depth", 3, 1000, t => t.FloorDepth, (t, v) => t with { FloorDepth = v }),
-        new("canopy_height", 2, 1000, t => t.CanopyHeight, (t, v) => t with { CanopyHeight = v }),
-        new("flight_speed", 0, 100, t => t.FlightSpeed, (t, v) => t with { FlightSpeed = v }),
-        new("canopy_speed_scale", 0, 10, t => t.CanopySpeedScale, (t, v) => t with { CanopySpeedScale = v }),
-        new("floor_tile", 0.1, 1000, t => t.FloorTile, (t, v) => t with { FloorTile = v }),
-        new("canopy_tile", 0.1, 1000, t => t.CanopyTile, (t, v) => t with { CanopyTile = v }),
+        new("floor_depth", 3, 50, t => t.FloorDepth, (t, v) => t with { FloorDepth = v }),
+        new("canopy_height", 4, 100, t => t.CanopyHeight, (t, v) => t with { CanopyHeight = v }),
+        new("flight_speed", 0, 30, t => t.FlightSpeed, (t, v) => t with { FlightSpeed = v }),
+        new("canopy_speed_scale", 0, 2, t => t.CanopySpeedScale, (t, v) => t with { CanopySpeedScale = v }),
+        new("floor_tile", 4, 500, t => t.FloorTile, (t, v) => t with { FloorTile = v }),
+        new("canopy_tile", 8, 500, t => t.CanopyTile, (t, v) => t with { CanopyTile = v }),
     };
 
     /// <summary>
