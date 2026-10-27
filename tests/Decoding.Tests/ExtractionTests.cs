@@ -793,6 +793,117 @@ public sealed class ExtractionTests : IDisposable
         Assert.Equal(new[] { "Game.cue", "Game.iso" }, search.Names);
     }
 
+    [Fact]
+    public void DiscFolder_CueNamingTheIso_IsOneImageTheCue()
+    {
+        string cue = LayoutDisc().WriteCue(_disc, "Game.iso", "Game.cue", CueSheet.CookedMode);
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        Assert.Equal(DiscFolderState.One, search.State);
+        Assert.Equal(cue, search.ImagePath);
+        Assert.Equal(new[] { "Game.cue" }, search.Names);
+        Assert.Equal(new[] { cue, Path.Combine(_disc, "Game.iso") }, DiscFolder.ImageFiles(cue));
+    }
+
+    [Fact]
+    public void DiscFolder_CueNamingTheIsoInAnotherCase_IsOneImageTheCue()
+    {
+        LayoutDisc().WriteIso(_disc, "Game.ISO");
+        string cue = Path.Combine(_disc, "Game.cue");
+        File.WriteAllText(cue, SyntheticDisc.Cue("Game.iso", CueSheet.CookedMode));
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        // The name is matched without regard to case on every file system, as the Quest's storage reads it.
+        Assert.Equal(DiscFolderState.One, search.State);
+        Assert.Equal(cue, search.ImagePath);
+        Assert.Equal(new[] { "Game.cue" }, search.Names);
+    }
+
+    [Fact]
+    public void DiscFolder_CueAndAnUnrelatedIso_AreNamedAndNotPicked()
+    {
+        LayoutDisc().WriteCue(_disc, "a.bin", "a.cue");
+        LayoutDisc().WriteIso(_disc, "b.iso");
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        Assert.Equal(DiscFolderState.Several, search.State);
+        Assert.Null(search.ImagePath);
+        Assert.Equal(new[] { "a.cue", "b.iso" }, search.Names);
+    }
+
+    [Fact]
+    public void DiscFolder_BrokenCueBesideTheIsoItNames_AreNamedAndNotPicked()
+    {
+        // The sheet names b.iso, then a file name no path can hold, so reading it throws and it names nothing.
+        string text = "FILE \"b.iso\" BINARY\n  TRACK 01 MODE1/2048\n    INDEX 01 00:00:00\nFILE \"x\0y.bin\" BINARY\n";
+        File.WriteAllText(Path.Combine(_disc, "a.cue"), text);
+        Assert.ThrowsAny<ArgumentException>(() => CueSheet.ReadFiles(Path.Combine(_disc, "a.cue")));
+        LayoutDisc().WriteIso(_disc, "b.iso");
+
+        DiscSearch search = DiscFolder.Find(_assets);
+
+        Assert.Equal(DiscFolderState.Several, search.State);
+        Assert.Equal(new[] { "a.cue", "b.iso" }, search.Names);
+    }
+
+    [Fact]
+    public void DiscFolder_UnreadableCueBesideTheIsoItWouldName_AreNamedAndNotPicked()
+    {
+        LayoutDisc().WriteCue(_disc, "Game.iso", "Game.cue", CueSheet.CookedMode);
+        string cue = Path.Combine(_disc, "Game.cue");
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        File.SetUnixFileMode(cue, UnixFileMode.None);
+        try
+        {
+            if (CanRead(cue))
+            {
+                // Run with rights that read any file: the sheet cannot be made unreadable.
+                return;
+            }
+
+            DiscSearch search = DiscFolder.Find(_assets);
+
+            Assert.Equal(DiscFolderState.Several, search.State);
+            Assert.Equal(new[] { "Game.cue", "Game.iso" }, search.Names);
+        }
+        finally
+        {
+            File.SetUnixFileMode(cue, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    private static bool CanRead(string file)
+    {
+        try
+        {
+            File.ReadAllBytes(file);
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    [Fact]
+    public void Run_CueNamingAnIso_WritesTheSameFilesAndHeaderAsTheIso()
+    {
+        var iso = RunOn("iso", f => LayoutDisc().WriteIso(f));
+        var cue = RunOn("cue", f => LayoutDisc().WriteCue(f, "Game.iso", "Game.cue", CueSheet.CookedMode));
+
+        Assert.Equal(iso.Result.Source, cue.Result.Source);
+        Assert.Equal(iso.Files.Select(f => f.Path), cue.Files.Select(f => f.Path));
+        Assert.Equal(iso.Files.Select(f => f.Bytes), cue.Files.Select(f => f.Bytes));
+        Assert.NotEmpty(cue.Files);
+    }
+
     // ------------------------------------------------------------ staging and progress
 
     private string Staging => Path.Combine(_assets, Extraction.StagingFolder);

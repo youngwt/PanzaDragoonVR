@@ -20,7 +20,8 @@ namespace PanzaDragoonVR;
 /// outcome is one <c>PDZ-ASSETS</c> line; nothing here stops the game, which carries on with what the folder holds.
 /// Before it starts, the asset contract's mode is applied (see <see cref="ExtractionModes"/>): development
 /// mode extracts and keeps the disc image; release mode skips extraction when the folder was already
-/// extracted from the same disc, and deletes the disc image after a successful extraction or such a skip.
+/// extracted from the same disc by this extractor (<see cref="Manifest.Generator"/>), and deletes the disc
+/// image after a successful extraction that wrote something, or after such a skip.
 /// </summary>
 public sealed class DiscExtraction
 {
@@ -90,7 +91,7 @@ public sealed class DiscExtraction
             // The header is needed only for release mode's skip test; one that cannot be read is never a
             // skip, and extraction then reports why.
             DiscSource? disc = mode == ExtractionMode.Release ? ReadSource(image) : null;
-            ExtractionDecision decision = ExtractionModes.Decide(mode, ExtractionModes.LoadOrigin(assetFolder), disc);
+            ExtractionDecision decision = ExtractionModes.Decide(mode, ExtractionModes.LoadOrigin(assetFolder), disc, generator: Manifest.Generator);
             GD.Print($"{AssetFolder.LogTag} {ExtractionModes.DecisionLine(decision, image, assetFolder, disc)}");
             if (!decision.Extract)
             {
@@ -146,9 +147,16 @@ public sealed class DiscExtraction
         string seconds = _clock.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         Exception? error = _task.Exception?.InnerException ?? (_task.IsCanceled ? new OperationCanceledException() : null);
         Report(error, seconds);
-        if (ExtractionModes.DeleteAfterExtraction(_decision, succeeded: error == null))
+        bool succeeded = error == null;
+        // A failed task has no result to ask; what it wrote does not matter then.
+        bool wroteAnything = succeeded && (_task.Result.Files.Count > 0 || _task.Result.PlaneFiles.Count > 0);
+        if (ExtractionModes.DeleteAfterExtraction(_decision, succeeded, wroteAnything))
         {
             DeleteImage(_imagePath);
+        }
+        else if (ExtractionModes.NothingWrittenLine(_decision, succeeded, wroteAnything, _imagePath) is string kept)
+        {
+            GD.Print($"{AssetFolder.LogTag} {kept}");
         }
     }
 
@@ -186,7 +194,7 @@ public sealed class DiscExtraction
 
     private static void Succeeded(ExtractionResult result, string seconds)
     {
-        if (result.Files.Count == 0)
+        if (result.Files.Count == 0 && result.PlaneFiles.Count == 0)
         {
             GD.Print($"{AssetFolder.LogTag} found no textures to write on " +
                 $"{result.Source.Product} {result.Source.Version}: nothing written ({result.Details()})");

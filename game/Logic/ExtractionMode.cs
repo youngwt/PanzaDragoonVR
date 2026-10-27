@@ -12,7 +12,10 @@ public enum ExtractionMode
     /// <summary>The <c>development</c> marker is in the asset folder: extract on every launch and keep the disc image.</summary>
     Development,
 
-    /// <summary>No marker, whatever the build: extract unless already extracted from the same disc, then delete the disc image.</summary>
+    /// <summary>
+    /// No marker, whatever the build: extract unless already extracted from the same disc by the same extractor,
+    /// then delete the disc image, unless the extraction failed or wrote nothing.
+    /// </summary>
     Release,
 }
 
@@ -43,17 +46,15 @@ public readonly record struct DeletionOutcome(string? Line, string? Warning);
 /// The mode and skip decision of the asset contract's "Development and release modes", and its log
 /// lines: development mode, with an empty <c>development</c> file at the top of the asset folder,
 /// extracts every launch and keeps the disc image; release mode extracts unless the folder's
-/// manifest was written by the extractor from a disc of the same product and version, and deletes
-/// the disc image after a successful extraction or such a skip. Nothing here uses the engine or the
-/// decoding library, so it is tested on the PC.
+/// manifest was written by the current extractor (the whole <c>generator</c>, version and all) from a
+/// disc of the same product and version, and deletes the disc image after a successful extraction
+/// that wrote something, or after such a skip. Nothing here uses the engine or the decoding library,
+/// so it is tested on the PC: the current extractor's generator is passed in by the game.
 /// </summary>
 public static class ExtractionModes
 {
     /// <summary>The marker file's name at the top of the asset folder, fixed by the asset contract.</summary>
     public const string MarkerName = "development";
-
-    /// <summary>How a manifest the extractor wrote starts its <c>generator</c>: the tool's name and a space.</summary>
-    public const string ExtractorPrefix = "pdz-extract ";
 
     /// <summary>The asset folder's mode: development when the marker file is there, release otherwise.</summary>
     public static ExtractionMode ModeOf(string assetFolder) =>
@@ -108,34 +109,47 @@ public static class ExtractionModes
     }
 
     /// <summary>
-    /// Whether <paramref name="manifest"/> was written by the extractor (its <c>generator</c> starts
-    /// <see cref="ExtractorPrefix"/>, with the space) from a disc of <paramref name="disc"/>'s product and version.
+    /// Whether <paramref name="manifest"/> was written by the current extractor (its whole <c>generator</c>
+    /// is <paramref name="generator"/>, the decoding library's) from a disc of <paramref name="disc"/>'s
+    /// product and version. A manifest from an older or newer extractor is not.
     /// </summary>
-    public static bool ExtractedFrom(ManifestOrigin? manifest, DiscSource? disc) =>
+    public static bool ExtractedFrom(ManifestOrigin? manifest, DiscSource? disc, string generator) =>
         manifest is ManifestOrigin m && disc is DiscSource d &&
-        m.Generator.StartsWith(ExtractorPrefix, StringComparison.Ordinal) &&
+        string.Equals(m.Generator, generator, StringComparison.Ordinal) &&
         m.Source is DiscSource s &&
         string.Equals(s.Product, d.Product, StringComparison.Ordinal) &&
         string.Equals(s.Version, d.Version, StringComparison.Ordinal);
 
     /// <summary>
     /// What to do with the one disc image in <c>disc/</c>: in development mode, extract and keep it; in
-    /// release mode, skip extraction when the folder's manifest was extracted from the same disc, else
-    /// extract, and delete the image either way. <paramref name="disc"/> is the image's header, null
+    /// release mode, skip extraction when the folder's manifest was extracted from the same disc by the
+    /// extractor whose generator is <paramref name="generator"/>, else extract, and delete the image
+    /// (see <see cref="DeleteAfterExtraction"/>). <paramref name="disc"/> is the image's header, null
     /// when it could not be read, which is never a skip: extraction then reports why.
     /// </summary>
-    public static ExtractionDecision Decide(ExtractionMode mode, ManifestOrigin? manifest, DiscSource? disc) => mode switch
+    public static ExtractionDecision Decide(ExtractionMode mode, ManifestOrigin? manifest, DiscSource? disc, string generator) => mode switch
     {
         ExtractionMode.Development => new ExtractionDecision(mode, Extract: true, DeleteImage: false),
-        _ => new ExtractionDecision(mode, Extract: !ExtractedFrom(manifest, disc), DeleteImage: true),
+        _ => new ExtractionDecision(mode, Extract: !ExtractedFrom(manifest, disc, generator), DeleteImage: true),
     };
 
     /// <summary>
     /// Whether the disc image is deleted once extraction has ended: in release mode, after a successful
-    /// extraction, whatever it wrote; never after a failure, which keeps the image as it keeps the previous contents.
+    /// extraction that wrote something (<paramref name="wroteAnything"/>: a texture or a plane); never
+    /// after a failure, which keeps the image as it keeps the previous contents, nor after an extraction
+    /// that wrote nothing (see <see cref="NothingWrittenLine"/>).
     /// </summary>
-    public static bool DeleteAfterExtraction(ExtractionDecision decision, bool succeeded) =>
-        decision.DeleteImage && decision.Extract && succeeded;
+    public static bool DeleteAfterExtraction(ExtractionDecision decision, bool succeeded, bool wroteAnything) =>
+        decision.DeleteImage && decision.Extract && succeeded && wroteAnything;
+
+    /// <summary>
+    /// The log line, after the tag, when release mode keeps the disc image because a successful extraction
+    /// wrote nothing; null in every other case, when there is nothing to say about it.
+    /// </summary>
+    public static string? NothingWrittenLine(ExtractionDecision decision, bool succeeded, bool wroteAnything, string image) =>
+        decision.DeleteImage && decision.Extract && succeeded && !wroteAnything
+            ? $"{Name(decision.Mode)}: the extraction wrote nothing, so the disc image {image} is kept"
+            : null;
 
     /// <summary>
     /// Deletes the disc image's own <paramref name="files"/>, the image itself first (the <c>.cue</c> or the
@@ -189,7 +203,7 @@ public static class ExtractionModes
 
         if (decision.Extract)
         {
-            return $"{mode}: extracting from {image} in the background into {assetFolder}; the disc image is deleted after a successful extraction";
+            return $"{mode}: extracting from {image} in the background into {assetFolder}; the disc image is deleted after a successful extraction that writes something";
         }
 
         string from = disc is DiscSource d ? $"{d.Product} {d.Version}" : "this disc";
