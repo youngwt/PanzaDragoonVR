@@ -3,7 +3,7 @@ title: 'Every allowed tuning value gives a sane picture'
 type: 'feature'
 ticket: '17'
 created: '2026-10-27'
-status: 'built'
+status: done
 baseline_revision: 'da0b6b536efeb1d384a3a50e0c02c89d8071299e'
 route: 'oneshot'
 route_source: 'auto'
