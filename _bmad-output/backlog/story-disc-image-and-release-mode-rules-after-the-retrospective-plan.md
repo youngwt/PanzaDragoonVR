@@ -3,7 +3,7 @@ title: 'The disc image and release-mode rules follow the retrospective decisions
 type: 'feature'
 ticket: '14'
 created: '2026-10-27'
-status: 'built'
+status: done
 baseline_revision: '7f292972c82fc5b01ed13a42f3db9dc56095fb5f'
 route: 'full'
 route_source: 'auto'
