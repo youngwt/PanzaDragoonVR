@@ -3,7 +3,7 @@ title: 'The disc image and release-mode rules follow the retrospective decisions
 type: 'feature'
 ticket: '14'
 created: '2026-10-27'
-status: 'in-review'
+status: 'built'
 baseline_revision: '7f292972c82fc5b01ed13a42f3db9dc56095fb5f'
 route: 'full'
 route_source: 'auto'
@@ -90,6 +90,8 @@ context:
   4. Launch. Expect `release mode: extracting ...`, the floor and canopy and the textures, then `release mode: deleted the disc image ... (<name>.cue, <name>.iso)`. Run `tools/compare-headset.sh "extracted/pal-cue/Panzer Dragoon II Zwei (Europe).cue"`, which needs the ISO beside the cue (symlink or copy under `extracted/`); expect identical.
   5. Push the cue and ISO again and launch. Expect `already extracted from MK-81022 V1.000: not extracting again`, then the deleted line.
   6. Restore: `adb shell touch $REMOTE/development`. Clear `disc/`, push the JP cue and bins from `rom/JP/`, launch, and expect development-mode extraction as before.
+
+- **Headset, 2026-10-27, with the author:** the JP disc moved aside on the headset and `development` removed; `disc/` given the European ISO and a `.cue` naming it (`TRACK 01 MODE1/2048`), and `manifest.json` edited to `pdz-extract 0.1` from MK-81022 V1.000. First launch: "release mode: extracting from .../Panzer Dragoon II Zwei (Europe).cue ...", "extracted 420 textures from 9 disc files of MK-81022 V1.000 ...", then "release mode: deleted the disc image ... (... (Europe).cue, ... (Europe).iso)". `compare-headset.sh` on the European ISO: "identical: 423 files, the manifest included". Second launch, the image copied back: "already extracted from MK-81022 V1.000: not extracting again; deleting the disc image", then "deleted the disc image". The JP disc and `development` were then restored: "development mode ... extracting", "extracted 420 textures from 9 disc files of GS-9049 V1.001". This also covers the forest retrospective's R4 (the European ISO and release mode with the planes on the headset).
 
 ## Plan Change Log
 
