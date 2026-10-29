@@ -1,9 +1,10 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://Main.cs" id="1_main"]
 [ext_resource type="Script" path="res://FlyingCube.cs" id="2_cube"]
 [ext_resource type="Script" path="res://FrameRateReadout.cs" id="3_readout"]
 [ext_resource type="Script" path="res://LaunchReportPanel.cs" id="4_report"]
+[ext_resource type="Script" path="res://RiddenDragon.cs" id="5_dragon"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
@@ -68,6 +69,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -4)
 mesh = SubResource("BoxMesh_cube")
 surface_material_override/0 = SubResource("Material_cube")
 script = ExtResource("2_cube")
+
+[node name="Dragon" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+script = ExtResource("5_dragon")
 
 [node name="LaunchReport" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -2.2)

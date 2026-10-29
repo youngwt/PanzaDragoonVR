@@ -117,7 +117,7 @@ If the script says no headset was found, check the cable and developer mode. If 
 - OpenXR needs Godot's Gradle build, so the prebuilt export template is not used. The build includes the Meta part of the OpenXR vendors plugin, which `setup-toolchain.sh` installs.
 - The APK is signed with Godot's debug keystore, which Godot creates in its `editor_data` folder. It is not a release build.
 - The headset no longer holds the launch back with a "controller required" prompt, because the app declares hand tracking as optional (the app itself does nothing with hands). So `build-quest.sh` can launch the app with nobody wearing the headset. When the app has not started within 10 seconds, usually because the headset is asleep, the script says so and exits with status 2.
-- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`) and a grey cube flying in a circle right around you (or the model the folder supplies for `e03.flyer`; see [Your own model in the headset](#your-own-model-in-the-headset)). A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
+- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`), a grey cube flying in a circle right around you (or the model the folder supplies for `e03.flyer`; see [Your own model in the headset](#your-own-model-in-the-headset)) and a grey dragon under you, its paler head in front where the floor comes from (or the model the folder supplies for `dragon.ride`; see [Your own dragon](#your-own-dragon)). A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
 - The ground and sky images are tiled by a small shader in `game/Main.cs` that wraps the texture coordinates itself. On the Quest 3 a texture set to repeat came out clamped to its edge on these planes, so each showed one flat colour; the same scene tiled correctly on a desktop. The cause was not found.
 - Inside the VS Code Flatpak sandbox there is no USB access, so the script runs `adb` on the host through `flatpak-spawn --host`. Outside a sandbox it runs `adb` directly.
 - `game/.godot/`, `game/build/` and `game/android/` are generated and git-ignored.
@@ -308,7 +308,7 @@ PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
 
 ### What the game uses
 
-For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and one model, `e03.flyer` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the tuning's tile size, by default one copy per 24 metres of ground and one per 48 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and two models, `e03.flyer` and `dragon.ride` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the tuning's tile size, by default one copy per 24 metres of ground and one per 48 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
 
 ### Copying a folder to the headset
 
@@ -420,14 +420,26 @@ tools/push-assets.sh my-assets
 
 Then start the app: the pyramid flies where the cube did. The test model also carries blue vertex colours (`COLOR_0`), so it shows that a file with them is accepted. It cannot show that they are ignored: Godot 4.7.2 does not apply them on its own, so the faces keep their texture colours whether or not the game switches vertex colour off. The game switches it off on every material anyway, in case a later Godot does. A model of your own, exported from Blender as `glTF Binary (.glb)`, is supplied the same way.
 
+### Your own dragon
+
+The grey dragon under you is the placeholder for `dragon.ride`, a model: boxes for a body about 4 m long, a paler head on a short neck in front, a thinner tail behind and two flat wings about 3 m long. It is held still at the seat, with the top of its back 0.4 m above the play area's floor and directly below the play area's centre, so a seated rider is astride it; standing, your legs pass into it. A `.glb` the folder lists as `dragon.ride` sits there in its place. Build it in glTF's axes, front towards +Z, with its origin where the rider sits, on top of the back: the game puts the origin at the seat and turns the model 180 degrees about Y to face the way of flight. To try it with the test pyramid:
+
+```sh
+python3 tools/make_test_model.py my-assets/models/pyramid.glb
+python3 tools/write_manifest.py my-assets dragon.ride=models/pyramid.glb
+tools/push-assets.sh my-assets
+```
+
+Then start the app: the pyramid sits under you in place of the grey dragon, and the log's `PDZ-ASSETS supplied: ...` line lists `dragon.ride`. A rejected dragon reads as the flyer's lines below, with `dragon.ride` as the ID, and keeps the grey dragon. If the model loads but cannot be placed, the log reads `PDZ-ASSETS dragon.ride: the model could not be shown (<error>); using the placeholder`.
+
 ### When a model is rejected
 
-The game reads the file's header and its JSON before the engine sees it, and never opens a file the model names. Any problem keeps the grey cube, and the board and the log say why, with one line starting with the ID:
+The game reads the file's header and its JSON before the engine sees it, and never opens a file the model names. Any problem keeps the model's placeholder (the grey cube for `e03.flyer`, the grey dragon for `dragon.ride`), and the board and the log say why, with one line starting with the ID:
 
 | Line | Meaning |
 |------|---------|
 | `e03.flyer: <path>: unreadable model: <reason>` | Not a `.glb` of glTF 2.0, cut short, JSON that cannot be read, or something the engine could not load. |
-| `e03.flyer: unreadable model: it could not be loaded (<error>)` | Loading failed in a way the checks did not foresee. The ground and sky keep what they loaded. |
+| `e03.flyer: unreadable model: it could not be loaded (<error>)` | Loading failed in a way the checks did not foresee. The other assets keep what they loaded. |
 | `e03.flyer: <path>: not self-contained: buffer 0 names the file '<name>', which was not opened` | The model refers to a file outside itself; also for an external image (`image <n> names the file ...`). Re-export it as one `.glb`. |
 | `e03.flyer: <path>: not self-contained: image <n> has a data: URI` | Also for a buffer. The contract allows no `uri` of any kind. |
 | `e03.flyer: <path>: unsupported model: it requires the extension <name>` | The file lists the extension in `extensionsRequired`, such as mesh compression. Export without it. |
@@ -468,7 +480,7 @@ On the author's disc that is 420 textures in nine folders, nothing left out: 250
 
 **The PNGs** are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: `E03B0N0`'s 28 textures take 110 KB instead of 15 KB.
 
-The game's scene uses none of the extracted texture IDs. It asks for `e03.floor`, `e03.canopy` and `e03.flyer`, and shows a placeholder for each the folder lacks; extraction supplies the first two. The built-in tuning (a 512-pixel floor page covering 24 m, the canopy's 48 m) was set by the author in the headset for the extracted planes, so the placeholders' chequers look large.
+The game's scene uses none of the extracted texture IDs. It asks for `e03.floor`, `e03.canopy`, `e03.flyer` and `dragon.ride`, and shows a placeholder for each the folder lacks; extraction supplies the first two. The built-in tuning (a 512-pixel floor page covering 24 m, the canopy's 48 m) was set by the author in the headset for the extracted planes, so the placeholders' chequers look large.
 
 ### On the PC
 
@@ -557,7 +569,7 @@ In release mode the image is gone after the first launch that extracts; push it 
 
 #### The board while extracting, and when it fails
 
-The scene does not wait for extraction. The game reads the folder as it is, then starts extraction on a background thread, which runs the decoding library alone (nothing on that thread touches the engine), and at once, without waiting for it, dresses the scene and starts OpenXR and the frame-rate readout. While it runs, the launch report's board shows its progress instead, in pale blue: `Extracting the assets from your disc image`, the disc image's name, the step under way (`Reading E03B0N0 (2 of 9)`, `Writing E03B0N0 (2 of 9)`, then `Moving the new files into place`) and that the scene shows what the folder already holds until then. Each step is also logged, one `PDZ-ASSETS extracting: ...` line each. The full Japanese disc takes about 0.3 s on the Quest 3, so the board may only flash. When extraction ends the game reads the folder again, dresses the ground, sky and flyer in what it now holds, and puts the launch report back on the board.
+The scene does not wait for extraction. The game reads the folder as it is, then starts extraction on a background thread, which runs the decoding library alone (nothing on that thread touches the engine), and at once, without waiting for it, dresses the scene and starts OpenXR and the frame-rate readout. While it runs, the launch report's board shows its progress instead, in pale blue: `Extracting the assets from your disc image`, the disc image's name, the step under way (`Reading E03B0N0 (2 of 9)`, `Writing E03B0N0 (2 of 9)`, then `Moving the new files into place`) and that the scene shows what the folder already holds until then. Each step is also logged, one `PDZ-ASSETS extracting: ...` line each. The full Japanese disc takes about 0.3 s on the Quest 3, so the board may only flash. When extraction ends the game reads the folder again, dresses the ground, sky, flyer and dragon in what it now holds, and puts the launch report back on the board.
 
 When extraction cannot run or fails, the board says so and the game carries on with what the folder held, or placeholders. The board's heading is `Nothing was extracted from the disc image` (amber), then one of these lines, worded as the asset contract's extraction rows, then `The scene shows what the asset folder already holds.` and the folder's own report, if it has one:
 

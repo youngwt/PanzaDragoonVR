@@ -6,7 +6,7 @@ Extraction and the game's loader share nothing except a folder of files and the 
 
 The game always runs, with or without the folder.
 
-- For every asset ID it uses, the game has a built-in placeholder of the author's own making: plain images, grey cubes. Placeholders contain nothing from the disc.
+- For every asset ID it uses, the game has a built-in placeholder of the author's own making: plain images, grey cubes, a grey dragon of boxes. Placeholders contain nothing from the disc.
 - When the folder supplies a valid asset for an ID, the game uses it in place of the placeholder.
 - When the folder is empty or absent, the game runs entirely on placeholders and says so.
 
@@ -33,6 +33,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```
 
 - There is one `manifest.json`, at the top level.
+- The game asks for four IDs so far: the images `e03.floor` and `e03.canopy` and the models `e03.flyer` and `dragon.ride`. Any it does not find shows its placeholder (see IDs).
 - Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines, and `tuning.json`, which Tuning defines. The manifest does not list `tuning.json`.
 - Files in the folder that the manifest does not list are ignored.
 
@@ -97,11 +98,12 @@ files/                 the asset folder (the output folder's contents on the PC)
 | Prefix | Used for |
 |--------|----------|
 | `e03.` | Episode 3, such as `e03.floor` and `e03.canopy`, and its enemies, such as `e03.flyer`. |
-| `dragon.` | The dragon. |
+| `dragon.` | The dragon, such as `dragon.ride`, the dragon the player rides. |
 
 - The table lists the prefixes in use. A new one is added here when it is first needed.
 - The engine spike's ground and sky are the placeholders for `e03.floor` and `e03.canopy`. There are no separate test IDs: the author proves external loading by supplying their own images under the real IDs.
 - The engine spike's flying grey cube is the placeholder for `e03.flyer`, a model: the Episode 3 flying enemy that the grey cubes later become. As with the ground and sky, there is no separate test ID.
+- The grey placeholder dragon, of the author's own boxes with a paler head, is the placeholder for `dragon.ride`, a model: the dragon the player sits on. The game holds it fixed under the player at a built-in seat, the top of its back 0.4 m above the play area's floor and directly below the play area's centre. A model's origin is put at that seat (see Models). There is no separate test ID.
 - An ID is a promise. Once the game asks for an ID, the tool keeps writing it. The file behind it may move or be renamed freely.
 
 #### Extracted textures
@@ -224,7 +226,8 @@ Some rules below are marked *Provisional*. They depend on model geometry that is
 
 ### Geometry
 
-- Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are.
+- Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are. The game flies towards -Z, so it turns `dragon.ride` 180° about Y to face the flight.
+- The origin of `dragon.ride` is the seat: on top of the dragon's back, where the rider sits. The game puts the origin at its built-in seat.
 - Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is recorded here once geometry is decoded. *Provisional.*
 - Triangles only (primitive mode 4), indexed. glTF has no quads.
 - Each Saturn quad is written as four vertices of its own, in the Saturn's corner order, followed by the two triangles (0, 1, 2) and (0, 2, 3) of those four. Vertices are not shared between quads, because each quad has its own texture. So within a primitive, quad `k` is vertices `4k` to `4k+3`, and a reader that wants the quads back can have them. *Provisional.*

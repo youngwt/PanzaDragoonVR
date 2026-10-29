@@ -17,4 +17,7 @@ public static class AssetIds
 
     /// <summary>Episode 3's flying enemy; its placeholder is the grey cube.</summary>
     public const string E03Flyer = "e03.flyer";
+
+    /// <summary>The dragon the player rides; its placeholder is the grey dragon built in <see cref="RiddenDragon"/>.</summary>
+    public const string DragonRide = "dragon.ride";
 }
