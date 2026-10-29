@@ -36,6 +36,10 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 - Open question: where the wing animation comes from (`.MTB` files are unexamined), and whether still wings are acceptable for the demo.
 - Waits on Engine spike because: it adopts the standard model format and uses the asset loader.
 - Waits on In-game extraction because: model extraction is added to its decoding library, and it needs coloured textures.
+- Decision: the `.MDB` geometry format is settled by an early hitl spike, as spike 3.2 settled the planes; the decoding stories wait on its answer (user, 2026-10-29).
+- Decision: the dragon holds a still pose in this epic; the wing animation (`.MTB`) is deferred to a backlog spike (user, 2026-10-29).
+- Decision: the player's seat on the dragon (its place along the back, its height, the model's scale) is a set of tuning-file settings, as the floor and canopy are; the author's chosen values become the built-ins (user, 2026-10-29).
+- Decision: backlog 8, confirming the asset contract's provisional model rules, moves into this epic beside model decoding (user, 2026-10-29).
 
 ## References
 

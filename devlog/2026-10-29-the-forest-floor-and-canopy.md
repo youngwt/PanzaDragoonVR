@@ -6,7 +6,7 @@
 
 The forest is in. Episode 3's floor and canopy now come off your own disc, decoded on the headset, and fly past you in VR: mossy ground below, a ceiling of leaves above. Neither plane actually moves. The images slide across them, wrapped so they never run out, and the canopy is timed to match the floor so it reads as one flat, closed-in tunnel, as it does on the Saturn.
 
-![Five seconds of the forest floor and canopy scrolling past, rendered by the game on the desktop](media/2026-10-29-forest-scroll-from-disc.gif)
+![Five seconds of the forest floor and canopy scrolling past, rendered by the game on the desktop](media/2026-10-29-forest-scroll.gif)
 
 *Five seconds of the game's own render, recorded on the desktop with Godot's movie maker. In the headset the floor and canopy wrap all the way around you.*
 
