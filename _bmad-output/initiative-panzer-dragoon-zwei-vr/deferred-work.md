@@ -70,3 +70,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-forest-floor-and-canopy/story-refactor-sweep-plan.md`
   summary: The item asking AGENTS.md's Tests convention to say GameLogic.Tests also references the decoding library, for tests only, is closed.
   evidence: The refactor sweep (ticket 6 of the forest floor and canopy epic), 2026-10-26, added it to AGENTS.md's Tests convention, with `game/Logic/` itself referencing neither the library nor Godot.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-the-decoding-library-writes-a-model-as-a-glb-plan.md`
+  summary: Settle whether the asset contract's "node and mesh names are unique within the file" allows a node and its mesh to share a name, as GlbWriter writes them (root `flyer` with mesh `flyer`, part node `body` with mesh `body`).
+  evidence: Unverified, medium if the stricter reading holds (every written model would break the rule); the author's reading of asset-contract.md, Structure and naming, settles it. Names are unique within nodes and within meshes today.

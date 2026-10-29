@@ -204,7 +204,16 @@ The Python tests cover the scripts in `tools/`, at present the manifest writer, 
 
 `tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, its check of a model file (`game/Logic/GlbCheck.cs`), the development and release mode decision and the deletion of the disc image (`game/Logic/ExtractionMode.cs`), with a case for each: development mode, release mode on a first launch, a folder already extracted from the same disc by this extractor or by another version of it, or from a different disc, a failed extraction or one that wrote nothing (the image kept), the generator the game passes held to the library's, no disc, a deletion failing and a hand-written manifest; the tuning file (`game/Logic/Tuning.cs`: the built-in values, each setting read, out of range or of the wrong type, and `tools/tuning.example.json` matching the built-ins), the planes' scroll (`game/Logic/PlaneScroll.cs`) and the launch report board (`game/Logic/LaunchReport.cs`). That project compiles those files itself and does not reference Godot; it references the decoding library for the tests only, so they can check the game's strings against the library's, and `game/Logic/` itself uses neither. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
 
-`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, finding `EPISODE3.PRG`'s colour upload tables and decoding modes 4 and 0 from them, unpacking and drawing the floor and canopy (the probe's hand-built streams, the literal pool, flipped pattern names, and a notice for no pool, too few maps or a bad stream), the PNG writer, and extraction as a whole, with a case for each behaviour (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures; two colour tables, one, none, a bad pair, a colour code no pair filled, and modes 1 and 5 unchanged; the staging folder: none left behind, progress by disc file, the previous extraction kept while writing and replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error; the list of a disc image's own files, which release mode deletes, and a `.cue` that names an `.iso` beside it counted as one image). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
+`tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, finding `EPISODE3.PRG`'s colour upload tables and decoding modes 4 and 0 from them, unpacking and drawing the floor and canopy (the probe's hand-built streams, the literal pool, flipped pattern names, and a notice for no pool, too few maps or a bad stream), the PNG writer, the model writer (`GlbWriter`: one part, parts, all four drawing modes, flips, a triangle, a second atlas, bad models, the atlas's border and pixels, UVs, the sampler, the materials, no `uri`, accessor bounds and the same bytes written twice), and extraction as a whole, with a case for each behaviour (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures; two colour tables, one, none, a bad pair, a colour code no pair filled, and modes 1 and 5 unchanged; the staging folder: none left behind, progress by disc file, the previous extraction kept while writing and replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error; the list of a disc image's own files, which release mode deletes, and a `.cue` that names an `.iso` beside it counted as one image). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
+
+The model writer's tests also compare three sample models, built in the tests, with what is recorded for them in `tests/Decoding.Tests/expected/models/`: `one_part.glb` and `parts.glb` byte for byte, and `two_atlases.glb.sha256`, the SHA-256 of the third, whose first atlas is a whole 2048 x 2048 image stored uncompressed (see the PNG writer's notes) and makes it about 16 MB, too large to commit. A deliberate change to the writer's output is recorded again, and the new files committed, with
+
+```sh
+PDZ_RECORD_EXPECTED=1 tools/test.sh --filter GlbWriterTests   # rewrites the recorded samples in the source tree
+tools/validate-gltf.sh                                         # then check the samples with the Khronos validator
+```
+
+`tests/GameLogic.Tests/GlbCheckTests.cs` also checks that a model the library writes passes the game's own model check.
 
 ### Shared asset-rule cases
 
@@ -451,6 +460,19 @@ The game reads the file's header and its JSON before the engine sees it, and nev
 Missing files, wrong sizes and the other manifest problems read as they do for images. The model checks are in `game/Logic/GlbCheck.cs`; loading it is in `game/AssetFolder.cs`.
 
 `write_manifest.py` applies the same checks, in the same order and words, when it writes a manifest and with `--check`, so a model it passes is not rejected for any reason above except two it cannot see: an image inside the file that the engine cannot decode, and a load that fails in the engine.
+
+### Checking a model with the Khronos validator
+
+The asset contract says every model the tool writes passes the Khronos glTF Validator with no errors. `validate-gltf.sh` runs it:
+
+```sh
+tools/validate-gltf.sh                        # the decoding library's sample models
+tools/validate-gltf.sh my-assets/models/*.glb # any .glb files, your own included
+```
+
+With no files named, it first runs the sample models' test with `PDZ_GLB_SAMPLES` set to a temporary folder, which makes the test write the three samples there as well as checking them (so it needs `dotnet`, as `tools/test.sh` does), validates those and removes the folder. It prints one line per file, `validate-gltf: <file>: 0 errors, 0 warnings, 0 infos, 0 hints`. A file with an error gets `validate-gltf: error: <file>: <counts>; the first is <code> at <where>` on stderr instead, and the script exits 1; so does a file that is missing or that the validator gives no report for, or an unknown argument. It exits 0 when no file has an error. Warnings, infos and hints are counted but do not fail it.
+
+The validator is the pinned release 2.0.0-dev.3.10 for Linux, checked against its SHA-256. The script reads the report with `jq`, which it needs on every run. The first run downloads the validator (with `curl`, `tar`, `xz`, `sha256sum` and `find`) into `$TOOLCHAIN_ROOT/gltf-validator-2.0.0-dev.3.10/`, by default `~/.local/opt`, beside the rest of the toolchain, with an `.installed` marker naming the release and checksum; a folder without that marker is downloaded again. It is never put in the project or committed, and the script asks the validator for its report on stdout, so it leaves no report files beside the models. To remove it, delete that folder.
 
 ## Extracting from your own disc
 

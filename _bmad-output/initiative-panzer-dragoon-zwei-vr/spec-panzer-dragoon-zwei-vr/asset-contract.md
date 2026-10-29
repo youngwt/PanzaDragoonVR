@@ -257,7 +257,7 @@ A model has at most four materials per atlas. The material's name says how its p
 - One scene, with one root node.
 - A model with parts that move separately has one node per part under the root, each with its own mesh and with its origin at the point the part turns about. A model with no such parts is the root node and one mesh.
 - Each mesh has one primitive per material.
-- Node and mesh names are lowercase letters, digits and underscores, and unique within the file. The root node is named after the last level of the asset ID: `flyer` for `e03.flyer`.
+- Node and mesh names are lowercase letters, digits and underscores, and unique within their kind in the file: no two nodes share a name, and no two meshes do. A node and a mesh may share one, and a part node and its mesh do, as `body` and `body`. The root node is named after the last level of the asset ID: `flyer` for `e03.flyer`.
 - Material names are those in the Transparency table.
 - No animations, skins, cameras or lights in format 1. glTF can carry animation and the game's loader can read it, so the dragon's motion can be added later, in the model or as a kind of its own, without changing `format`. The game ignores any it finds until then.
 - No extensions other than `KHR_materials_unlit`, and nothing in `extensionsRequired`.

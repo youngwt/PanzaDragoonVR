@@ -2,6 +2,7 @@ using System;
 using System.Buffers.Binary;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using Xunit;
 
@@ -98,6 +99,28 @@ public sealed class GlbCheckTests : IDisposable
         Assert.Equal(GlbProblemKind.None, result.Kind);
         Assert.True(result.IsUsable);
         Assert.Null(result.Line(Flyer, "models/e03.flyer.glb"));
+    }
+
+    [Fact]
+    public void WrittenModel_IsUsable()
+    {
+        // A model as the decoding library writes it: two parts, a texture and a flat colour, one atlas.
+        static PdzDecoding.ModelQuad Quad(float x, PdzDecoding.ModelTexture? texture, PdzDecoding.DrawingMode mode) =>
+            new(new Vector3(x, 0, 0), new Vector3(x + 1, 0, 0), new Vector3(x + 1, -1, 0), new Vector3(x, -1, 0),
+                texture, new PdzDecoding.ModelColour(10, 20, 30), mode);
+
+        var texture = new PdzDecoding.ModelTexture(2, 2, Enumerable.Repeat((byte)200, 16).ToArray());
+        var model = new PdzDecoding.Model("flyer", new[]
+        {
+            new PdzDecoding.ModelPart("body", Vector3.Zero, new[] { Quad(0, texture, PdzDecoding.DrawingMode.Opaque) }),
+            new PdzDecoding.ModelPart("wing", new Vector3(1, 0, 0), new[] { Quad(0, null, PdzDecoding.DrawingMode.Half) }),
+        });
+
+        GlbCheckResult result = Check(PdzDecoding.GlbWriter.Write(model));
+
+        Assert.Equal(GlbProblemKind.None, result.Kind);
+        Assert.Null(result.Detail);
+        Assert.Equal(1, result.ImageCount);
     }
 
     [Fact]
