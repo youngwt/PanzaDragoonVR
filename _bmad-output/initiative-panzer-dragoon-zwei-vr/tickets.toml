@@ -25,7 +25,7 @@ id = 4
 slug = "epic-riding-the-dragon"
 title = "Riding the dragon"
 covers = ["CAP-5", "CAP-3"]
-after = [{ epic = 1, needs = "the standard model format and the runtime asset loader" }, { epic = 2, needs = "the decoding library and coloured textures" }]
+after = [{ epic = 1, needs = "the standard model format and the runtime asset loader" }, { epic = 2, needs = "the decoding library and coloured textures" }, { epic = 3, needs = "the scrolling floor and canopy (story 3.5)" }]
 
 [[epic]]
 id = 5

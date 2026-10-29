@@ -31,15 +31,21 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 
 ## Notes
 
-- Unknown: the `.MDB` geometry format. Every story here waits on it.
+- Unknown: the `.MDB` geometry format. The decoding stories (5 onwards) wait on it; spike 2 settles it.
 - Open question: which of the ten dragon forms the demo uses; decided once they can be viewed.
 - Open question: where the wing animation comes from (`.MTB` files are unexamined), and whether still wings are acceptable for the demo.
 - Waits on Engine spike because: it adopts the standard model format and uses the asset loader.
 - Waits on In-game extraction because: model extraction is added to its decoding library, and it needs coloured textures.
+- Waits on Forest floor and canopy because: the dragon stays in place while its floor and canopy scroll (story 3.5).
 - Decision: the `.MDB` geometry format is settled by an early hitl spike, as spike 3.2 settled the planes; the decoding stories wait on its answer (user, 2026-10-29).
 - Decision: the dragon holds a still pose in this epic; the wing animation (`.MTB`) is deferred to a backlog spike (user, 2026-10-29).
 - Decision: the player's seat on the dragon (its place along the back, its height, the model's scale) is a set of tuning-file settings, as the floor and canopy are; the author's chosen values become the built-ins (user, 2026-10-29).
 - Decision: backlog 8, confirming the asset contract's provisional model rules, moves into this epic beside model decoding (user, 2026-10-29).
+- Decision: the tracer bullet is story 1, a grey placeholder dragon under the player while the forest scrolls; the `.MDB` spike comes second, and the `.glb` writer is built on synthetic models beside it (user, 2026-10-29).
+- Decision: the game asks for one ride ID, `dragon.ride`; each form gets its own ID under `dragon.`, and story 7 has the extraction also write the chosen form as `dragon.ride` (user, 2026-10-29).
+- Decision: the extraction always writes all ten dragon forms, on the PC and the headset (user, 2026-10-29).
+- Decision: story 6 (was backlog 8) goes to the build without `refine`; its criteria are written during the build (user, 2026-10-29).
+- Decision: the wing animation spike is backlog 18 (user, 2026-10-29).
 
 ## References
 
@@ -47,3 +53,4 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 - spec — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr.md, section Capabilities
 - constraint — the same spec, section Constraints
 - formats — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md, section Textures
+- contract — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/asset-contract.md, sections Models and asset IDs

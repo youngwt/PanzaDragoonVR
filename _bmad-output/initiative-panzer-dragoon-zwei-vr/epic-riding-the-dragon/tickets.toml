@@ -1,0 +1,91 @@
+# The stories of this epic in build order. tickets.py reads this.
+
+[[entry]]
+id = 1
+type = "story"
+title = "The player sits on a placeholder dragon while the forest scrolls"
+description = "Tracer bullet: the game asks for the dragon by the ride ID `dragon.ride`, added to the asset contract and the game's asset IDs, loads it as a model when the folder supplies one, else shows a built-in grey placeholder with a distinct head, tail and two wings, and holds it fixed under the player at a built-in seat while the floor and canopy scroll, toward CAP-5."
+verify = "In the headset the grey placeholder dragon sits under the player with its wings either side, head in front and tail behind, and stays put while the forest scrolls for a minute at 90 Hz; a hand-made .glb pushed under `dragon.ride` replaces it."
+covers = ["CAP-5"]
+after = ["1.7", "3.5"]
+hitl = true                 # headset check
+risk = "medium"
+
+[[entry]]
+id = 2
+type = "spike"
+title = "How .MDB geometry is laid out"
+description = "Finds how a .MDB file holds its vertices, its polygons and their link to the texture records already decoded, how the DRA01A..DRA10J files make up the ten dragon forms, whether a form has separately moving parts, and the Saturn-to-metres scale, by reading the files and, if needed, the game's code in Mednafen and Ghidra; the answer, with evidence, goes in zwei-disc-formats.md, toward CAP-3 and CAP-5."
+verify = "zwei-disc-formats.md describes the geometry layout, each point marked confirmed or lead with evidence, and one dragon form's polygons have been drawn on the PC from it (a throwaway script is enough); the spec's open question on .MDB geometry is updated; the author has decided each form's asset ID under the `dragon.` prefix."
+covers = ["CAP-3", "CAP-5"]
+after = []
+hitl = true                 # reverse engineering with the author; the author decides
+risk = "high"
+references = ["../spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md", "../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "The decoding library writes a model as a .glb"
+description = "Adds to the decoding library a model type (parts, quads with their texture, colour and drawing mode) and a writer that turns it into a self-contained binary glTF following the asset contract's Models section: textures packed into an atlas, quads split into triangles, the four named materials, byte-for-byte the same on every runtime, toward CAP-3."
+verify = "Decoding.Tests build small synthetic models and check the written .glb's structure, atlas and bytes; a tool this story adds runs the Khronos glTF Validator, which reports no errors on them; a GameLogic.Tests case shows the game's GlbCheck accepts one."
+covers = ["CAP-3"]
+after = []
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "The player's seat on the dragon comes from the tuning file"
+description = "Adds settings for the seat's place along the dragon's back, its height and the model's scale to the tuning file, in all four places its built-in values are kept, read at launch with the same fallback as the floor and canopy settings, toward CAP-5."
+verify = "Pushing an edited tuning file and relaunching moves the player along the placeholder dragon's back, raises them and rescales the dragon in the headset; an out-of-range value is reported on the launch board and the built-in is used; tests hold the four places in agreement."
+covers = ["CAP-5"]
+after = [1]
+hitl = true                 # headset check
+risk = "low"
+
+[[entry]]
+id = 5
+type = "story"
+title = "Extraction writes the dragon forms as textured models"
+description = "The decoding library decodes .MDB geometry as spike 2 found it into the model type of story 3, and the extraction writes all ten dragon forms as .glb files under the asset IDs spike 2 chose, listed in the manifest, on the PC and the headset, toward CAP-3 and CAP-5."
+verify = "pdz-extract on the author's disc writes the ten dragon .glb files, which pass the glTF Validator run by story 3's tool and open textured and recognisable in an ordinary viewer; unit tests on synthetic .MDB data; compare-headset.sh reports identical."
+covers = ["CAP-3", "CAP-5"]
+after = [2, 3, "2.11"]
+hitl = true                 # the author checks the dragon by eye in a viewer
+risk = "high"
+references = ["../spec-panzer-dragoon-zwei-vr/asset-contract.md"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "The provisional model rules are confirmed against the dragon"
+description = "Moved from backlog 8: each rule marked Provisional in the asset contract's Models section, including the Saturn-to-metres divisor, is checked against the extracted dragon and confirmed or changed with the author's agreement, with the writer and its tests changed to match, toward CAP-3."
+verify = "No rule in the Models section is still marked Provisional; each change has the author's agreement; the tests and the dragon .glb files follow the changed rules."
+covers = ["CAP-3"]
+after = [5]
+hitl = true                 # the author agrees each rule
+risk = "medium"
+
+[[entry]]
+id = 7
+type = "story"
+title = "The player rides the chosen dragon in the headset"
+description = "The author views the ten extracted forms and chooses one for the demo; the extraction also writes that form as `dragon.ride`, so the game shows it under the player, and the author's seat values become the tuning file's built-ins, toward CAP-5."
+verify = "In the headset, with the author's disc extracted, the chosen dragon sits under the player with its wings either side, its head in front and its tail behind, and stays in place while the forest scrolls; the author's choice and seat values are recorded."
+covers = ["CAP-5"]
+after = [4, 6]
+hitl = true                 # the author's choice and look in the headset
+risk = "medium"
+
+[[entry]]
+id = 8
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
+verify = "The epic's Done when checks still pass on the headset after the cleanup."
+covers = ["CAP-3", "CAP-5"]
+after = [1, 2, 3, 4, 5, 6, 7]
+hitl = false
+risk = "low"
