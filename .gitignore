@@ -2,6 +2,8 @@
 /rom/
 # Anything extracted or decoded from the disc: copyrighted, never commit
 /extracted/
+# Dev diary media made from the disc's own assets: kept beside the posts locally, never committed
+/devlog/media/*-from-disc.*
 __pycache__/
 # Local emulator install, with firmware links and save states
 /tools/mednafen/
