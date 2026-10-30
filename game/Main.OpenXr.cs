@@ -24,7 +24,7 @@ public partial class Main
         openXr.SessionSynchronized += PauseMeasuring;
         openXr.SessionStopping += PauseMeasuring;
         openXr.SessionLossPending += PauseMeasuring;
-        // The board goes in front of the head once it is tracked, and again when the view is recentred.
+        // The board goes in front of the head and the dragon's seat below it once it is tracked, and again when the view is recentred.
         openXr.PoseRecentered += OnPoseRecentered;
         if (SessionHasBegun(openXr))
         {

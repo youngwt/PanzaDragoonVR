@@ -52,7 +52,7 @@ public partial class Main : Node3D
     }
 
     /// <summary>
-    /// Places the board until the head is tracked, watches extraction while it runs and scrolls the
+    /// Places the board and the dragon's seat until the head is tracked, watches extraction while it runs and scrolls the
     /// floor and canopy.
     /// </summary>
     public override void _Process(double delta)

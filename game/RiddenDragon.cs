@@ -5,6 +5,7 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// Holds the dragon the player rides, fixed under the player at the seat while the forest scrolls past.
+/// The seat is put below the head when the head is first tracked and after a recentre, and stays there between.
 /// Its origin is the seat: a model's origin is put there, as the asset contract's Models section says.
 /// Models face +Z, as glTF does, and the game flies towards -Z, so this node is turned 180 degrees about Y
 /// to point a model's front the way of flight.
@@ -29,6 +30,9 @@ public partial class RiddenDragon : Node3D
         _placeholder = Placeholder();
         AddChild(_placeholder);
     }
+
+    /// <summary>Puts the seat directly below a head at this world X and Z; its height stays as the scene sets it.</summary>
+    public void SitUnder(float headX, float headZ) => GlobalPosition = new Vector3(headX, GlobalPosition.Y, headZ);
 
     /// <summary>
     /// Shows <paramref name="model"/> at the seat in place of the placeholder dragon, which is no longer drawn;

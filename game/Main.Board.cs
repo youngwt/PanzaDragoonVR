@@ -8,6 +8,7 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// The scene's board job: the launch report board, what goes on it, and standing it in front of the head.
+/// The dragon's seat is put below the head at the same moments, so <see cref="PlaceBoard"/> does that too.
 /// </summary>
 public partial class Main
 {
@@ -35,8 +36,9 @@ public partial class Main
     private void OnPoseRecentered() => _boardPlaced = false;
 
     /// <summary>
-    /// Stands the launch report board in front of where the head faces, once the headset tracks it:
-    /// the head pose is not tracked on the first frames, so this is tried each frame until it is.
+    /// Stands the launch report board in front of where the head faces and puts the dragon's seat below the
+    /// head, once the headset tracks it: the head pose is not tracked on the first frames, so this is tried
+    /// each frame until it is.
     /// </summary>
     private void PlaceBoard()
     {
@@ -55,5 +57,7 @@ public partial class Main
         Board.GlobalTransform = new Transform3D(new Basis(Vector3.Up, place.Yaw), new Vector3(place.X, place.Y, place.Z));
         _boardPlaced = true;
         GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} board placed in front of the head at ({place.X:0.00}, {place.Y:0.00}, {place.Z:0.00})"));
+        GetNode<RiddenDragon>("Dragon").SitUnder(camera.Origin.X, camera.Origin.Z);
+        GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} dragon's seat placed under the head at ({camera.Origin.X:0.00}, {camera.Origin.Z:0.00})"));
     }
 }

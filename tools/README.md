@@ -431,7 +431,7 @@ Then start the app: the pyramid flies where the cube did. The test model also ca
 
 ### Your own dragon
 
-The grey dragon under you is the placeholder for `dragon.ride`, a model: boxes for a body about 4 m long, a paler head on a short neck in front, a thinner tail behind and two flat wings about 3 m long. It is held still at the seat, with the top of its back 0.4 m above the play area's floor and directly below the play area's centre, so a seated rider is astride it; standing, your legs pass into it. A `.glb` the folder lists as `dragon.ride` sits there in its place. Build it in glTF's axes, front towards +Z, with its origin where the rider sits, on top of the back: the game puts the origin at the seat and turns the model 180 degrees about Y to face the way of flight. To try it with the test pyramid:
+The grey dragon under you is the placeholder for `dragon.ride`, a model: boxes for a body about 4 m long, a paler head on a short neck in front, a thinner tail behind and two flat wings about 3 m long. It is held still at the seat, with the top of its back 0.4 m above the play area's floor and directly below your head when the app starts, so a seated rider is astride it; standing, your legs pass into it. It does not follow your head: if you move, recentre the view to bring it under you again. A `.glb` the folder lists as `dragon.ride` sits there in its place. Build it in glTF's axes, front towards +Z, with its origin where the rider sits, on top of the back: the game puts the origin at the seat and turns the model 180 degrees about Y to face the way of flight. To try it with the test pyramid:
 
 ```sh
 python3 tools/make_test_model.py my-assets/models/pyramid.glb
