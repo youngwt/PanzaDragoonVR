@@ -3,7 +3,7 @@ title: 'Extraction writes the dragon forms as textured models'
 type: 'feature'
 ticket: '5'
 created: '2026-10-30'
-status: 'built'
+status: done
 baseline_revision: '41ff70f6c155ecaeb2912a67398c75b46caecbe9'
 route: 'full'
 route_source: 'auto'
@@ -106,3 +106,5 @@ Quick lens, one pass: 1 medium, 1 low patched; 1 low rejected; none deferred.
 
 **Manual checks (if no CLI):**
 - The author opens the forms in a viewer and recognises them.
+
+Author, 2026-10-30: viewed the ten forms in F3D and recognised them. F3D draws cutout pixels black; not yet seen in the headset.
