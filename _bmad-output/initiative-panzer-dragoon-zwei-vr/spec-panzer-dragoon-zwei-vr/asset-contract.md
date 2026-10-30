@@ -218,9 +218,7 @@ The game extracts the assets on the headset at launch, and the PC command does t
 
 A `model` asset is one glTF 2.0 file in the binary form, `.glb`. glTF is a published Khronos standard, opens in ordinary viewers and in Blender, and Godot loads it at runtime in an exported build with `GLTFDocument` and `GLTFState`, with no editor import.
 
-None of this section has yet been run in Godot or on the headset. Story 1.7 is where it is first tested.
-
-Some rules below are marked *Provisional*. They depend on model geometry that is not decoded yet and on Saturn drawing behaviour that has not been re-checked. The tool follows a provisional rule now, and it is to be confirmed once real models exist. Changing one later is expected, and does not by itself raise `format` unless a game built for the old rule would misread the new files.
+These rules were checked against the extracted dragons, as far as the dragons use them, and the author looked at one in the headset (story 4.6, 2026-10-30). No dragon needs a second atlas or uses `half` or `mesh`, so those rules have not been seen working on disc data. Changing a rule later does not by itself raise `format` unless a game built for the old rule would misread the new files.
 
 ### One file, textures inside
 
@@ -231,27 +229,27 @@ Some rules below are marked *Provisional*. They depend on model geometry that is
 
 ### Textures
 
-- All of a model's textures are packed into one image, an atlas, of at most 2048 x 2048 pixels. A model too large for one atlas uses more, and gains one set of materials per atlas. *Provisional.*
+- All of a model's textures are packed into one image, an atlas, of at most 2048 x 2048 pixels. A model too large for one atlas uses more, and gains one set of materials per atlas.
 - Pixels are copied into the atlas unchanged: no scaling, no filtering, no redrawing. Colours are already resolved, so the lookup table or palette is applied by the tool and the PNG is plain RGBA.
-- Each texture sits in the atlas with a 2-pixel border that repeats its own edge pixels. UV coordinates address only the original rectangle, never the border. *Provisional.*
+- Each texture sits in the atlas with a 2-pixel border that repeats its own edge pixels. UV coordinates address only the original rectangle, never the border.
 - A texture drawn flipped on the Saturn is stored unflipped; the flip is in the UV coordinates.
 - UV coordinates are `TEXCOORD_0`, with (0, 0) at the top-left corner of the atlas, as glTF defines.
-- An untextured, flat-coloured polygon is given a small block of its colour in the atlas and is otherwise an ordinary textured polygon. *Provisional.*
-- Every texture uses one sampler: `magFilter` and `minFilter` both `9728` (nearest), `wrapS` and `wrapT` both `33071` (clamp to edge). No mipmaps are stored. *Provisional.*
+- An untextured, flat-coloured polygon is given a small block of its colour in the atlas and is otherwise an ordinary textured polygon.
+- Every texture uses one sampler: `magFilter` and `minFilter` both `9728` (nearest), `wrapS` and `wrapT` both `33071` (clamp to edge). No mipmaps are stored.
 - The tool may also write the same textures as loose PNG files for looking at. The game does not read them and they need no manifest entry.
 
 ### Geometry
 
 - Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are. The game flies towards -Z, so it turns `dragon.ride` 180° about Y to face the flight.
 - The origin of `dragon.ride` is the seat: the point where the game places its rider on that form. The game puts the origin at its built-in seat.
-- Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is 4,000: the spike's lead, from a rider assumed to be 1.7 m tall, which the author is to confirm in the headset. *Provisional.*
+- Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is 4,000, which began as the spike's lead from a rider assumed to be 1.7 m tall; the author confirmed it in the headset (2026-10-30).
 - The conversion from the Saturn's axes (+Y up, head towards -Z) is `(x, y, z)` to `(-x, y, -z)`, a half-turn about Y and so not a mirror, before the division.
 - Triangles only (primitive mode 4), indexed. glTF has no quads.
-- Each Saturn quad is written as four vertices of its own, in the Saturn's corner order, followed by the two triangles (0, 1, 2) and (0, 2, 3) of those four. Vertices are not shared between quads, because each quad has its own texture. So within a primitive, quad `k` is vertices `4k` to `4k+3`, and a reader that wants the quads back can have them. *Provisional.*
-- A Saturn polygon with only three distinct corners is written the same way, with the repeated corner repeated. *Provisional.*
-- Every material sets `doubleSided` to `true`, because it is not yet known which way the Saturn's polygons face. The corner-order rule above governs: the tool does not reorder corners to make front faces wind counter-clockwise, so winding is not guaranteed while materials are double-sided. *Provisional.*
+- Each Saturn quad is written as four vertices of its own, in the Saturn's corner order, followed by the two triangles (0, 1, 2) and (0, 2, 3) of those four. Vertices are not shared between quads, because each quad has its own texture. So within a primitive, quad `k` is vertices `4k` to `4k+3`, and a reader that wants the quads back can have them.
+- A Saturn polygon with only three distinct corners is written the same way, with the repeated corner repeated.
+- Every material sets `doubleSided` to `true`, so a surface that is a single sheet shows from both sides. The corner-order rule above governs: the tool does not reorder corners, and the Saturn's corners go clockwise seen from outside, the opposite of glTF's front faces, so a reader must not cull by winding.
 - No normals. Every material uses the `KHR_materials_unlit` extension, listed in `extensionsUsed` and not in `extensionsRequired`: the Saturn's shading is in its textures and its colour tables, not in lights.
-- No vertex colours. `COLOR_0` is reserved for the Saturn's per-vertex shading, which is not decoded yet. In format 1 the game ignores `COLOR_0` if a file has it, as it ignores animations, so adding it later does not change `format`. *Provisional.*
+- No vertex colours. `COLOR_0` is reserved for the Saturn's per-vertex shading, which the author chose to leave out for now (see `zwei-disc-formats.md`, Shading, and the backlog). In format 1 the game ignores `COLOR_0` if a file has it, as it ignores animations, so adding it later does not change `format`.
 - The file passes the Khronos glTF Validator with no errors.
 
 ### Transparency
@@ -260,10 +258,10 @@ A model has at most four materials per atlas. The material's name says how its p
 
 | Material name | Used for | glTF settings |
 |---------------|----------|---------------|
-| `opaque` | Polygons the Saturn draws with no transparent pixels, as the tool decodes each polygon's own drawing mode. | `alphaMode` `OPAQUE`. *Provisional.* |
-| `cutout` | Polygons the Saturn draws with some pixels fully transparent, decided the same way. | `alphaMode` `MASK`, `alphaCutoff` `0.5`. *Provisional.* |
-| `half` | Polygons the Saturn draws half-transparent. | `alphaMode` `BLEND`, `baseColorFactor` `[1, 1, 1, 0.5]`. *Provisional.* |
-| `mesh` | Polygons the Saturn draws as a mesh pattern, every other pixel. | As `half`. The separate name lets the game draw the pattern itself later. *Provisional.* |
+| `opaque` | Polygons the Saturn draws with no transparent pixels, as the tool decodes each polygon's own drawing mode. | `alphaMode` `OPAQUE`. |
+| `cutout` | Polygons the Saturn draws with some pixels fully transparent, decided the same way. | `alphaMode` `MASK`, `alphaCutoff` `0.5`. |
+| `half` | Polygons the Saturn draws half-transparent. Seen on no disc file checked so far: this comes from the VDP1 manual. | `alphaMode` `BLEND`, `baseColorFactor` `[1, 1, 1, 0.5]`. |
+| `mesh` | Polygons the Saturn draws as a mesh pattern, every other pixel. On no dragon; `E03CMN` has them, and is the case to check. This comes from the VDP1 manual. | As `half`. The separate name lets the game draw the pattern itself later. |
 
 - With a second atlas the names are `opaque_2`, `cutout_2` and so on.
 - A pixel the Saturn would not draw for that polygon has alpha 0 in the atlas. Every other pixel has alpha 255. Half-transparency is in the material, not in the pixels.

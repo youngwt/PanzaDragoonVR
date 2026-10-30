@@ -64,7 +64,7 @@ Ruled out: the lead that `DRA01A`'s longs in 0x0603xxxx are pointers. They are p
 - A node is three longs: mesh pointer, first child, next sibling. Any may be 0. A node with no mesh still takes a matrix, so it is a pure joint. Nodes are written children first, so they fill the end of the file. Confirmed: walking from the roots reaches a mesh that parses at every non-zero pointer, in all ten forms, `COMMON` and the nine `E03` files, with no corner index out of range.
 - A root is a node that no other node points at. The last 12 bytes of a dragon file are its shadow root (below).
 - Each root's tree has one 48-byte matrix per node, in depth-first order (node, children, then siblings), straight after that tree's last mesh. Confirmed: the table's pointers land exactly there, and the rebuilt model holds together.
-- A matrix is 12 longs, 16.16 fixed point, row by row: `[r r r tx] [r r r ty] [r r r tz]`. A vertex's position is the product of the matrices from the root down, applied to the vertex.
+- A matrix is 12 longs, row by row: `[r r r tx] [r r r ty] [r r r tz]`. The r values are 16.16 fixed point; the translations are whole units, as the vertices are. A vertex's position is the product of the matrices from the root down, applied to the vertex.
 
 ### First layout: 32-bit vertices (dragons, rider)
 
@@ -165,7 +165,7 @@ So one Episode 3 `.MDB` does not have the dragon's layout: it has the same tree 
 
 ### Scale
 
-Lead: **about 4,000 units to a metre**. Nothing in the data says what a unit is, so this assumes a rider 1.7 m tall, measured by standing his parts up. Story 4.6 confirms the divisor in the headset; the seat settings can also rescale.
+**4,000 units to a metre.** Nothing in the data says what a unit is, so the lead assumed a rider 1.7 m tall, measured by standing his parts up. Confirmed by the author's eye in the headset (story 4.6, 2026-10-30), a choice and not a fact of the disc; the seat settings can also rescale.
 
 ### On the PAL disc
 

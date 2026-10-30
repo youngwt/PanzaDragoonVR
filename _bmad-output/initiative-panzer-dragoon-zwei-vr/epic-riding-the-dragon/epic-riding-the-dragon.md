@@ -37,6 +37,7 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 - Decision: constants the game needs from the disc are never committed. The extraction reads them from the player's disc and writes them to a config file in the asset folder, and the game reads that file at launch. Where to look on the disc stays in the code, because the extraction needs it to read the disc. Story 5 defines the file when something first needs it (user, 2026-10-30).
 - Decision: the seat is the game's rider position for that form, on `DRA01A` astride the neck near the head, not mid-way along the back; story 5 reads it from the table in `1ST_READ` on the player's disc, as `zwei-disc-formats.md`, The rider, says, and the tuning settings of story 4 adjust from there (user, 2026-10-30).
 - Open question: where the wing animation comes from (`.MTB` files are unexamined), and whether still wings are acceptable for the demo.
+- Decision: story 6 confirmed the model rules with no change to the files: the divisor stays 4,000, hard-edged pixels stay, materials stay double-sided, `half` and `mesh` stand, used by no dragon, and per-corner shading is left out, as backlog 19 (user, 2026-10-30).
 - Waits on Engine spike because: it adopts the standard model format and uses the asset loader.
 - Waits on In-game extraction because: model extraction is added to its decoding library, and it needs coloured textures.
 - Waits on Forest floor and canopy because: the dragon stays in place while its floor and canopy scroll (story 3.5).

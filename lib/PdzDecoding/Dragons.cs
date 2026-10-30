@@ -48,8 +48,8 @@ public static class Dragons
     public const uint LoadAddress = 0x20288000;
 
     /// <summary>
-    /// Saturn units to a metre, the same for every model. The spike's lead, recorded as provisional in the
-    /// asset contract: nothing in the data says what a unit is.
+    /// Saturn units to a metre, the same for every model, as the asset contract says. The author's choice in
+    /// the headset: nothing in the data says what a unit is.
     /// </summary>
     public const int UnitsPerMetre = 4000;
 
