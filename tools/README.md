@@ -336,7 +336,7 @@ The app is not restarted. Start it again to see the change, with `tools/build-qu
 
 ### Tuning the scene
 
-How deep the floor is, how high the canopy, how fast they scroll and their tile sizes come from an optional `tuning.json` at the top of the asset folder; whatever it leaves out, or gets wrong, keeps its built-in value.
+How deep the floor is, how high the canopy, how fast they scroll, their tile sizes and your seat on the dragon come from an optional `tuning.json` at the top of the asset folder; whatever it leaves out, or gets wrong, keeps its built-in value.
 
 | Setting | Means | Built-in | Allowed |
 |---------|-------|----------|---------|
@@ -345,6 +345,9 @@ How deep the floor is, how high the canopy, how fast they scroll and their tile 
 | `flight_speed` | metres a second the floor scrolls past | 6 | 0 to 30 |
 | `canopy_speed_scale` | how the canopy moves: 1 crosses the same angle a second as the floor, a flat backdrop; 0 stands still | 1 | 0 to 2 |
 | `floor_tile`, `canopy_tile` | metres one copy of the floor or canopy image covers | 24, 48 | 4 to 500, 8 to 500 |
+| `seat_forward` | metres to move you towards the dragon's head from the seat; negative is towards the tail | 0 | -20 to 20 |
+| `seat_height` | metres to raise you from the seat; negative lowers you | 0 | -3 to 3 |
+| `dragon_scale` | how many times its size the dragon is drawn, turning about the seat | 1 | 0.1 to 5 |
 
 The asset contract's "Tuning" section is the full definition. To try new values:
 
@@ -361,7 +364,7 @@ To go back to the built-ins, run `tools/push-tuning.sh --remove`, or push `tools
 The game logs what it uses at launch, for example:
 
 ```
-PDZ-ASSETS tuning (from tuning.json and the built-ins): floor_depth 8, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48
+PDZ-ASSETS tuning (from tuning.json and the built-ins): floor_depth 8, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48, seat_forward 0, seat_height 0, dragon_scale 1
 ```
 
 or `tuning (built-in, no tuning.json): ...` when there is no file. A setting that is out of range or not a number, a field that is not a setting (a misspelt name, say) and a file that cannot be read each give a `PDZ-ASSETS tuning.json: ...` warning and a line on the board. The rules are in `game/Logic/Tuning.cs`.
@@ -431,7 +434,7 @@ Then start the app: the pyramid flies where the cube did. The test model also ca
 
 ### Your own dragon
 
-The grey dragon under you is the placeholder for `dragon.ride`, a model: boxes for a body about 4 m long, a paler head on a short neck in front, a thinner tail behind and two flat wings about 3 m long. It is held still at the seat, with the top of its back 0.4 m above the play area's floor and directly below your head when the app starts, so a seated rider is astride it; standing, your legs pass into it. It does not follow your head: if you move or turn, recentre the view (hold the Meta button): the dragon comes back under you and the way of flight turns to where you are facing. A `.glb` the folder lists as `dragon.ride` sits there in its place. Build it in glTF's axes, front towards +Z, with its origin where the rider sits: the game puts the origin at the seat and turns the model 180 degrees about Y to face the way of flight. To try it with the test pyramid:
+The grey dragon under you is the placeholder for `dragon.ride`, a model: boxes for a body about 4 m long, a paler head on a short neck in front, a thinner tail behind and two flat wings about 3 m long. It is held still at the seat, with the top of its back 0.4 m above the play area's floor and directly below your head when the app starts, so a seated rider is astride it; standing, your legs pass into it. It does not follow your head: if you move or turn, recentre the view (hold the Meta button): the dragon comes back under you and the way of flight turns to where you are facing. A `.glb` the folder lists as `dragon.ride` sits there in its place. Build it in glTF's axes, front towards +Z, with its origin where the rider sits: the game puts the origin at the seat and turns the model 180 degrees about Y to face the way of flight. The `seat_forward`, `seat_height` and `dragon_scale` settings under the tuning section adjust this. To try it with the test pyramid:
 
 ```sh
 python3 tools/make_test_model.py my-assets/models/pyramid.glb

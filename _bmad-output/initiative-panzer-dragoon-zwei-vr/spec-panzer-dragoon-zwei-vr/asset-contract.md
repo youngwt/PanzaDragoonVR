@@ -103,7 +103,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 - The table lists the prefixes in use. A new one is added here when it is first needed.
 - The engine spike's ground and sky are the placeholders for `e03.floor` and `e03.canopy`. There are no separate test IDs: the author proves external loading by supplying their own images under the real IDs.
 - The engine spike's flying grey cube is the placeholder for `e03.flyer`, a model: the Episode 3 flying enemy that the grey cubes later become. As with the ground and sky, there is no separate test ID.
-- The grey placeholder dragon, of the author's own boxes with a paler head, is the placeholder for `dragon.ride`, a model: the dragon the player sits on. The game holds it fixed under the player at a built-in seat, the top of its back 0.4 m above the play area's floor and directly below the head, placed when the head is first tracked and again after a recentre, and not following the head between. The game uses OpenXR's local floor space, so a recentre also turns the way of flight to where the head faces. A model's origin is put at that seat (see Models). There is no separate test ID.
+- The grey placeholder dragon, of the author's own boxes with a paler head, is the placeholder for `dragon.ride`, a model: the dragon the player sits on. The game holds it fixed under the player at a built-in seat, the top of its back 0.4 m above the play area's floor and directly below the head, placed when the head is first tracked and again after a recentre, and not following the head between. The game uses OpenXR's local floor space, so a recentre also turns the way of flight to where the head faces. A model's origin is put at that seat (see Models). The tuning file's `seat_forward`, `seat_height` and `dragon_scale` adjust this (see Tuning). There is no separate test ID.
 - An ID is a promise. Once the game asks for an ID, the tool keeps writing it. The file behind it may move or be renamed freely.
 
 #### Extracted textures
@@ -241,7 +241,7 @@ These rules were checked against the extracted dragons, as far as the dragons us
 ### Geometry
 
 - Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are. The game flies towards -Z, so it turns `dragon.ride` 180° about Y to face the flight.
-- The origin of `dragon.ride` is the seat: the point where the game places its rider on that form. The game puts the origin at its built-in seat.
+- The origin of `dragon.ride` is the seat: the point where the game places its rider on that form. The game puts the origin at its built-in seat, moved by the tuning file's seat settings.
 - Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is 4,000, which began as the spike's lead from a rider assumed to be 1.7 m tall; the author confirmed it in the headset (2026-10-30).
 - The conversion from the Saturn's axes (+Y up, head towards -Z) is `(x, y, z)` to `(-x, y, -z)`, a half-turn about Y and so not a mirror, before the division.
 - Triangles only (primitive mode 4), indexed. glTF has no quads.
@@ -333,7 +333,7 @@ A tuning problem alone puts the board up, as an asset problem does; with other p
 
 ## Tuning
 
-The floor's depth, the canopy's height, how fast they scroll and how much of each one copy of its image covers belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change is seen when the app is started again. It is never changed in the headset.
+The floor's depth, the canopy's height, how fast they scroll, how much of each one copy of its image covers and the player's seat on the dragon and its size belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change is seen when the app is started again. It is never changed in the headset.
 
 `tuning.json` is one JSON object. Every field is optional and every value a number; the example holds the built-in values:
 
@@ -344,7 +344,10 @@ The floor's depth, the canopy's height, how fast they scroll and how much of eac
   "flight_speed": 6,
   "canopy_speed_scale": 1,
   "floor_tile": 24,
-  "canopy_tile": 48
+  "canopy_tile": 48,
+  "seat_forward": 0,
+  "seat_height": 0,
+  "dragon_scale": 1
 }
 ```
 
@@ -356,8 +359,11 @@ The floor's depth, the canopy's height, how fast they scroll and how much of eac
 | `canopy_speed_scale` | 0 to 2 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
 | `floor_tile` | 4 to 500 | 24 | Metres of floor one copy of its image covers. |
 | `canopy_tile` | 8 to 500 | 48 | Metres of canopy one copy of its image covers. |
+| `seat_forward` | -20 to 20 | 0 | Metres the player is moved towards the dragon's head from the seat, by moving the dragon back; negative is towards the tail. An offset, so the built-in holds no value from the disc. |
+| `seat_height` | -3 to 3 | 0 | Metres the player is raised from the seat, by lowering the dragon; negative lowers the player. An offset, likewise. |
+| `dragon_scale` | 0.1 to 5 | 1 | How many times its size the ridden dragon is drawn, about the seat, on top of the model's own metres. |
 
-Ranges include their ends, and are narrow enough that each allowed value gives a sane picture at 90 Hz on the game's 2000 m planes with the other settings at their built-ins, as do all settings at their low ends together and all at their high ends together (backlog 17, 2026-10-27). Mixing ends can still break the picture: a high canopy, a shallow floor, the top speed, the top canopy speed scale and a small canopy image move the canopy's image more than a tile a frame. At the top `canopy_height` the canopy's edge shows about 6 degrees above the horizon. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
+Ranges include their ends, and are narrow enough that each allowed value gives a sane picture at 90 Hz on the game's 2000 m planes with the other settings at their built-ins, as do all settings at their low ends together and all at their high ends together (backlog 17, 2026-10-27). This does not cover the seat settings, which came later: their ranges allow for the largest form, so a large `seat_forward` can leave the player clear of a smaller dragon. Mixing ends can still break the picture: a high canopy, a shallow floor, the top speed, the top canopy speed scale and a small canopy image move the canopy's image more than a tile a frame. At the top `canopy_height` the canopy's edge shows about 6 degrees above the horizon. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
 
 ## Versioning
 

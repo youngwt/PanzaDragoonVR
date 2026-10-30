@@ -4,5 +4,8 @@
   "flight_speed": 6,
   "canopy_speed_scale": 1,
   "floor_tile": 24,
-  "canopy_tile": 48
+  "canopy_tile": 48,
+  "seat_forward": 0,
+  "seat_height": 0,
+  "dragon_scale": 1
 }

@@ -59,12 +59,13 @@ public sealed class TuningTests : IDisposable
     {
         Write("""
             { "floor_depth": 10, "canopy_height": 60.5, "flight_speed": 8,
-              "canopy_speed_scale": 0.5, "floor_tile": 5, "canopy_tile": 30 }
+              "canopy_speed_scale": 0.5, "floor_tile": 5, "canopy_tile": 30,
+              "seat_forward": -1.5, "seat_height": 0.25, "dragon_scale": 2 }
             """);
 
         TuningRead read = Tuning.Load(_folder);
 
-        Assert.Equal(new Tuning(10f, 60.5f, 8f, 0.5f, 5f, 30f), read.Tuning);
+        Assert.Equal(new Tuning(10f, 60.5f, 8f, 0.5f, 5f, 30f, -1.5f, 0.25f, 2f), read.Tuning);
         Assert.Empty(read.Problems);
         Assert.True(read.Found);
     }
@@ -161,6 +162,9 @@ public sealed class TuningTests : IDisposable
     [InlineData("canopy_speed_scale", 0, 2)]
     [InlineData("floor_tile", 4, 500)]
     [InlineData("canopy_tile", 8, 500)]
+    [InlineData("seat_forward", -20, 20)]
+    [InlineData("seat_height", -3, 3)]
+    [InlineData("dragon_scale", 0.1, 5)]
     public void RangeEnds_AreAllowedAndJustBeyondAreNot(string name, double min, double max)
     {
         string Shown(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -200,7 +204,7 @@ public sealed class TuningTests : IDisposable
     public void Describe_NamesEverySettingAsTheFileDoes()
     {
         Assert.Equal(
-            "floor_depth 6, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48",
+            "floor_depth 6, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48, seat_forward 0, seat_height 0, dragon_scale 1",
             Tuning.BuiltIn.Describe());
     }
 
@@ -216,7 +220,7 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(Tuning.BuiltIn, read.Tuning);
         Assert.Empty(read.Problems);
         using JsonDocument json = JsonDocument.Parse(text);
-        Assert.Equal(6, json.RootElement.EnumerateObject().Select(field => field.Name).Distinct().Count());
+        Assert.Equal(9, json.RootElement.EnumerateObject().Select(field => field.Name).Distinct().Count());
     }
 
     /// <summary><c>tools/tuning.example.json</c>, found by walking up from the test build's folder to the repository.</summary>

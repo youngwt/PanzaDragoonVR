@@ -57,7 +57,8 @@ public partial class Main
         Board.GlobalTransform = new Transform3D(new Basis(Vector3.Up, place.Yaw), new Vector3(place.X, place.Y, place.Z));
         _boardPlaced = true;
         GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} board placed in front of the head at ({place.X:0.00}, {place.Y:0.00}, {place.Z:0.00})"));
-        GetNode<RiddenDragon>("Dragon").SitUnder(camera.Origin.X, camera.Origin.Z);
-        GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} dragon's seat placed under the head at ({camera.Origin.X:0.00}, {camera.Origin.Z:0.00})"));
+        var dragon = GetNode<RiddenDragon>("Dragon");
+        dragon.SitUnder(camera.Origin.X, camera.Origin.Z);
+        GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} dragon's seat placed from the head at ({dragon.GlobalPosition.X:0.00}, {dragon.GlobalPosition.Z:0.00})"));
     }
 }

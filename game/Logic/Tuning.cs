@@ -8,10 +8,10 @@ using System.Text.Json;
 namespace PanzaDragoonVR.Logic;
 
 /// <summary>
-/// The scene's tuning: how deep the floor is, how high the canopy, how fast they scroll and how much
-/// of each plane one copy of its image covers. Each setting has a built-in value; an optional
+/// The scene's tuning: how deep the floor is, how high the canopy, how fast they scroll, how much of
+/// each plane one copy of its image covers, and the player's seat on the dragon and its size. Each setting has a built-in value; an optional
 /// <c>tuning.json</c> at the top of the asset folder replaces any of them, as the asset contract's
-/// "Tuning" section defines. Heights are in metres from the play area's floor, speeds in metres a second.
+/// "Tuning" section defines. The planes' heights are in metres from the play area's floor, the seat's offsets in metres from the seat, speeds in metres a second.
 /// Nothing here uses the engine, so it is tested on the PC; the game reads the file once at launch.
 /// </summary>
 public sealed record Tuning(
@@ -20,7 +20,10 @@ public sealed record Tuning(
     float FlightSpeed,
     float CanopySpeedScale,
     float FloorTile,
-    float CanopyTile)
+    float CanopyTile,
+    float SeatForward,
+    float SeatHeight,
+    float DragonScale)
 {
     public const string FileName = "tuning.json";
 
@@ -28,10 +31,10 @@ public sealed record Tuning(
     public const float EyeHeight = 1.6f;
 
     /// <summary>
-    /// Every setting at its built-in value, set by the author in the headset on 2026-10-26 to look like
-    /// Episode 3 with the extracted planes.
+    /// Every setting at its built-in value, the planes' set by the author in the headset on 2026-10-26 to
+    /// look like Episode 3 with the extracted planes. The seat's leave the player at the model's origin.
     /// </summary>
-    public static Tuning BuiltIn { get; } = new(6f, 10f, 6f, 1f, 24f, 48f);
+    public static Tuning BuiltIn { get; } = new(6f, 10f, 6f, 1f, 24f, 48f, 0f, 0f, 1f);
 
     /// <summary>
     /// Each setting the file can give: its name in the file, its allowed range (inclusive), how it reads
@@ -45,6 +48,9 @@ public sealed record Tuning(
         new("canopy_speed_scale", 0, 2, t => t.CanopySpeedScale, (t, v) => t with { CanopySpeedScale = v }),
         new("floor_tile", 4, 500, t => t.FloorTile, (t, v) => t with { FloorTile = v }),
         new("canopy_tile", 8, 500, t => t.CanopyTile, (t, v) => t with { CanopyTile = v }),
+        new("seat_forward", -20, 20, t => t.SeatForward, (t, v) => t with { SeatForward = v }),
+        new("seat_height", -3, 3, t => t.SeatHeight, (t, v) => t with { SeatHeight = v }),
+        new("dragon_scale", 0.1, 5, t => t.DragonScale, (t, v) => t with { DragonScale = v }),
     };
 
     /// <summary>
