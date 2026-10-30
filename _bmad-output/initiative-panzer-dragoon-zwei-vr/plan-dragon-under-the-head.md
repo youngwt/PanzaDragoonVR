@@ -44,3 +44,7 @@ The seat follows the head in X and Z, not only X, so the rider is also half-way 
 
 - low, patched: `game/Main.cs`'s `_Process` summary did not say the seat is placed there. Comment updated.
 - low, patched in part: `game/Main.Board.cs`'s summary described only the board. Summary updated; `PlaceBoard`, `_boardPlaced` and `OnPoseRecentered` keep their names, as a rename is not worth the churn for two callers.
+
+## Follow-up, 2026-10-30
+
+The author found a recentre did not turn the way of flight, which then ran at an angle to the player. The project used Godot's default reference space, Stage, which is fixed to the play area. `game/project.godot` now sets `xr/openxr/reference_space` to 2, Local Floor, whose origin and facing a recentre resets. One setting and two wording changes, so no separate review.
