@@ -36,7 +36,7 @@ The work runs on two tracks. The **pipeline** track is a C# library that turns t
   - **intent:** The player flies through the Episode 3 forest between the extracted floor and canopy.
   - **success:** In the headset the floor loops endlessly beneath the player and the canopy sits overhead with no parallax.
 - **CAP-5: Riding the dragon**
-  - **intent:** The player sits mid-way along the extracted dragon's back.
+  - **intent:** The player sits on the extracted dragon, where the game places its rider.
   - **success:** In the headset the wings are on either side, the head in front and the tail behind.
 - **CAP-6: Reticle**
   - **intent:** The player aims a reticle by pointing the aiming-hand controller.
@@ -97,8 +97,8 @@ Build order and track for each capability are in `milestones.md`.
 
 - Answered 2026-10-25 (spike, ticket 2 of the Forest floor and canopy epic): the floor and canopy cells and maps are packed (LZ77) in `EPISODE3.PRG` and their palette is stored plain beside them; unpacked from the disc they equal the save state byte for byte, on the JP and PAL discs. See `zwei-disc-formats.md`, Floor and canopy. The author decided story 3.4 takes the planes' VDP2 settings as constants read from the save state (2026-10-25); the code that sets those registers is not traced.
 - Mostly answered: the save state's colour RAM codes 0x000 to 0x4FF (the 256-colour textures' palette) are `EPISODE3.PRG`'s blocks named by the table at 0xE23C (ticket 2.3), and codes 0x600 to 0x77F are copied from 0x52C44 and 0x53244 by the planes' set-up code (confirmed by `tools/plane_probe.py`'s comparison with the state's colour RAM). Still open: which part of Episode 3 uses the other table, at 0x288, and where codes 0x780 up come from.
-- `.MDB` geometry is undecoded, which blocks CAP-5 and CAP-9. The format the extractor writes is settled (binary glTF, see `asset-contract.md`); several of its conventions are provisional until the geometry is known.
-- Which of the ten dragon forms does the demo use? To be decided once the models are reconstructed and can be viewed, so it waits on `.MDB` geometry.
+- `.MDB` geometry is worked out for the dragons and the rider (spike 2 of Riding the dragon, 2026-10-30; see `zwei-disc-formats.md`, Models), which unblocks CAP-5. Episode 3's models use a second layout with the same tree, drawn only in part, so some of CAP-9 is still to do (how `E03CMN`'s pieces are placed, and its mesh polygons, which the texture scan misses). The format the extractor writes is settled (binary glTF, see `asset-contract.md`); its provisional conventions are to be confirmed by story 4.6.
+- Which of the ten dragon forms does the demo use? Now waits only on the author's choice, in story 7 of Riding the dragon.
 - Where does the dragon's wing animation come from?
 - What do the `EPISODE3.DAT` motion matrices drive, and are enemy flight paths recorded data or an algorithm?
 - What is the reference for behaviour and timing before CAP-9, given that checking by eye only works for images?

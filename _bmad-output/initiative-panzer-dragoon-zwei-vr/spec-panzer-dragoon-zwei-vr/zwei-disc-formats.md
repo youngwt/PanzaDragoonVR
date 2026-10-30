@@ -1,6 +1,6 @@
 # Zwei disc formats
 
-What is known about the disc as of 2026-10-25 (first written 2026-10-06), worked out from the image and one Episode 3 save state. "By eye" means confirmed only by looking at the output.
+What is known about the disc as of 2026-10-30 (first written 2026-10-06), worked out from the image and one Episode 3 save state. "By eye" means confirmed only by looking at the output.
 
 ## Disc
 
@@ -15,9 +15,10 @@ What is known about the disc as of 2026-10-25 (first written 2026-10-06), worked
 | `EPISODE3.PRG` | Episode 3 code; loads the `E03*` and `COMMON` pairs by name. Also holds the floor and canopy planes, packed (0x3FDAC to 0x52ACB), which make up most of the high-entropy region (about 0x40000 to 0x53FFF) | Loads at 0x06080000; mostly undisassembled |
 | `EPISODE3.DAT` | Repeating 3x4 matrices in 4.12 fixed point (rotation plus position) | Looks like recorded motion; what it drives is unknown |
 | `EPISODE3.SND`, `E3BOSS.SND` | Sound | Unexamined |
-| `E03CMN`, `E03B0N0`..`E03B1N2`, `E03BOSS`, `E03END` (`.MDB` + `.CGB`) | Episode 3 models and textures | Textures decoded; geometry not |
-| `DRA01A`..`DRA10J` (`.MDB`, `.CGB`, `.MTB`) | The ten dragon forms | Textures decoded; `.MTB` unexamined |
-| `DRAnnE03.GRB` | 16-bit words with the top bit set: RGB555 colours | Guess: Gouraud shading tables per episode |
+| `E03CMN`, `E03B0N0`..`E03B1N2`, `E03BOSS`, `E03END` (`.MDB` + `.CGB`) | Episode 3 models and textures | Textures decoded; geometry in the second layout (see Models) |
+| `DRA01A`..`DRA10J` (`.MDB`, `.CGB`, `.MTB`) | The ten dragon forms | Textures and geometry worked out (see Models); `.MTB` unexamined |
+| `DRAnnE01`..`E07.GRB` | Per-corner shading words, 8 bytes a polygon | Confirmed for Episode 3 and `DRA09I`: the game points the models at `E03` (see Shading) |
+| `COMMON.MDB`, `.CGB` | The rider | Geometry worked out (see The rider) |
 | `EPISODE2.SCB` (131,072 bytes) | The only `.SCB` on the disc | Guess: an Episode 2 scroll plane |
 | `OPENINGA/B/C.cpk` | Intro videos | Not needed |
 | `1ST_READ.PRG` | Core engine, including the LZ77 unpacker at 0x0600FD1C (see Floor and canopy) | Loads at 0x06008000 |
@@ -37,7 +38,150 @@ What is known about the disc as of 2026-10-25 (first written 2026-10-06), worked
 | 0: 16 colours from a colour bank | 100 records found by the scan, not all real | Lead: same colour RAM as mode 4. In Episode 3 the clear case is `E03BOSS`'s shadows (colour code 0x400, colour RAM bank 4: one dark colour); most other mode 0 records do not fit their `.CGB` and are likely false |
 | 5 | 13 | Not handled |
 
-- `.MDB` geometry is undecoded beyond the texture records. Vertices appear to be big-endian signed 16-bit. The Saturn draws quads, not triangles, so expect four-cornered faces.
+- `.MDB` geometry: see Models.
+
+## Models: `.MDB` geometry
+
+Found 2026-10-30 (spike, ticket 2), from the files, the Episode 3 save state and the code in Ghidra. **Confirmed** below means a check that could have failed; **lead** means it fits but nothing tested it. All addresses are the JP disc's. Anyone can repeat the drawing from this section alone; the throwaway scripts are in `extracted/spike-mdb/`, which is git-ignored, and the drawings in `extracted/spike-mdb/out/`.
+
+Everything is big-endian. A file holds absolute pointers, so an offset is `pointer - load address`.
+
+### Load addresses
+
+| File | Load address | Evidence |
+|------|--------------|----------|
+| `DRA*.MDB` (all ten) | 0x20288000 | Confirmed: the literal at 0x0601ED08 is passed to the file loader with the name table, and `DRA09I` is at that address in the state |
+| `COMMON.MDB` | 0x20280000 | Confirmed: in the state at that address |
+| `E03B0N*`, `E03BOSS` | 0x202DD000 | `E03B0N0` confirmed in the state; others lead, from their pointers |
+| `E03B1N*` | 0x202EF000 | `E03B1N0` confirmed in the state; others lead |
+| `E03CMN` | 0x202A0000 | Confirmed in the state |
+| `E03END` | 0x202E3000 | Lead, from its pointers |
+
+Ruled out: the lead that `DRA01A`'s longs in 0x0603xxxx are pointers. They are polygons' four one-byte corner indexes that happen to read that way (confirmed: they lie inside the polygon tables the headers point at). The real pointers are 0x2028xxxx, and `E03B0N0`'s are 0x202DDxxx.
+
+### Node tree
+
+- A node is three longs: mesh pointer, first child, next sibling. Any may be 0. A node with no mesh still takes a matrix, so it is a pure joint. Nodes are written children first, so they fill the end of the file. Confirmed: walking from the roots reaches a mesh that parses at every non-zero pointer, in all ten forms, `COMMON` and the nine `E03` files, with no corner index out of range.
+- A root is a node that no other node points at. The last 12 bytes of a dragon file are its shadow root (below).
+- Each root's tree has one 48-byte matrix per node, in depth-first order (node, children, then siblings), straight after that tree's last mesh. Confirmed: the table's pointers land exactly there, and the rebuilt model holds together.
+- A matrix is 12 longs, 16.16 fixed point, row by row: `[r r r tx] [r r r ty] [r r r tz]`. A vertex's position is the product of the matrices from the root down, applied to the vertex.
+
+### First layout: 32-bit vertices (dragons, rider)
+
+Mesh header, 32 bytes:
+
+| Offset | Long |
+|--------|------|
+| 0 | Radius: the furthest vertex from the node's origin. Confirmed: radius / furthest vertex is 0.9997 to 1.0003 for all of `DRA01A` |
+| 4 | Vertex count minus 1 |
+| 8 | Pointer to the vertices: 3 signed longs each (x, y, z), whole units, not 16.16 |
+| 12 | Polygon count minus 1 |
+| 16 | Pointer to the polygons |
+| 20 | Pointer to the shading table |
+| 24 | Pointer to the normals: 3 longs each, 16.16, one per polygon. Confirmed: length 1 on all but one polygon across the forms |
+| 28 | 0 |
+
+Header, confirmed: every pointer and count parses on all ten forms and `COMMON`, and on `DRA01A` and `DRA05E`, where each mesh's tables were listed, the normals end exactly at its header. Vertices in whole units, confirmed by the radius check above and by the projection fit (see Corners).
+
+A polygon is 16 bytes: 4 bytes of corner indexes (A, B, C, D), then CMDPMOD, CMDCOLR, CMDSRCA, CMDSIZE, then a flag word twice. Confirmed: no index is out of range on any form, the four words match the state's VDP1 commands, and the corner order passes the fit (see Corners). The two flag words were equal on every polygon of all ten forms (confirmed by count); why it is held twice is not known.
+
+The file order is the vertices, polygons, shading, normals and header of each mesh in turn. Confirmed on `DRA01A` and `DRA05E` from the same listing; lead on the others.
+
+### Second layout: 16-bit vertices (Episode 3, dragon shadows)
+
+- Mesh header, 12 bytes: radius (long), vertex count (word), 0 (word), pointer to the vertices, then the polygons follow at once. The vertices are 3 signed words each, stored before the header, padded to a long. Confirmed: all such meshes in the nine `E03` files and the 14 on each dragon parse, with the vertices fitting before the header and no index out of range. That they sit directly before it and the padding: lead, seen in the gaps listed, not checked on every mesh.
+- A polygon: 4 words of corner indexes, a word whose meaning is not known (0x2E00, 0x2C00, 0x2A00, 0x0C00 and 0x0800 are seen), the flag word, the four texture words, and, when CMDPMOD's low three bits are 4, 6 or 7, 4 shading words in place. Eight zero bytes end the list. Confirmed for low bits 4 and 0: walking the lists this way never ran off a file, and the flag and texture words land as records (nearly every scan record in the nine `E03` files is one of them). Lead for 6 and 7: no polygon with them was seen, and the rule comes from the VDP1 manual's Gouraud modes. Whether the flag word's meaning matches the first layout's: lead, by the same values and `E03B0N1`'s drawing.
+- Vertices are scaled: multiply by 16, or by 64 in `E03END`. Confirmed: radius / furthest stored vertex is 16.00 to 16.13 across `E03B0N0`, `E03B0N1`, `E03B0N2`, `E03BOSS`, `E03CMN` and `DRA01A`'s shadow, and 64.00 for all of `E03END`. Where the game keeps the 64 is not traced. With the 16, `E03B0N1` draws as a flyer's body and two wings, by eye.
+- `E03CMN`'s tail has many roots of one node each, so it is a set of separate pieces; how they are placed is not worked out.
+
+So one Episode 3 `.MDB` does not have the dragon's layout: it has the same tree and matrices, and different meshes. Story 4.5 needs the first layout only; CAP-9 needs the second. `COMMON` and all dragon bodies are the first.
+
+### The ten forms
+
+- Each form is one file set, with no sharing between forms. Confirmed: no two of the `DRA01`..`DRA10` files are byte-identical, the load tables name each form's own `.MDB`, `.CGB` and `.MTB`, and every pointer walked stays inside its own file. Number and letter go together: `DRA01A`, `02B`, `03C`, `04D`, `05E`, `06F`, `07G`, `08H`, `09I`, `10J`.
+- 1ST_READ at 0x0601ECAC takes a form index and loads that form. Its tables are indexed in this order, not the files' order: **0 A, 1 I, 2 B, 3 F, 4 C, 5 D, 6 H, 7 E, 8 G, 9 J**. Confirmed: the name tables in the state read so.
+- 1ST_READ file offsets of the tables (add 0x06008000 for the address); PAL offsets are 0x9C more, same contents checked for the seat table:
+
+| JP file offset | PAL | What |
+|----------------|-----|------|
+| 0x547C8 | 0x54864 | Body matrices, 10 pointers |
+| 0x547F0 | 0x5488C | Body roots, 10 pointers |
+| 0x54818 | | Shadow roots, 10 pointers |
+| 0x54840 | 0x548DC | Rider offsets, 10 of 3 longs |
+
+- Confirmed: for all ten, the body root found as the first unreferenced node equals the table's, the matrices follow its last mesh, and the shadow root is the last 12 bytes.
+- Each file also holds a body tree of 27 nodes; a shadow tree of 27 nodes, in the second layout, of 14 flat cards (lead that they are a shadow: flat, one colour table, drawn through the body's matrices, 0x06021722); and, in forms A, B, C, D, F and I only, 30 more roots of 3 nodes each, each with its own 3 matrices. Those are wing meshes in steps whose tips move: lead that they are 15 flapping frames a side, for backlog 18. The still pose does not need them.
+- Body nodes, depth first, the same in all ten (body parts by eye on `DRA01A`): 0 root; 1 to 5 hind leg at -X; 6 to 10 hind leg at +X; 11 trunk; 12 neck; 13 head; 14 empty; 15 to 20 tail; 21 to 23 wing at -X; 24 to 26 wing at +X. Mesh-bearing nodes vary between 17 and 24; the others are joints.
+- Each form's measured size is left out of these notes: the spike's scripts in `extracted/spike-mdb/` print it. Forms differ a lot in size, `DRA05E` the smallest and `DRA10J` the largest (confirmed by measuring the rest pose).
+
+- Separately moving parts: yes, the nodes. Confirmed: in the state the 27 live matrices at 0x0607CD88 are not the file's, with legs, wings and tail each turned their own way. Each mesh-bearing node is one `ModelPart`, its origin the translation of its product of matrices. The game copies 27 x 12 bytes for the tree (0x144) and animates from `.MTB`, whose format this spike did not look into.
+
+### Link to the texture records
+
+- A polygon's CMDPMOD, CMDCOLR, CMDSRCA and CMDSIZE **are** a texture record: at polygon offset + 4 in the first layout, + 12 in the second. A polygon's texture is the numbered texture with the same four words, as `Textures.Number` dedupes by them.
+- Confirmed: on `DRA01A`, `DRA07G` the numbered textures and the polygons' distinct records are the same set; on `DRA09I` the one difference is 1 false numbered record and the flat polygon below. `FindRecords`' scan finds many false records, at any even offset, but few fit the `.CGB` and survive numbering.
+- Polygons not found by the scan, and so not numbered: flat colours (CMDSIZE 0), in all forms; and mesh polygons, whose CMDPMOD high byte is 0x05, in `E03CMN` and none on a dragon. This does not affect story 4.5. It will need the author's call before CAP-9, because `FindRecords` fixes the numbering.
+
+### Corners, flips, drawing mode, flat colour, three corners
+
+- Corners: A, B, C, D go to VDP1's XA/YA to XD/YD in order. Confirmed: fitting one projection to 53 of `DRA09I`'s polygons against the state's VDP1 commands leaves a mean error of 0.37 pixels. On the 4 polygons whose words are unique, 0.27 pixels with the corners in order and 6.1 with them turned by one.
+- Flips: the flag word's low byte is CMDCTRL's. 0x10 flips left to right, 0x20 top to bottom, low four bits 2 are a textured quad (distorted sprite). Confirmed: it equals the command's low byte on all 66 polygons matched in the state; flip meanings from the VDP1 manual, and the drawings look right by eye. The flips do not change the corner order (see Axes). Seen on the dragons: 0x02, 0x12, 0x22, 0x32, 0x04.
+- Drawing mode to material, from CMDPMOD (lead, by the VDP1 manual; `opaque` and `cutout` look right by eye):
+
+| Bits | Meaning | Material |
+|------|---------|----------|
+| 0x0040 set | Index 0 is drawn | `opaque` |
+| 0x0040 clear | Index 0 is transparent | `cutout` |
+| Low three bits 3 or 7 | Half-transparent | `half`. Not seen on any file checked |
+| 0x0100 set | Mesh | `mesh`. Only in `E03CMN` |
+
+  Dragons hold only CMDPMOD 0x04CC (`opaque`, shaded), 0x048C (`cutout`, shaded), 0x04C4 (flat, shaded) and, in the shadow, 0x0488 and 0x04C8 (no shading). All body polygons are shaded, and nearly all are colour mode 1.
+- Flat colour: flag word low four bits 4, CMDSIZE 0, CMDSRCA 0, CMDCOLR the colour, RGB555 with the top bit set. Lead, from the VDP1 manual. Six body polygons across the forms, including `DRA03C`, `DRA05E`, `DRA08H`.
+- Three corners: one index repeated. Any corner may be the repeated one, D = C most often. Confirmed by count; none has fewer than three distinct corners. As the asset contract says, the repeat is kept.
+
+### Shading
+
+- Each polygon has 4 RGB555 words, one per corner A to D, top bit set: 8 bytes a polygon. This is VDP1's Gouraud shading, and is baked: the backs are bright and the bellies dark.
+- The file's table is replaced at load. Confirmed: in the state, every mesh pointer at header + 20 in `DRA09I`'s body and in `COMMON` is rewritten into 0x20233000, the bytes there equal `DRA09E03.GRB`, and the body's pointers advance by 8 per polygon, starting at 0, in tree order. Rider's start at 0x5B0. The wing frames and shadow are not rewritten.
+- `DRAnnE01`, `03`, `05`, `07` hold one table (body + rider + others); `E02` and `E04` are ten times the size, `E06` twenty, except that `DRA02E06.GRB` is a little over twenty tables (confirmed by file sizes on all ten). Lead: frames of a change of light through those episodes. The table used per episode is from 0x0605CD5C and the pointers from 0x0605CA8C and 0x0605CBCC, indexed by episode and form.
+- How to use them: VDP1 adds `word - 16` per channel, a known hardware rule, so 0x4210 changes nothing (lead for this game). The drawings multiply by `word / 16`, as a close stand-in.
+
+### Axes and the front
+
+- The rest pose has **+Y up, +X to the dragon's right, head towards -Z**. This is a right-handed system, the same handedness as glTF. Confirmed:
+  - In the state's fit, +Y moves up the screen.
+  - Moving towards +X reduces the projection's depth, with +Z going to the left of the screen: right-handed.
+  - For every non-degenerate polygon of all ten forms and the rider, (B-A) x (C-A) points opposite the stored normal, flips or not. So corners A to D go clockwise seen from outside, as VDP1 draws them. That needs a right-handed system.
+  - In the state's commands the rider's head is above his feet on the screen, and by eye `DRA01A_side.png` is the right way up.
+- To glTF with the front on +Z: `(x, y, z)` becomes `(-x, y, -z)`, a half-turn about Y, so it is not a mirror. The wing pose of the rest differs by form: roughly level in most, but raised in `DRA06F` and `DRA07G`, whose wings reach several times higher than the rest of the body (confirmed by measuring the rest pose; by eye on `forms_quarter_sheet.png`). `DRA10J`'s also sit wholly above the origin, at y 2,462 to 2,956.
+
+### The rider
+
+- The rider is `COMMON.MDB`, first layout, 11 nodes. 0 hips; 1, 2 and 3, 4 legs; 5 body; 6, 7 arm; 8, 9 arm and gun; 10 head. By eye: a man in blue with a red hat, holding a gun out in front. The save state holds his live tree at 0x0607E3E8, built from the root 0x2028130C (0x0601F826).
+- Where he goes. Confirmed by code: 0x060218CA and 0x06023966 read the offset (x, y, z) from the table at 0x0605C840, indexed by the form byte (getter 0x0601EED0), translate by it, and then draw the rider's tree (object + 0x28). Confirmed by fit, for `DRA09I` only: the projection fitted to the dragon misses the rider by a mean 8.1 pixels with no offset, and by 1.2 with the table's entry. Searching for the best offset independently landed within 150 units of that entry on each axis, at 1.05. Both trees share the root's matrix: 0x0607CD88 and 0x0607E46C start with the same 48 bytes.
+
+- The table is 10 entries of 3 longs (x, y, z), in the index order above, at 1ST_READ file offset 0x54840 on JP and 0x548DC on PAL. Its values are not copied here, because they come from the disc. x is 0 in all ten (confirmed by reading them). It was found on each disc by searching for its bytes, so it is known only for these two discs; what happens on any other disc is story 5's to define.
+- Decision (author, 2026-10-30): the seat is the game's rider position for that form, read from this table in 1ST_READ on the player's disc. The seat point is the rider's origin from the table, which lies inside his hips, not on the dragon's surface: the hips' mesh spans both sides of that origin in y (confirmed from `COMMON.MDB`'s vertices). The tuning settings adjust from there. By eye on `DRA01A` he sits astride the neck, near the head, not mid-way along the back.
+
+### Scale
+
+Lead: **about 4,000 units to a metre**. Nothing in the data says what a unit is, so this assumes a rider 1.7 m tall, measured by standing his parts up. Story 4.6 confirms the divisor in the headset; the seat settings can also rescale.
+
+### On the PAL disc
+
+Confirmed: 131 of the 132 `DRA*`, `COMMON*` and `E03*` files are byte for byte the same on MK-81022 V1.000, including every `.MDB`, `.CGB`, `.MTB` and `.GRB`. Only `COMMON.DAT` differs.
+
+### Not known
+
+- Why the flag word is held twice, and the second layout's unknown word.
+- The bytes before a dragon's first mesh (0x40 zeros) and the 0x20-byte zero blocks between some meshes. Lead: they stand for the empty joints. A few larger gaps in `DRA07G` and `DRA08H` were not looked at.
+- Why `DRA02E06.GRB` is a little over twenty tables.
+- Where `E03END`'s 64 comes from, and how `E03CMN`'s pieces are placed.
+- `.MTB`: sizes are not a whole number of 27 x 12 bytes in general, so it is not simply that. Backlog 18.
+
+### How the drawing was made
+
+Walk the body root's tree, multiply matrices, take each polygon's four corners, sample its decoded texture (corner A top left, B top right, C bottom right, D bottom left, then the flips), multiply by shading, add the rider at the table's offset, z-buffered. `python3 draw2.py` in `extracted/spike-mdb/` writes `out/forms_quarter_sheet.png` (all ten, with the rider) and `out/DRA01A_above.png`, `_side.png`, `_behind.png`.
 
 ## Palettes for colour banks (modes 0 and 4)
 
@@ -147,4 +291,4 @@ LZ77, read from the unpacker's code and confirmed by the comparisons above:
 2. Port the planes' unpacking to the decoding library (story 3.4), using `tools/plane_probe.py` as the reference.
 3. Trace the VDP2 register set-up lists (0x52B58 onward) if story 3.4 needs the plane settings from the disc rather than as constants.
 4. Disassemble the Episode 3 region, then trace the code that reads `EPISODE3.DAT`.
-5. Decode `.MDB` geometry.
+5. Build `.MDB` geometry decoding in the library (story 4.5) from the Models section.

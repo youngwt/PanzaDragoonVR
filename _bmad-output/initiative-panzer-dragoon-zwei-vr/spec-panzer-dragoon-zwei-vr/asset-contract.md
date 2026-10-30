@@ -227,7 +227,7 @@ Some rules below are marked *Provisional*. They depend on model geometry that is
 ### Geometry
 
 - Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are. The game flies towards -Z, so it turns `dragon.ride` 180° about Y to face the flight.
-- The origin of `dragon.ride` is the seat: on top of the dragon's back, where the rider sits. The game puts the origin at its built-in seat.
+- The origin of `dragon.ride` is the seat: the point where the game places its rider on that form. The game puts the origin at its built-in seat.
 - Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is recorded here once geometry is decoded. *Provisional.*
 - Triangles only (primitive mode 4), indexed. glTF has no quads.
 - Each Saturn quad is written as four vertices of its own, in the Saturn's corner order, followed by the two triangles (0, 1, 2) and (0, 2, 3) of those four. Vertices are not shared between quads, because each quad has its own texture. So within a primitive, quad `k` is vertices `4k` to `4k+3`, and a reader that wants the quads back can have them. *Provisional.*

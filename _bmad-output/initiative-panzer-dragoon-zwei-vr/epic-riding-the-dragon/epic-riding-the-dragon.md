@@ -12,7 +12,7 @@ risk: medium
 
 ## Description
 
-The player sits mid-way along the back of the dragon taken from the disc. The decoding library gains model extraction; the game gains model loading.
+The player sits on the dragon taken from the disc, where the game places its rider. The decoding library gains model extraction; the game gains model loading.
 
 ## Outcome
 
@@ -31,8 +31,11 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 
 ## Notes
 
-- Unknown: the `.MDB` geometry format. The decoding stories (5 onwards) wait on it; spike 2 settles it.
-- Open question: which of the ten dragon forms the demo uses; decided once they can be viewed.
+- Settled by spike 2 (2026-10-30): the `.MDB` geometry format, in `zwei-disc-formats.md`, Models.
+- Open question: which of the ten dragon forms the demo uses; it now waits only on the author's choice, in story 7.
+- Decision: each form's asset ID is `dragon.form01` to `dragon.form10`, numbered from `DRA01A` to `DRA10J` (user, 2026-10-30).
+- Decision: constants the game needs from the disc are never committed. The extraction reads them from the player's disc and writes them to a config file in the asset folder, and the game reads that file at launch. Where to look on the disc stays in the code, because the extraction needs it to read the disc. Story 5 defines the file when something first needs it (user, 2026-10-30).
+- Decision: the seat is the game's rider position for that form, on `DRA01A` astride the neck near the head, not mid-way along the back; story 5 reads it from the table in `1ST_READ` on the player's disc, as `zwei-disc-formats.md`, The rider, says, and the tuning settings of story 4 adjust from there (user, 2026-10-30).
 - Open question: where the wing animation comes from (`.MTB` files are unexamined), and whether still wings are acceptable for the demo.
 - Waits on Engine spike because: it adopts the standard model format and uses the asset loader.
 - Waits on In-game extraction because: model extraction is added to its decoding library, and it needs coloured textures.
@@ -52,5 +55,5 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 - parent — _bmad-output/initiative-panzer-dragoon-zwei-vr/initiative-panzer-dragoon-zwei-vr.md
 - spec — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr.md, section Capabilities
 - constraint — the same spec, section Constraints
-- formats — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md, section Textures
+- formats — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md, sections Textures, Models and The rider
 - contract — _bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/asset-contract.md, sections Models and asset IDs
