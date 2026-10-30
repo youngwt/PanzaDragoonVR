@@ -48,3 +48,5 @@ The seat follows the head in X and Z, not only X, so the rider is also half-way 
 ## Follow-up, 2026-10-30
 
 The author found a recentre did not turn the way of flight, which then ran at an angle to the player. The project used Godot's default reference space, Stage, which is fixed to the play area. `game/project.godot` now sets `xr/openxr/reference_space` to 2, Local Floor, whose origin and facing a recentre resets. One setting and two wording changes, so no separate review.
+
+Headset, 2026-10-30: the author tested the recentre after this change and reported "that works".
