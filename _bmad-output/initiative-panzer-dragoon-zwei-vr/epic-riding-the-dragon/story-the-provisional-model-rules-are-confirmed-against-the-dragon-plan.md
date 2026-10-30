@@ -3,7 +3,7 @@ title: 'The provisional model rules are confirmed against the dragon'
 type: 'chore'
 ticket: '6'
 created: '2026-10-30'
-status: 'built'
+status: done
 baseline_revision: '67d0077298c097ed9d35ebd31d9a5b4e0a137a3a'
 route: 'oneshot'
 route_source: 'auto'
