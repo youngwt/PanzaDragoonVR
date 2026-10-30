@@ -3,7 +3,7 @@ title: 'How .MDB geometry is laid out'
 type: 'feature'
 ticket: '2'
 created: '2026-10-30'
-status: 'built'
+status: done
 baseline_revision: '941672178efa01070dd89a05d47da1e134e55931'
 route: 'full'
 route_source: 'auto'
