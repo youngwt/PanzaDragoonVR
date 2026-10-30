@@ -7,13 +7,13 @@ using System.Text;
 
 namespace PdzDecoding;
 
-/// <summary>One file a manifest lists: its asset ID, path relative to the asset folder, and bytes.</summary>
-public readonly record struct ManifestEntry(string Id, string Path, byte[] Contents);
+/// <summary>One file a manifest lists: its asset ID, path relative to the asset folder, bytes and kind.</summary>
+public readonly record struct ManifestEntry(string Id, string Path, byte[] Contents, string Kind = Manifest.ImageKind);
 
 /// <summary>
 /// The <c>manifest.json</c> extraction writes, as the asset contract's "What extraction writes" fixes
 /// it: <c>format</c> 1, <c>generator</c> <c>pdz-extract</c> and <see cref="Extraction.Version"/>,
-/// <c>source</c> the disc's product and version, and one <c>image</c> entry per file sorted by ID in
+/// <c>source</c> the disc's product and version, and one entry per file, of kind <c>image</c> or <c>model</c>, sorted by ID in
 /// ordinal order, each with its size and SHA-256. The text is what Python's
 /// <c>json.dumps(indent=2, ensure_ascii=False)</c> and a final newline give for the same document,
 /// which is how <c>tools/manifest.py</c> writes a manifest.
@@ -23,10 +23,16 @@ public static class Manifest
     /// <summary>The manifest's name, at the top of the asset folder.</summary>
     public const string FileName = "manifest.json";
 
+    /// <summary>The kind of a PNG.</summary>
+    public const string ImageKind = "image";
+
+    /// <summary>The kind of a <c>.glb</c>.</summary>
+    public const string ModelKind = "model";
+
     /// <summary>The contract version written.</summary>
     public const int Format = 1;
 
-    /// <summary>What wrote the manifest: <c>pdz-extract 0.2</c>.</summary>
+    /// <summary>What wrote the manifest: <c>pdz-extract 0.3</c>.</summary>
     public const string Generator = "pdz-extract " + Extraction.Version;
 
     /// <summary>The bytes of <c>manifest.json</c> for <paramref name="entries"/> from the disc with <paramref name="source"/>: UTF-8, no byte-order mark.</summary>
@@ -53,7 +59,7 @@ public static class Manifest
                 ManifestEntry e = sorted[i];
                 text.Append("    {\n");
                 text.Append("      \"id\": ").Append(Quote(e.Id)).Append(",\n");
-                text.Append("      \"kind\": \"image\",\n");
+                text.Append("      \"kind\": ").Append(Quote(e.Kind)).Append(",\n");
                 text.Append("      \"path\": ").Append(Quote(e.Path)).Append(",\n");
                 text.Append("      \"bytes\": ").Append(e.Contents.Length.ToString(CultureInfo.InvariantCulture)).Append(",\n");
                 text.Append("      \"sha256\": \"").Append(Convert.ToHexString(SHA256.HashData(e.Contents)).ToLowerInvariant()).Append("\"\n");

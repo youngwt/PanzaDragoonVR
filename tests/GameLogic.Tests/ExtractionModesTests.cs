@@ -17,7 +17,7 @@ public sealed class ExtractionModesTests : IDisposable
 {
     private static readonly DiscSource Japanese = new("GS-9049", "V1.001");
     /// <summary>The current extractor's generator, as the game passes it to <see cref="ExtractionModes.Decide"/>.</summary>
-    private const string Current = "pdz-extract 0.2";
+    private const string Current = "pdz-extract 0.3";
     private static readonly ManifestOrigin Extracted = new(Current, Japanese);
 
     private readonly string _folder;
@@ -95,8 +95,8 @@ public sealed class ExtractionModesTests : IDisposable
     [InlineData("hand-written")]
     [InlineData("pdz-extractor 1.0")]
     [InlineData("pdz-extract")]
-    [InlineData("PDZ-EXTRACT 0.2")]
-    [InlineData("pdz-extract 0.2 ")]
+    [InlineData("PDZ-EXTRACT 0.3")]
+    [InlineData("pdz-extract 0.3 ")]
     public void Decide_ReleaseManifestNotByTheExtractor_Extracts(string generator)
     {
         Assert.True(ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin(generator, Japanese), Japanese, Current).Extract);
@@ -116,7 +116,7 @@ public sealed class ExtractionModesTests : IDisposable
 
     [Theory]
     [InlineData("pdz-extract 0.1")]
-    [InlineData("pdz-extract 0.3")]
+    [InlineData("pdz-extract 0.2")]
     public void Decide_ReleaseAnotherExtractorVersion_ExtractsAndDeletes(string generator)
     {
         Assert.Equal(new ExtractionDecision(ExtractionMode.Release, true, true),
@@ -127,7 +127,7 @@ public sealed class ExtractionModesTests : IDisposable
     public void Decide_ReleaseSameExtractorVersion_SkipsAndDeletes()
     {
         Assert.Equal(new ExtractionDecision(ExtractionMode.Release, false, true),
-            ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin("pdz-extract 0.2", Japanese), Japanese, "pdz-extract 0.2"));
+            ExtractionModes.Decide(ExtractionMode.Release, new ManifestOrigin("pdz-extract 0.3", Japanese), Japanese, "pdz-extract 0.3"));
     }
 
     private static readonly ExtractionDecision ReleaseExtract = new(ExtractionMode.Release, true, true);
@@ -238,7 +238,7 @@ public sealed class ExtractionModesTests : IDisposable
     [Fact]
     public void ParseOrigin_ExtractorManifest_GivesGeneratorAndSource()
     {
-        const string json = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.2\",\n  \"source\": {\n    \"product\": \"GS-9049\",\n    \"version\": \"V1.001\"\n  },\n  \"assets\": []\n}\n";
+        const string json = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.3\",\n  \"source\": {\n    \"product\": \"GS-9049\",\n    \"version\": \"V1.001\"\n  },\n  \"assets\": []\n}\n";
 
         Assert.Equal(Extracted, ExtractionModes.ParseOrigin(Encoding.UTF8.GetBytes(json)));
     }
@@ -273,7 +273,7 @@ public sealed class ExtractionModesTests : IDisposable
     public void LoadOrigin_Manifest_ReadsIt()
     {
         File.WriteAllText(Path.Combine(_folder, "manifest.json"),
-            "{\"generator\": \"pdz-extract 0.2\", \"source\": {\"product\": \"GS-9049\", \"version\": \"V1.001\"}}");
+            "{\"generator\": \"pdz-extract 0.3\", \"source\": {\"product\": \"GS-9049\", \"version\": \"V1.001\"}}");
 
         Assert.Equal(Extracted, ExtractionModes.LoadOrigin(_folder));
     }

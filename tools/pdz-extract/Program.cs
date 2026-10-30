@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using PdzDecoding;
 
-// pdz-extract <disc.cue|disc.iso> <output folder>: writes the textures the game extracts on the headset,
+// pdz-extract <disc.cue|disc.iso> <output folder>: writes the textures and dragon forms the game extracts on the headset,
 // and the manifest listing them, with the same names and bytes, into a folder on the PC. See tools/README.md.
 
 const string Tool = "pdz-extract";
@@ -22,6 +22,8 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
     Console.WriteLine("a colour upload table in EPISODE3.PRG; with none, they are left out and a notice says why.");
     Console.WriteLine($"It also writes the floor and canopy from EPISODE3.PRG as {Extraction.FloorPath} and");
     Console.WriteLine($"{Extraction.CanopyPath}; when they cannot be found or unpacked, a notice says why.");
+    Console.WriteLine("It writes the ten dragon forms as models/dragon_form01.glb to models/dragon_form10.glb;");
+    Console.WriteLine("when any cannot be decoded or their seats cannot be found, none are written and a notice says why.");
     return 0;
 }
 
@@ -49,7 +51,8 @@ try
     Console.WriteLine(result.PlaneSources != null
         ? $"{Tool}: {result.PlaneLine()}"
         : $"{Tool}: {result.PlaneLine()}; the game keeps its placeholders for them");
-    if (result.Files.Count == 0 && result.PlaneFiles.Count == 0)
+    Console.WriteLine($"{Tool}: {result.DragonLine()}");
+    if (result.Files.Count == 0 && result.PlaneFiles.Count == 0 && result.ModelFiles.Count == 0)
     {
         Console.WriteLine($"{Tool}: found no textures to write: nothing written");
     }
@@ -61,7 +64,12 @@ try
             Console.WriteLine($"{Tool}: wrote the floor and canopy as {string.Join(" and ", result.PlaneFiles.Select(f => f.Path))}");
         }
 
-        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count + result.PlaneFiles.Count} assets");
+        if (result.ModelFiles.Count > 0)
+        {
+            Console.WriteLine($"{Tool}: wrote {result.ModelFiles.Count} dragon forms as {result.ModelFiles[0].Path} to {result.ModelFiles[^1].Path}");
+        }
+
+        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count + result.PlaneFiles.Count + result.ModelFiles.Count} assets");
     }
 
     foreach (DiscFileResult file in result.DiscFiles)

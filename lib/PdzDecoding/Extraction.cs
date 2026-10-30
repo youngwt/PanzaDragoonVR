@@ -35,13 +35,17 @@ public readonly record struct MissingDiscFile(string Name, string Absent);
 /// <param name="Folder">The folder the disc files' folders go in, in full: <c>images/e03</c> in the output folder.</param>
 /// <param name="Colours">The colour RAM modes 0 and 4 were coloured from, and the table it came from; null when there is none.</param>
 /// <param name="ColourNotice">Why there is no colour RAM, so modes 0 and 4 are left out: one line, no full stop. Null when there is.</param>
-/// <param name="ManifestPath">The <c>manifest.json</c> written at the top of the output folder, in full; null when no PNG was written, and so no manifest.</param>
+/// <param name="ManifestPath">The <c>manifest.json</c> written at the top of the output folder, in full; null when no PNG or model was written, and so no manifest.</param>
 /// <param name="PlaneFiles">The floor and canopy PNGs written, <c>e03.floor</c> then <c>e03.canopy</c>; empty when there are none.</param>
 /// <param name="PlaneSources">Where in <c>EPISODE3.PRG</c> the floor and canopy came from; null when there are none.</param>
 /// <param name="PlaneNotice">Why there is no floor and canopy: one line, no full stop. Null when there are.</param>
+/// <param name="ModelFiles">The dragon forms' <c>.glb</c> files written, in form order; empty when there are none.</param>
+/// <param name="DragonSources">Where the dragons' seats came from; null when there are no dragons.</param>
+/// <param name="DragonNotice">Why there are no dragons: one line, no full stop. Null when there are.</param>
 public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFileResult> DiscFiles, IReadOnlyList<MissingDiscFile> Missing, string Folder,
     ColourRam? Colours, string? ColourNotice, string? ManifestPath,
-    IReadOnlyList<ExtractedFile> PlaneFiles, PlaneSources? PlaneSources, string? PlaneNotice)
+    IReadOnlyList<ExtractedFile> PlaneFiles, PlaneSources? PlaneSources, string? PlaneNotice,
+    IReadOnlyList<ExtractedModel> ModelFiles, DragonSources? DragonSources, string? DragonNotice)
 {
     /// <summary>Every texture PNG written, file by file, in number order; the floor and canopy are in <see cref="PlaneFiles"/>.</summary>
     public IReadOnlyList<ExtractedFile> Files => DiscFiles.SelectMany(f => f.Files).ToList();
@@ -73,10 +77,10 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
     /// <summary>
     /// One line, with no full stop, for the game's log and the PC command: PNGs written per file, the
     /// colour table modes 0 and 4 were coloured from or why there is none, the textures left out by
-    /// mode, the floor and canopy's sources or why there are none, and the files missing or with no
-    /// textures, for example
-    /// <c>E03CMN 125, E03B0N0 28; colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks; floor and canopy from EPISODE3.PRG: cells at 0x3FDAC, maps at 0x52608 and 0x5287C, colours at 0x52C44 and 0x53244; missing: E03END (no E03END.CGB)</c>
-    /// or <c>E03CMN 8; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 116; no floor and canopy: the disc has no EPISODE3.PRG</c>.
+    /// mode, the floor and canopy's sources or why there are none, the dragons or why there are none,
+    /// and the files missing or with no textures, for example
+    /// <c>E03CMN 125, E03B0N0 28; colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks; floor and canopy from EPISODE3.PRG: cells at 0x3FDAC, maps at 0x52608 and 0x5287C, colours at 0x52C44 and 0x53244; 10 dragon forms, seats from 0x54840 of 1ST_READ.PRG; missing: E03END (no E03END.CGB)</c>
+    /// or <c>E03CMN 8; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 116; no floor and canopy: the disc has no EPISODE3.PRG; no dragons: the disc has no DRA01A.MDB</c>.
     /// </summary>
     public string Details()
     {
@@ -89,6 +93,7 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
         }
 
         parts.Add(PlaneLine());
+        parts.Add(DragonLine());
         if (Missing.Count > 0)
         {
             parts.Add("missing: " + string.Join(", ", Missing.Select(m => $"{m.Name} (no {m.Absent})")));
@@ -107,6 +112,9 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
 
     /// <summary>One line, with no full stop: the floor and canopy's sources (<see cref="PdzDecoding.PlaneSources.Describe"/>), or <c>no floor and canopy: &lt;notice&gt;</c>.</summary>
     public string PlaneLine() => PlaneSources?.Describe() ?? $"no floor and canopy: {PlaneNotice}";
+
+    /// <summary>One line, with no full stop: the dragons written (<see cref="PdzDecoding.DragonSources.Describe"/>), or <c>no dragons: &lt;notice&gt;</c>.</summary>
+    public string DragonLine() => DragonSources?.Describe() ?? $"no dragons: {DragonNotice}";
 }
 
 /// <summary>What <see cref="Extraction.Run"/> is doing when it reports progress.</summary>
@@ -135,12 +143,13 @@ public readonly record struct ExtractionProgress(ExtractionStage Stage, string? 
 /// "Extracted textures" says: modes 1 and 5 from their own colours, modes 4 and 0 from the colour RAM
 /// <c>EPISODE3.PRG</c>'s upload table fills (see <see cref="ColourBanks"/>), then <c>manifest.json</c>
 /// listing them (see <see cref="Manifest"/>), through the staging folder of the contract's
-/// "What extraction writes" (see <see cref="StagingFolder"/>).
+/// "What extraction writes" (see <see cref="StagingFolder"/>). The ten dragon forms go the same way, as
+/// <c>.glb</c> files (see <see cref="Dragons"/>).
 /// </summary>
 public static class Extraction
 {
-    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.2</c>.</summary>
-    public const string Version = "0.2";
+    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.3</c>.</summary>
+    public const string Version = "0.3";
 
     /// <summary>
     /// The staging folder inside the output folder, fixed by the asset contract: extraction writes
@@ -150,6 +159,9 @@ public static class Extraction
 
     /// <summary>The folder inside the output folder that the disc files' folders go in.</summary>
     private const string ImageFolder = "images/e03";
+
+    /// <summary>The folder inside the output folder that the dragon forms go in.</summary>
+    private const string ModelFolder = "models";
 
     /// <summary>Where the floor (<see cref="Planes.FloorId"/>) goes in the asset folder.</summary>
     public const string FloorPath = ImageFolder + "/floor.png";
@@ -172,16 +184,17 @@ public static class Extraction
     /// applied, leaves those modes out and says why in the result. The floor and canopy (see <see cref="Planes"/>)
     /// come from the same <c>EPISODE3.PRG</c>, read once, and are written as <see cref="FloorPath"/> and
     /// <see cref="CanopyPath"/> with the textures; a disc whose planes cannot be found or unpacked still has
-    /// its textures written, and the result says why. Every texture of every file is decoded before any file is written, so a decoding error
-    /// writes nothing. The PNGs, then <c>manifest.json</c> listing them, are written into
+    /// its textures written, and the result says why. The dragon forms (see <see cref="Dragons"/>) are written
+    /// as <see cref="Dragons.FormPath"/> with them, on the same terms: all ten or, with a notice, none. Every texture of every file is decoded before any file is written, so a decoding error
+    /// writes nothing. The PNGs and models, then <c>manifest.json</c> listing them, are written into
     /// <see cref="StagingFolder"/> inside <paramref name="outputFolder"/>, which is emptied first (so a
     /// leftover from an interrupted run is cleared); only when every one is written are they moved into
     /// place, the manifest last, replacing any manifest there, and the staging folder removed. A failure
     /// before that moves nothing, leaves the previous files and manifest as they were, and removes the
     /// staging folder when it can. A failure while moving into place (reported as
-    /// <see cref="ExtractionStage.MovingIntoPlace"/>) may leave some new PNGs in place, but never the new
+    /// <see cref="ExtractionStage.MovingIntoPlace"/>) may leave some new files in place, but never the new
     /// manifest, which moves last, so the previous manifest is kept. A folder is created only for a disc file with a PNG to write. Files
-    /// extraction did not write stay, unlisted. With no PNG written, no manifest is written and any
+    /// extraction did not write stay, unlisted. With no PNG or model written, no manifest is written and any
     /// already there is left alone.
     /// <paramref name="progress"/>, when given, is called on the calling thread as each step starts: each
     /// disc file read, each disc file written, then the move into place. An exception it throws stops
@@ -198,6 +211,8 @@ public static class Extraction
         string? notice;
         PlaneImages? planes;
         string? planeNotice;
+        DragonModels? dragons = null;
+        string? dragonNotice = null;
         int count = TextureFiles.Count;
         using (DiscImage disc = DiscImage.OpenImage(imagePath))
         {
@@ -230,6 +245,12 @@ public static class Extraction
                 string folder = Path.GetFullPath(Path.Combine(outputFolder, FolderFor(name)));
                 decoded.Add((new DiscFileResult(name, folder, file.Pngs.Select(p => p.File).ToList(), file.LeftOut),
                     file.Pngs.Select(p => p.Png).ToList(), i + 1));
+            }
+
+            // In the last disc file's reading stage, as the planes are in its writing stage: no stage of their own.
+            if (decoded.Count > 0)
+            {
+                (dragons, dragonNotice) = Dragons.FromDisc(disc);
             }
         }
 
@@ -279,6 +300,16 @@ public static class Extraction
                 }
             }
 
+            if (dragons != null)
+            {
+                Directory.CreateDirectory(Path.Combine(staging, ModelFolder));
+                foreach ((ExtractedModel file, byte[] glb) in dragons.Files)
+                {
+                    File.WriteAllBytes(Path.Combine(staging, file.Path), glb);
+                    entries.Add(new ManifestEntry(file.Id, file.Path, glb, Manifest.ModelKind));
+                }
+            }
+
             if (entries.Count > 0)
             {
                 File.WriteAllBytes(Path.Combine(staging, Manifest.FileName), Manifest.Write(header, entries));
@@ -304,6 +335,15 @@ public static class Extraction
                 }
             }
 
+            if (dragons != null)
+            {
+                Directory.CreateDirectory(Path.Combine(outputFolder, ModelFolder));
+                foreach ((ExtractedModel file, _) in dragons.Files)
+                {
+                    File.Move(Path.Combine(staging, file.Path), Path.Combine(outputFolder, file.Path), overwrite: true);
+                }
+            }
+
             if (entries.Count > 0)
             {
                 manifestPath = Path.GetFullPath(Path.Combine(outputFolder, Manifest.FileName));
@@ -320,7 +360,8 @@ public static class Extraction
         TryRemove(staging);
         return new ExtractionResult(header, decoded.Select(d => d.Result).ToList(), missing,
             Path.GetFullPath(Path.Combine(outputFolder, ImageFolder)), colours, notice, manifestPath,
-            planeFiles.Select(p => p.File).ToList(), planes?.Sources, planeNotice);
+            planeFiles.Select(p => p.File).ToList(), planes?.Sources, planeNotice,
+            dragons?.Files.Select(f => f.File).ToList() ?? new List<ExtractedModel>(), dragons?.Sources, dragonNotice);
     }
 
     /// <summary>Makes <paramref name="folder"/> an empty folder, removing whatever was there.</summary>

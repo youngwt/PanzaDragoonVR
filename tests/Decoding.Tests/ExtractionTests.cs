@@ -357,7 +357,7 @@ public sealed class ExtractionTests : IDisposable
         byte[] written = Manifest.Write(header, new[] { new ManifestEntry("e03.b", "images/b.png", png), new ManifestEntry("e03.a", "images/a.png", png) });
 
         string sha = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-        string expected = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.2\",\n  \"source\": {\n" +
+        string expected = "{\n  \"format\": 1,\n  \"generator\": \"pdz-extract 0.3\",\n  \"source\": {\n" +
             "    \"product\": \"A\\\"B\\\\C\",\n    \"version\": \"\\u0001\\tV\u00e9\u007f\"\n  },\n  \"assets\": [\n" +
             "    {\n      \"id\": \"e03.a\",\n      \"kind\": \"image\",\n      \"path\": \"images/a.png\",\n      \"bytes\": 3,\n      \"sha256\": \"" + sha + "\"\n    },\n" +
             "    {\n      \"id\": \"e03.b\",\n      \"kind\": \"image\",\n      \"path\": \"images/b.png\",\n      \"bytes\": 3,\n      \"sha256\": \"" + sha + "\"\n    }\n" +

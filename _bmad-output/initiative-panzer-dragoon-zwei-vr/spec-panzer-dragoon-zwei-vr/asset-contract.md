@@ -44,7 +44,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.2",
+  "generator": "pdz-extract 0.3",
   "source": { "product": "GS-9049", "version": "V1.001" },
   "assets": [
     {
@@ -98,7 +98,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 | Prefix | Used for |
 |--------|----------|
 | `e03.` | Episode 3, such as `e03.floor` and `e03.canopy`, and its enemies, such as `e03.flyer`. |
-| `dragon.` | The dragon, such as `dragon.ride`, the dragon the player rides. |
+| `dragon.` | The dragon, such as `dragon.ride`, the dragon the player rides, and the extracted forms, `dragon.form01` to `dragon.form10`. |
 
 - The table lists the prefixes in use. A new one is added here when it is first needed.
 - The engine spike's ground and sky are the placeholders for `e03.floor` and `e03.canopy`. There are no separate test IDs: the author proves external loading by supplying their own images under the real IDs.
@@ -130,6 +130,22 @@ The extractor also writes Episode 3's floor and canopy, the two planes of VDP2's
 
 - They are an addition to the textures: a disc whose planes cannot be found or unpacked still has its textures extracted, and the extractor gives a one-line notice, `no floor and canopy: <reason>`, in place of the line naming where they came from. The manifest then lacks the two IDs, so the game shows its placeholders for them; an earlier run's `floor.png` and `canopy.png` stay in the folder, unlisted, as for any file extraction did not write.
 
+#### Extracted dragon forms
+
+The extractor writes the ten dragon forms as `model` assets, one for each `DRA` file set in the order of their numbers:
+
+| ID | File | Disc files |
+|----|------|------------|
+| `dragon.form01` | `models/dragon_form01.glb` | `DRA01A` |
+| `dragon.form02` to `dragon.form09` | `models/dragon_form02.glb` to `models/dragon_form09.glb` | `DRA02B` to `DRA09I` |
+| `dragon.form10` | `models/dragon_form10.glb` | `DRA10J` |
+
+- Each holds the form's body tree only: no shadow, no extra wing frames, no rider. Each mesh-bearing node is one part, named `node` and its two-digit depth-first index (`node13`), with its origin at the translation of its matrices' product. The root node is named `form01` and so on.
+- Each model's origin is the seat: the rider's offset for that form, read from the table in `1ST_READ` on the disc in hand and subtracted before the conversion to glTF. The table is found by searching `1ST_READ` for the ten forms' body roots in the game's order, so it is found on any disc that holds it, not looked up by disc.
+- A polygon whose texture cannot be decoded from its `.CGB` alone is drawn in flat grey, and the count is in the extractor's line. A flat polygon takes its colour from CMDCOLR.
+- They are an addition, as the floor and canopy are, and all or nothing: a disc with a form's `.MDB` or `.CGB` missing, no table or malformed geometry writes no model and still has its other assets written, and the extractor gives a one-line notice, `no dragons: <reason>`. An earlier run's models stay in the folder, unlisted.
+- The game does not ask for these IDs yet, so as the table under What the game does at launch says, they change nothing it shows. To look at one in the headset, list it under `dragon.ride` in a folder of your own.
+
 ### Paths
 
 - Relative to the asset folder, with forward slashes.
@@ -157,19 +173,19 @@ The game extracts the assets on the headset at launch, and the PC command does t
 ### Development and release modes
 
 - **Development mode** is on when an empty file named `development` sits at the top of the asset folder. The game then keeps the disc image and extracts again on every launch.
-- **Release mode** is the mode without that file, whatever the build. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the current extractor (its whole `generator` is the game's own, `pdz-extract` and the decoding library's version) from a disc with the same `source` product and version. A newer extractor therefore extracts again when the player copies the image back; nothing is extracted again without the image. After a successful extraction that wrote something (a texture or a plane), and whenever extraction is skipped for that reason, the game deletes the disc image. An extraction that succeeds but writes nothing keeps the image, with a log line saying so, as a failed one does.
+- **Release mode** is the mode without that file, whatever the build. The game extracts when `disc/` holds an image, unless the folder's `manifest.json` was written by the current extractor (its whole `generator` is the game's own, `pdz-extract` and the decoding library's version) from a disc with the same `source` product and version. A newer extractor therefore extracts again when the player copies the image back; nothing is extracted again without the image. After a successful extraction that wrote something (a texture, a plane or a model), and whenever extraction is skipped for that reason, the game deletes the disc image. An extraction that succeeds but writes nothing keeps the image, with a log line saying so, as a failed one does.
 
 ### What extraction writes
 
 - Extraction writes into a staging folder, `extracting/` inside the asset folder, which it empties first. Only when every file is written without error does it move the new files into place, the new `manifest.json` last, and then remove the staging folder. A failure before that leaves the previous files and manifest in place; a leftover `extracting/` folder is emptied by the next extraction.
 - It writes its own `manifest.json`, replacing any manifest in the folder. Files it did not write are left in place but are no longer listed.
 - `generator` is `pdz-extract` followed by the decoding library's version, the same on the PC and the headset. `source` is the product and version from the disc's Saturn header.
-- For identical output: entries are sorted by `id` in ordinal order; every entry has `sha256`; the JSON puts every object and array member on a line of its own, indented two spaces per level, with `": "` after each key, `\n` line ends and a final newline, and keys in the order of the example below; PNGs come from one deterministic encoder.
+- For identical output: entries are sorted by `id` in ordinal order; every entry has `sha256`; the JSON puts every object and array member on a line of its own, indented two spaces per level, with `": "` after each key, `\n` line ends and a final newline, and keys in the order of the example below; PNGs and models come from one deterministic encoder each, and a model's positions from integer arithmetic with one conversion to `float` at the end.
 
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.2",
+  "generator": "pdz-extract 0.3",
   "source": {
     "product": "GS-9049",
     "version": "V1.001"
@@ -228,7 +244,8 @@ Some rules below are marked *Provisional*. They depend on model geometry that is
 
 - Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are. The game flies towards -Z, so it turns `dragon.ride` 180° about Y to face the flight.
 - The origin of `dragon.ride` is the seat: the point where the game places its rider on that form. The game puts the origin at its built-in seat.
-- Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is recorded here once geometry is decoded. *Provisional.*
+- Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is 4,000: the spike's lead, from a rider assumed to be 1.7 m tall, which the author is to confirm in the headset. *Provisional.*
+- The conversion from the Saturn's axes (+Y up, head towards -Z) is `(x, y, z)` to `(-x, y, -z)`, a half-turn about Y and so not a mirror, before the division.
 - Triangles only (primitive mode 4), indexed. glTF has no quads.
 - Each Saturn quad is written as four vertices of its own, in the Saturn's corner order, followed by the two triangles (0, 1, 2) and (0, 2, 3) of those four. Vertices are not shared between quads, because each quad has its own texture. So within a primitive, quad `k` is vertices `4k` to `4k+3`, and a reader that wants the quads back can have them. *Provisional.*
 - A Saturn polygon with only three distinct corners is written the same way, with the repeated corner repeated. *Provisional.*

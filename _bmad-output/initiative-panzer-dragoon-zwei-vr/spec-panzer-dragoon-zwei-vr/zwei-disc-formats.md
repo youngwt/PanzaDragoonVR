@@ -291,4 +291,3 @@ LZ77, read from the unpacker's code and confirmed by the comparisons above:
 2. Port the planes' unpacking to the decoding library (story 3.4), using `tools/plane_probe.py` as the reference.
 3. Trace the VDP2 register set-up lists (0x52B58 onward) if story 3.4 needs the plane settings from the disc rather than as constants.
 4. Disassemble the Episode 3 region, then trace the code that reads `EPISODE3.DAT`.
-5. Build `.MDB` geometry decoding in the library (story 4.5) from the Models section.

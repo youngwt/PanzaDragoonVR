@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Shows that the PC command and the headset extract the same files from the same disc image: pulls the
-# headset's extracted textures and manifest.json, runs pdz-extract on the disc image on this computer,
+# headset's extracted textures, models and manifest.json, runs pdz-extract on the disc image on this computer,
 # and compares the two byte for byte. See tools/README.md.
 #
 #   tools/compare-headset.sh <disc.cue|disc.iso>   the same disc image the headset extracted from
 #
 # Launch the app on the headset first, so it has extracted. Both copies are written under
 # extracted/compare-headset/ (git-ignored): headset/ and pc/. Only manifest.json and the files it
-# lists are compared; other files under the headset's images/ (left by an earlier push) are set aside.
+# lists are compared; other files under the headset's images/ and models/ (left by an earlier push) are set aside.
 #
 # Exit status: 0 identical, 1 something failed or the two differ; the files that differ are listed.
 
@@ -49,12 +49,18 @@ OUT="$(cd "$OUT" && pwd)"
 
 host_adb -s "$serial" shell "test -f '$REMOTE/manifest.json'" \
     || die "the headset has no $REMOTE/manifest.json; launch the app so it extracts, then run this again"
-say "pulling the headset's manifest.json and images/ from $serial"
+say "pulling the headset's manifest.json, images/ and models/ from $serial"
 # The host's adb writes to a path under the home folder, which the Flatpak sandbox shares.
 host_adb -s "$serial" pull "$REMOTE/manifest.json" "$OUT/headset/manifest.json" >/dev/null \
     || die "could not pull $REMOTE/manifest.json"
 host_adb -s "$serial" pull "$REMOTE/images" "$OUT/headset/" >/dev/null \
     || die "could not pull $REMOTE/images"
+# The headset has no models/ until an extraction writes dragons. One an older extraction left stays when
+# the latest wrote none; its files are unlisted, so they and the folder are set aside below.
+if host_adb -s "$serial" shell "test -d '$REMOTE/models'"; then
+    host_adb -s "$serial" pull "$REMOTE/models" "$OUT/headset/" >/dev/null \
+        || die "could not pull $REMOTE/models"
+fi
 
 # Set aside what the headset's manifest does not list, so stray files from earlier pushes do not count.
 unlisted="$(python3 - "$OUT/headset" <<'PY'
@@ -62,16 +68,21 @@ import json, os, sys
 root = sys.argv[1]
 listed = {a["path"] for a in json.load(open(os.path.join(root, "manifest.json"), encoding="utf-8"))["assets"]}
 n = 0
-for folder, _, names in os.walk(os.path.join(root, "images")):
-    for name in names:
-        rel = os.path.relpath(os.path.join(folder, name), root).replace(os.sep, "/")
-        if rel not in listed:
-            os.remove(os.path.join(folder, name))
-            n += 1
+for top in ("images", "models"):
+    for folder, _, names in os.walk(os.path.join(root, top)):
+        for name in names:
+            rel = os.path.relpath(os.path.join(folder, name), root).replace(os.sep, "/")
+            if rel not in listed:
+                os.remove(os.path.join(folder, name))
+                n += 1
+    # Empty folders left behind would count as differences.
+    for folder, _, _ in os.walk(os.path.join(root, top), topdown=False):
+        if not os.listdir(folder):
+            os.rmdir(folder)
 print(n)
 PY
 )" || die "could not read the headset's manifest.json"
-[ "$unlisted" = "0" ] || say "set aside $unlisted file(s) under the headset's images/ that its manifest does not list"
+[ "$unlisted" = "0" ] || say "set aside $unlisted file(s) under the headset's images/ and models/ that its manifest does not list"
 
 say "extracting $image on this computer"
 dotnet run --project "$here/pdz-extract" -- "$image" "$OUT/pc" >"$OUT/pc-extract.log" 2>&1 \

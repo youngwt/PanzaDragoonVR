@@ -149,7 +149,7 @@ public sealed class DiscExtraction
         Report(error, seconds);
         bool succeeded = error == null;
         // A failed task has no result to ask; what it wrote does not matter then.
-        bool wroteAnything = succeeded && (_task.Result.Files.Count > 0 || _task.Result.PlaneFiles.Count > 0);
+        bool wroteAnything = succeeded && (_task.Result.Files.Count > 0 || _task.Result.PlaneFiles.Count > 0 || _task.Result.ModelFiles.Count > 0);
         if (ExtractionModes.DeleteAfterExtraction(_decision, succeeded, wroteAnything))
         {
             DeleteImage(_imagePath);
@@ -194,7 +194,7 @@ public sealed class DiscExtraction
 
     private static void Succeeded(ExtractionResult result, string seconds)
     {
-        if (result.Files.Count == 0 && result.PlaneFiles.Count == 0)
+        if (result.Files.Count == 0 && result.PlaneFiles.Count == 0 && result.ModelFiles.Count == 0)
         {
             GD.Print($"{AssetFolder.LogTag} found no textures to write on " +
                 $"{result.Source.Product} {result.Source.Version}: nothing written ({result.Details()})");
