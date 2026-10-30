@@ -1,9 +1,8 @@
 ---
 title: 'The ridden dragon sits under the head'
 type: 'bugfix'
-ticket: ''
 created: '2026-10-30'
-status: 'built'
+status: 'done'
 baseline_revision: '301e5f907ffa8a1ad45e5f901ab8114de33b9212'
 route: 'oneshot'
 route_source: 'auto'

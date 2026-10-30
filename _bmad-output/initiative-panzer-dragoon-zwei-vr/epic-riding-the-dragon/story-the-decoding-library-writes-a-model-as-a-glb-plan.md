@@ -3,7 +3,7 @@ title: 'The decoding library writes a model as a .glb'
 type: 'feature'
 ticket: 3
 created: '2026-10-29'
-status: 'built'
+status: done
 baseline_revision: 'b1f1fe3032ddc40a9d71c21a92ed051bb819b63a'
 route: 'full'
 route_source: 'auto'

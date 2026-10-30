@@ -3,7 +3,7 @@ title: 'The player sits on a placeholder dragon while the forest scrolls'
 type: 'feature'
 ticket: '1'
 created: '2026-10-29'
-status: 'built'
+status: done
 baseline_revision: 'c5f4a25ec7d2cbc92a25c8f06de83113c3382115'
 route: 'full'
 route_source: 'auto'
