@@ -55,15 +55,18 @@ public sealed class DragonsTests : IDisposable
 
         ExtractionResult result = Run(disc.WriteCue(_folder));
 
-        Assert.Equal(Enumerable.Range(1, 10).Select(n => $"dragon.form{n:D2}"), result.ModelFiles.Select(f => f.Id));
-        Assert.Equal(Enumerable.Range(1, 10).Select(n => $"models/dragon_form{n:D2}.glb"), result.ModelFiles.Select(f => f.Path));
+        Assert.Equal(Enumerable.Range(1, 10).Select(n => $"dragon.form{n:D2}"), result.ModelFiles.Take(10).Select(f => f.Id));
+        Assert.Equal(Enumerable.Range(1, 10).Select(n => $"models/dragon_form{n:D2}.glb"), result.ModelFiles.Take(10).Select(f => f.Path));
+        Assert.Equal(new ExtractedModel("dragon.ride", "models/dragon_ride.glb"), result.ModelFiles[10]);
+        Assert.Equal(10, result.DragonSources!.Forms);
         Assert.Equal(lead + Dragons.SeatTableGap, result.DragonSources!.SeatTable);
         Assert.Null(result.DragonNotice);
         Assert.False(Directory.Exists(Output(Extraction.StagingFolder)));
 
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllBytes(Output(Manifest.FileName)));
         JsonElement[] models = manifest.RootElement.GetProperty("assets").EnumerateArray().Where(a => a.GetProperty("kind").GetString() == "model").ToArray();
-        Assert.Equal(10, models.Length);
+        Assert.Equal(11, models.Length);
+        Assert.Equal("dragon.ride", models[10].GetProperty("id").GetString());
         Assert.Equal("dragon.form01", models[0].GetProperty("id").GetString());
         Assert.Equal("models/dragon_form01.glb", models[0].GetProperty("path").GetString());
         Assert.Equal(new FileInfo(Output("models/dragon_form01.glb")).Length, models[0].GetProperty("bytes").GetInt64());
@@ -81,6 +84,16 @@ public sealed class DragonsTests : IDisposable
             byte[] expected = GlbWriter.Write(Dragons.Decode(Mdb(Form(i), Padding(i)), Cgb(), $"form{i + 1:D2}", seat).Model);
             Assert.Equal(expected, File.ReadAllBytes(Output($"models/dragon_form{i + 1:D2}.glb")));
         }
+    }
+
+    [Fact]
+    public void Run_Ride_IsTheChosenFormWithItsOwnRootName()
+    {
+        Run(DiscWithForms());
+
+        int i = Dragons.RideForm - 1;
+        byte[] expected = GlbWriter.Write(Dragons.Decode(Mdb(Form(i), Padding(i)), Cgb(), "ride", SeatOf(i)).Model);
+        Assert.Equal(expected, File.ReadAllBytes(Output(Dragons.RidePath)));
     }
 
     [Fact]

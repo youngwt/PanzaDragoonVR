@@ -32,7 +32,7 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 ## Notes
 
 - Settled by spike 2 (2026-10-30): the `.MDB` geometry format, in `zwei-disc-formats.md`, Models.
-- Open question: which of the ten dragon forms the demo uses; it now waits only on the author's choice, in story 7.
+- Decision: the demo uses form 9, `DRA09I` (user, 2026-10-30).
 - Decision: each form's asset ID is `dragon.form01` to `dragon.form10`, numbered from `DRA01A` to `DRA10J` (user, 2026-10-30).
 - Decision: constants the game needs from the disc are never committed. The extraction reads them from the player's disc and writes them to a config file in the asset folder, and the game reads that file at launch. Where to look on the disc stays in the code, because the extraction needs it to read the disc. Story 5 defines the file when something first needs it (user, 2026-10-30).
 - Decision: the seat is the game's rider position for that form, on `DRA01A` astride the neck near the head, not mid-way along the back; story 5 reads it from the table in `1ST_READ` on the player's disc, as `zwei-disc-formats.md`, The rider, says, and the tuning settings of story 4 adjust from there (user, 2026-10-30).

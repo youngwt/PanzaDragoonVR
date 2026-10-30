@@ -22,7 +22,8 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
     Console.WriteLine("a colour upload table in EPISODE3.PRG; with none, they are left out and a notice says why.");
     Console.WriteLine($"It also writes the floor and canopy from EPISODE3.PRG as {Extraction.FloorPath} and");
     Console.WriteLine($"{Extraction.CanopyPath}; when they cannot be found or unpacked, a notice says why.");
-    Console.WriteLine("It writes the ten dragon forms as models/dragon_form01.glb to models/dragon_form10.glb;");
+    Console.WriteLine("It writes the ten dragon forms as models/dragon_form01.glb to models/dragon_form10.glb,");
+    Console.WriteLine($"and form {Dragons.RideForm} again as {Dragons.RidePath};");
     Console.WriteLine("when any cannot be decoded or their seats cannot be found, none are written and a notice says why.");
     return 0;
 }
@@ -66,7 +67,7 @@ try
 
         if (result.ModelFiles.Count > 0)
         {
-            Console.WriteLine($"{Tool}: wrote {result.ModelFiles.Count} dragon forms as {result.ModelFiles[0].Path} to {result.ModelFiles[^1].Path}");
+            Console.WriteLine($"{Tool}: wrote {result.DragonSources!.Forms} dragon forms as {result.ModelFiles[0].Path} to {result.ModelFiles[result.DragonSources.Forms - 1].Path}, and form {Dragons.RideForm} as {Dragons.RidePath}");
         }
 
         Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count + result.PlaneFiles.Count + result.ModelFiles.Count} assets");

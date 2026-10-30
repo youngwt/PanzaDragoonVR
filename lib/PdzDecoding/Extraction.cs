@@ -39,7 +39,7 @@ public readonly record struct MissingDiscFile(string Name, string Absent);
 /// <param name="PlaneFiles">The floor and canopy PNGs written, <c>e03.floor</c> then <c>e03.canopy</c>; empty when there are none.</param>
 /// <param name="PlaneSources">Where in <c>EPISODE3.PRG</c> the floor and canopy came from; null when there are none.</param>
 /// <param name="PlaneNotice">Why there is no floor and canopy: one line, no full stop. Null when there are.</param>
-/// <param name="ModelFiles">The dragon forms' <c>.glb</c> files written, in form order; empty when there are none.</param>
+/// <param name="ModelFiles">The dragon forms' <c>.glb</c> files written, in form order, then the form the player rides; empty when there are none.</param>
 /// <param name="DragonSources">Where the dragons' seats came from; null when there are no dragons.</param>
 /// <param name="DragonNotice">Why there are no dragons: one line, no full stop. Null when there are.</param>
 public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFileResult> DiscFiles, IReadOnlyList<MissingDiscFile> Missing, string Folder,
@@ -143,13 +143,13 @@ public readonly record struct ExtractionProgress(ExtractionStage Stage, string? 
 /// "Extracted textures" says: modes 1 and 5 from their own colours, modes 4 and 0 from the colour RAM
 /// <c>EPISODE3.PRG</c>'s upload table fills (see <see cref="ColourBanks"/>), then <c>manifest.json</c>
 /// listing them (see <see cref="Manifest"/>), through the staging folder of the contract's
-/// "What extraction writes" (see <see cref="StagingFolder"/>). The ten dragon forms go the same way, as
-/// <c>.glb</c> files (see <see cref="Dragons"/>).
+/// "What extraction writes" (see <see cref="StagingFolder"/>). The ten dragon forms and the ridden one go the same way,
+/// as <c>.glb</c> files (see <see cref="Dragons"/>).
 /// </summary>
 public static class Extraction
 {
-    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.3</c>.</summary>
-    public const string Version = "0.3";
+    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.4</c>.</summary>
+    public const string Version = "0.4";
 
     /// <summary>
     /// The staging folder inside the output folder, fixed by the asset contract: extraction writes
@@ -185,7 +185,7 @@ public static class Extraction
     /// come from the same <c>EPISODE3.PRG</c>, read once, and are written as <see cref="FloorPath"/> and
     /// <see cref="CanopyPath"/> with the textures; a disc whose planes cannot be found or unpacked still has
     /// its textures written, and the result says why. The dragon forms (see <see cref="Dragons"/>) are written
-    /// as <see cref="Dragons.FormPath"/> with them, on the same terms: all ten or, with a notice, none. Every texture of every file is decoded before any file is written, so a decoding error
+    /// as <see cref="Dragons.FormPath"/>, and the ridden one as <see cref="Dragons.RidePath"/>, with them, on the same terms: all or, with a notice, none. Every texture of every file is decoded before any file is written, so a decoding error
     /// writes nothing. The PNGs and models, then <c>manifest.json</c> listing them, are written into
     /// <see cref="StagingFolder"/> inside <paramref name="outputFolder"/>, which is emptied first (so a
     /// leftover from an interrupted run is cleared); only when every one is written are they moved into

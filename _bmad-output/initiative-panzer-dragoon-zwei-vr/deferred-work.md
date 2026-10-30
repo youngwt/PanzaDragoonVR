@@ -73,3 +73,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-the-decoding-library-writes-a-model-as-a-glb-plan.md`
   summary: Settle whether the asset contract's "node and mesh names are unique within the file" allows a node and its mesh to share a name, as GlbWriter writes them (root `flyer` with mesh `flyer`, part node `body` with mesh `body`).
   evidence: Unverified, medium if the stricter reading holds (every written model would break the rule); the author's reading of asset-contract.md, Structure and naming, settles it. Names are unique within nodes and within meshes today.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-the-player-rides-the-chosen-dragon-in-the-headset-plan.md`
+  summary: `tools/README.md`'s sample `pdz-extract` output still holds counts and an offset measured from the author's disc.
+  evidence: `AGENTS.md` keeps values measured from the disc out of git, in notes as well as code; the lines predate this story, and history would still hold them.

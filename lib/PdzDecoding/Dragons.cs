@@ -31,7 +31,7 @@ public sealed record DragonSources(int Forms, int SeatTable, int GreyPolygons)
         (GreyPolygons == 0 ? "" : string.Create(CultureInfo.InvariantCulture, $", {GreyPolygons} {(GreyPolygons == 1 ? "polygon" : "polygons")} drawn flat grey"));
 }
 
-/// <summary>The ten forms ready to write, in form order.</summary>
+/// <summary>The ten forms ready to write, in form order, then the form the player rides.</summary>
 public sealed record DragonModels(DragonSources Sources, IReadOnlyList<(ExtractedModel File, byte[] Glb)> Files);
 
 /// <summary>
@@ -52,6 +52,15 @@ public static class Dragons
     /// the headset: nothing in the data says what a unit is.
     /// </summary>
     public const int UnitsPerMetre = 4000;
+
+    /// <summary>The form the player rides, by its number from 1: the author's choice for the demo.</summary>
+    public const int RideForm = 9;
+
+    /// <summary>The asset ID of the form the player rides.</summary>
+    public const string RideId = "dragon.ride";
+
+    /// <summary>Where the form the player rides goes in the asset folder.</summary>
+    public const string RidePath = "models/dragon_ride.glb";
 
     /// <summary>The disc file holding the seat table.</summary>
     public const string SeatFile = "1ST_READ.PRG";
@@ -84,7 +93,7 @@ public static class Dragons
     public static string FormPath(int number) => string.Create(CultureInfo.InvariantCulture, $"models/dragon_form{number:D2}.glb");
 
     /// <summary>
-    /// Every form of the disc as a <c>.glb</c>, or null and a one-line notice, with no full stop, saying why
+    /// Every form of the disc as a <c>.glb</c>, and the ridden one again as <see cref="RideId"/>, or null and a one-line notice, with no full stop, saying why
     /// there are none: a form's file or the seat table is missing, or some geometry is malformed. It is all
     /// ten or none, and nothing here stops the rest of extraction.
     /// </summary>
@@ -133,7 +142,12 @@ public static class Dragons
                 written.Add((new ExtractedModel(FormId(number), FormPath(number)), GlbWriter.Write(dragon.Model)));
             }
 
-            return (new DragonModels(new DragonSources(written.Count, table, grey), written), null);
+            // Decoded again for its own root name, as the asset contract's naming rule says.
+            int forms = written.Count;
+            reading = FormFiles[RideForm - 1];
+            Model ride = Decode(files[RideForm - 1].Mdb, files[RideForm - 1].Cgb, RideId.Split('.')[1], seats[RideForm - 1]).Model;
+            written.Add((new ExtractedModel(RideId, RidePath), GlbWriter.Write(ride)));
+            return (new DragonModels(new DragonSources(forms, table, grey), written), null);
         }
         catch (DecodingException e)
         {

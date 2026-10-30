@@ -44,7 +44,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.3",
+  "generator": "pdz-extract 0.4",
   "source": { "product": "GS-9049", "version": "V1.001" },
   "assets": [
     {
@@ -132,19 +132,20 @@ The extractor also writes Episode 3's floor and canopy, the two planes of VDP2's
 
 #### Extracted dragon forms
 
-The extractor writes the ten dragon forms as `model` assets, one for each `DRA` file set in the order of their numbers:
+The extractor writes the ten dragon forms as `model` assets, one for each `DRA` file set in the order of their numbers, and the form the player rides again as `dragon.ride`:
 
 | ID | File | Disc files |
 |----|------|------------|
 | `dragon.form01` | `models/dragon_form01.glb` | `DRA01A` |
 | `dragon.form02` to `dragon.form09` | `models/dragon_form02.glb` to `models/dragon_form09.glb` | `DRA02B` to `DRA09I` |
 | `dragon.form10` | `models/dragon_form10.glb` | `DRA10J` |
+| `dragon.ride` | `models/dragon_ride.glb` | `DRA09I`, the author's choice for the demo (2026-10-30); its root node is named `ride` |
 
 - Each holds the form's body tree only: no shadow, no extra wing frames, no rider. Each mesh-bearing node is one part, named `node` and its two-digit depth-first index (`node13`), with its origin at the translation of its matrices' product. The root node is named `form01` and so on.
 - Each model's origin is the seat: the rider's offset for that form, read from the table in `1ST_READ` on the disc in hand and subtracted before the conversion to glTF. The table is found by searching `1ST_READ` for the ten forms' body roots in the game's order, so it is found on any disc that holds it, not looked up by disc.
 - A polygon whose texture cannot be decoded from its `.CGB` alone is drawn in flat grey, and the count is in the extractor's line. A flat polygon takes its colour from CMDCOLR.
 - They are an addition, as the floor and canopy are, and all or nothing: a disc with a form's `.MDB` or `.CGB` missing, no table or malformed geometry writes no model and still has its other assets written, and the extractor gives a one-line notice, `no dragons: <reason>`. An earlier run's models stay in the folder, unlisted.
-- The game does not ask for these IDs yet, so as the table under What the game does at launch says, they change nothing it shows. To look at one in the headset, list it under `dragon.ride` in a folder of your own.
+- The game asks only for `dragon.ride`, so as the table under What the game does at launch says, the others change nothing it shows. To look at one in the headset, list it under `dragon.ride` in a folder of your own.
 
 ### Paths
 
@@ -185,7 +186,7 @@ The game extracts the assets on the headset at launch, and the PC command does t
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.3",
+  "generator": "pdz-extract 0.4",
   "source": {
     "product": "GS-9049",
     "version": "V1.001"
