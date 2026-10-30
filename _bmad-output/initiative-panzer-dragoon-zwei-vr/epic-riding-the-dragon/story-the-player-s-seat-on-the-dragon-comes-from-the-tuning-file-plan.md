@@ -51,3 +51,5 @@ Quick lens, one pass: 2 medium and 3 low, all patched.
 - With a pushed tuning file, the player moves along the placeholder's back, rises and the dragon rescales; an out-of-range value is on the launch board and the built-in is used.
 
 Author, 2026-10-30: in the headset with a test tuning file on the placeholder dragon, the seat and size changes looked right, and marked the story done.
+
+Author, same day: the out-of-range `floor_tile` was reported on the launch board.
