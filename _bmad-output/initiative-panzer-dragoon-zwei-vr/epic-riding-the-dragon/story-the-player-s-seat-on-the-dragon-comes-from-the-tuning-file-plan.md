@@ -3,7 +3,7 @@ title: "The player's seat on the dragon comes from the tuning file"
 type: 'feature'
 ticket: '4'
 created: '2026-10-30'
-status: 'built'
+status: done
 baseline_revision: '020dfa5e8b222471459cd14b6a7120bde1b1f8fd'
 route: 'oneshot'
 route_source: 'auto'
@@ -49,3 +49,5 @@ Quick lens, one pass: 2 medium and 3 low, all patched.
 
 **Manual checks (if no CLI):**
 - With a pushed tuning file, the player moves along the placeholder's back, rises and the dragon rescales; an out-of-range value is on the launch board and the built-in is used.
+
+Author, 2026-10-30: in the headset with a test tuning file on the placeholder dragon, the seat and size changes looked right, and marked the story done.
