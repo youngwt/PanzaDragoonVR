@@ -3,7 +3,7 @@ title: 'The player rides the chosen dragon in the headset'
 type: 'feature'
 ticket: '7'
 created: '2026-10-30'
-status: 'built'
+status: done
 baseline_revision: '41699e34afa94a36c4a972d7a9cabda67645c073'
 route: 'oneshot'
 route_source: 'auto'
@@ -36,6 +36,8 @@ Author, 2026-10-30: chose form 9, `DRA09I`. In the headset, "happy for now" with
 Checks: `tools/test.sh` all pass; `tools/validate-gltf.sh` 0 errors on `dragon_ride.glb`; both discs give the same `dragon_ride.glb`; `tools/compare-headset.sh` identical, before the review's comment and wording patches.
 
 Open at commit: the author said only "happy for now", so the wings, head, tail and steady flight on form 9 want the author's explicit word before this is marked done.
+
+Author, 2026-10-31: asked for the wings, head, tail and steady flight to be confirmed, replied by marking the story done.
 
 ## Review Triage Log
 
