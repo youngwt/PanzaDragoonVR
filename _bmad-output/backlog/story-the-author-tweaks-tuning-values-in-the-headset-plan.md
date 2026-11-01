@@ -88,7 +88,7 @@ Quick lens, one pass: 2 medium and 2 low patched; 1 rejected.
 - low, patch: a successful save left the launch's tuning problems to come back on the board after extraction. Cleared on save.
 - medium, rejected: the headset criteria are unverified. True, but the fix is the author's check, not a code change; it stays open below.
 
-Open at commit: nothing has run on a headset, which was not connected. All three acceptance criteria, the real pull and the three canopy settings' rates and `SetTiles` branch need the author. `spec-panzer-dragoon-zwei-vr.md` still says the file is edited on the PC and pushed, which remains the usual route; left as it is.
+Open at the first commit: nothing had run on a headset, which was not connected. All three acceptance criteria, the real pull and the three canopy settings' rates and `SetTiles` branch need the author. `spec-panzer-dragoon-zwei-vr.md` still says the file is edited on the PC and pushed, which remains the usual route; left as it is.
 
 ## Verification
 
@@ -100,3 +100,5 @@ Open at commit: nothing has run on a headset, which was not connected. All three
 **Manual checks (if no CLI):**
 - The three acceptance criteria above, by the author in the headset.
 - Before that check, the trial's `tuning.json` is pulled or removed as the author chooses.
+
+Author, 2026-11-01: in the headset said "all seems fine" (the saved file shows `canopy_speed_scale` and `canopy_tile` moved, `canopy_height` ending at its built-in) and asked for the saved values to be the built-ins. That goes beyond this plan's frozen "no change to a built-in value", on the author's word, and they are rounded to three places in all four places, tests following. Pull: byte-for-byte, checked with `cmp`. A saved file read at launch: seen in the log. With the marker removed and the disc image moved aside: the log has no tuning list line, in release mode; the controls were not tried, as the list's nodes are not made. The marker and image were put back.

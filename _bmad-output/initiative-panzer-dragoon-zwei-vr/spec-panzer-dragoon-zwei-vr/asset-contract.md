@@ -342,29 +342,29 @@ In development mode only (see Development and release modes), the file can also 
 
 ```json
 {
-  "floor_depth": 6,
+  "floor_depth": 8.999,
   "canopy_height": 10,
-  "flight_speed": 6,
-  "canopy_speed_scale": 1,
+  "flight_speed": 10.676,
+  "canopy_speed_scale": 0.995,
   "floor_tile": 24,
-  "canopy_tile": 48,
-  "seat_forward": 0,
-  "seat_height": 0,
-  "dragon_scale": 1
+  "canopy_tile": 60.146,
+  "seat_forward": -0.633,
+  "seat_height": -0.146,
+  "dragon_scale": 0.997
 }
 ```
 
 | Field | Range | Built-in | Meaning |
 |-------|-------|----------|---------|
-| `floor_depth` | 3 to 50 | 6 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground. The built-ins were set by the author in the headset on 2026-10-26 to look like Episode 3. |
+| `floor_depth` | 3 to 50 | 8.999 | Metres the ground plane is below the play area's floor. The player rides the dragon at the play area's floor, and the dragon is at least 3 m off the ground. The built-ins were set by the author in the headset on 2026-11-01 with the tuning list. |
 | `canopy_height` | 4 to 100 | 10 | Metres the canopy plane is above the play area's floor, so it is always above a standing head and the flyer. |
-| `flight_speed` | 0 to 30 | 6 | Metres a second the floor's image moves past. |
-| `canopy_speed_scale` | 0 to 2 | 1 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
+| `flight_speed` | 0 to 30 | 10.676 | Metres a second the floor's image moves past. |
+| `canopy_speed_scale` | 0 to 2 | 0.995 | How the canopy's image moves, as a multiple of the speed at which it crosses the same angle a second overhead as the floor does below, seen from an eye 1.6 m above the play area's floor. 1 is a flat backdrop at the floor's on-screen speed; 0 holds it still. |
 | `floor_tile` | 4 to 500 | 24 | Metres of floor one copy of its image covers. |
-| `canopy_tile` | 8 to 500 | 48 | Metres of canopy one copy of its image covers. |
-| `seat_forward` | -20 to 20 | 0 | Metres the player is moved towards the dragon's head from the seat, by moving the dragon back; negative is towards the tail. An offset, so the built-in holds no value from the disc. |
-| `seat_height` | -3 to 3 | 0 | Metres the player is raised from the seat, by lowering the dragon; negative lowers the player. An offset, likewise. |
-| `dragon_scale` | 0.1 to 5 | 1 | How many times its size the ridden dragon is drawn, about the seat, on top of the model's own metres. |
+| `canopy_tile` | 8 to 500 | 60.146 | Metres of canopy one copy of its image covers. |
+| `seat_forward` | -20 to 20 | -0.633 | Metres the player is moved towards the dragon's head from the seat, by moving the dragon back; negative is towards the tail. An offset, so the built-in holds no value from the disc. |
+| `seat_height` | -3 to 3 | -0.146 | Metres the player is raised from the seat, by lowering the dragon; negative lowers the player. An offset, likewise. |
+| `dragon_scale` | 0.1 to 5 | 0.997 | How many times its size the ridden dragon is drawn, about the seat, on top of the model's own metres. |
 
 Ranges include their ends, and are narrow enough that each allowed value gives a sane picture at 90 Hz on the game's 2000 m planes with the other settings at their built-ins, as do all settings at their low ends together and all at their high ends together (backlog 17, 2026-10-27). This does not cover the seat settings, which came later: their ranges allow for the largest form, so a large `seat_forward` can leave the player clear of a smaller dragon. Mixing ends can still break the picture: a high canopy, a shallow floor, the top speed, the top canopy speed scale and a small canopy image move the canopy's image more than a tile a frame. At the top `canopy_height` the canopy's edge shows about 6 degrees above the horizon. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
 

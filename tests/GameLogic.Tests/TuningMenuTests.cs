@@ -50,7 +50,7 @@ public sealed class TuningMenuTests
         TuningMenuStep step = menu.Step(Stick(1, 0), 0.5);
 
         Assert.True(step.TuningChanged);
-        Assert.Equal(6f + (3f * 0.5f), menu.Tuning.FloorDepth);
+        Assert.Equal(Tuning.BuiltIn.FloorDepth + (3f * 0.5f), menu.Tuning.FloorDepth);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public sealed class TuningMenuTests
 
         menu.Step(Stick(-0.5f, 0), 1);
 
-        Assert.Equal(6f - 1.5f, menu.Tuning.FloorDepth);
+        Assert.Equal(Tuning.BuiltIn.FloorDepth - 1.5f, menu.Tuning.FloorDepth);
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public sealed class TuningMenuTests
 
         string[] lines = menu.Text().Split('\n');
 
-        Assert.Equal("  floor_depth  6.00", lines[0]);
+        Assert.Equal("  floor_depth  9.00", lines[0]);
         Assert.Equal("> canopy_height  10.00", lines[1]);
         Assert.Equal("  dragon_scale  1.00", lines[8]);
         Assert.Equal(10, lines.Length);

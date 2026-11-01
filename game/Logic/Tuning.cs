@@ -35,10 +35,10 @@ public sealed record Tuning(
     public const float EyeHeight = 1.6f;
 
     /// <summary>
-    /// Every setting at its built-in value, the planes' set by the author in the headset on 2026-10-26 to
-    /// look like Episode 3 with the extracted planes. The seat's leave the player at the model's origin.
+    /// Every setting at its built-in value, set by the author in the headset on 2026-11-01 with the tuning list,
+    /// riding the chosen dragon over the extracted planes. The seat's are offsets from the model's origin.
     /// </summary>
-    public static Tuning BuiltIn { get; } = new(6f, 10f, 6f, 1f, 24f, 48f, 0f, 0f, 1f);
+    public static Tuning BuiltIn { get; } = new(8.999f, 10f, 10.676f, 0.995f, 24f, 60.146f, -0.633f, -0.146f, 0.997f);
 
     /// <summary>
     /// Each setting the file can give: its name in the file, its allowed range (inclusive), how fast the tuning list

@@ -317,7 +317,7 @@ PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
 
 ### What the game uses
 
-For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and two models, `e03.flyer` and `dragon.ride` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the tuning's tile size, by default one copy per 24 metres of ground and one per 48 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and two models, `e03.flyer` and `dragon.ride` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each is tiled at the tuning's tile size, by default one copy per 24 metres of ground and one per about 60 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
 
 ### Copying a folder to the headset
 
@@ -340,14 +340,14 @@ How deep the floor is, how high the canopy, how fast they scroll, their tile siz
 
 | Setting | Means | Built-in | Allowed |
 |---------|-------|----------|---------|
-| `floor_depth` | metres the floor lies below the play area's floor, where the player rides; at least 3 so the dragon clears the ground | 6 | 3 to 50 |
+| `floor_depth` | metres the floor lies below the play area's floor, where the player rides; at least 3 so the dragon clears the ground | 8.999 | 3 to 50 |
 | `canopy_height` | metres the canopy is above the play area's floor | 10 | 4 to 100 |
-| `flight_speed` | metres a second the floor scrolls past | 6 | 0 to 30 |
-| `canopy_speed_scale` | how the canopy moves: 1 crosses the same angle a second as the floor, a flat backdrop; 0 stands still | 1 | 0 to 2 |
-| `floor_tile`, `canopy_tile` | metres one copy of the floor or canopy image covers | 24, 48 | 4 to 500, 8 to 500 |
-| `seat_forward` | metres to move you towards the dragon's head from the seat; negative is towards the tail | 0 | -20 to 20 |
-| `seat_height` | metres to raise you from the seat; negative lowers you | 0 | -3 to 3 |
-| `dragon_scale` | how many times its size the dragon is drawn, turning about the seat | 1 | 0.1 to 5 |
+| `flight_speed` | metres a second the floor scrolls past | 10.676 | 0 to 30 |
+| `canopy_speed_scale` | how the canopy moves: 1 crosses the same angle a second as the floor, a flat backdrop; 0 stands still | 0.995 | 0 to 2 |
+| `floor_tile`, `canopy_tile` | metres one copy of the floor or canopy image covers | 24, 60.146 | 4 to 500, 8 to 500 |
+| `seat_forward` | metres to move you towards the dragon's head from the seat; negative is towards the tail | -0.633 | -20 to 20 |
+| `seat_height` | metres to raise you from the seat; negative lowers you | -0.146 | -3 to 3 |
+| `dragon_scale` | how many times its size the dragon is drawn, turning about the seat | 0.997 | 0.1 to 5 |
 
 The asset contract's "Tuning" section is the full definition. To try new values:
 
@@ -523,7 +523,7 @@ The textures of the nine Episode 3 files the asset contract names (`E03CMN`, `E0
 
 **The PNGs** are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: `E03B0N0`'s 28 textures take 110 KB instead of 15 KB.
 
-The game's scene uses none of the extracted texture IDs. It asks for `e03.floor`, `e03.canopy`, `e03.flyer` and `dragon.ride`, and shows a placeholder for each the folder lacks; extraction supplies all but `e03.flyer`. The built-in tuning (a 512-pixel floor page covering 24 m, the canopy's 48 m) was set by the author in the headset for the extracted planes, so the placeholders' chequers look large.
+The game's scene uses none of the extracted texture IDs. It asks for `e03.floor`, `e03.canopy`, `e03.flyer` and `dragon.ride`, and shows a placeholder for each the folder lacks; extraction supplies all but `e03.flyer`. The built-in tuning (a 512-pixel floor page covering 24 m, the canopy's about 60 m) was set by the author in the headset for the extracted planes, so the placeholders' chequers look large.
 
 ### On the PC
 

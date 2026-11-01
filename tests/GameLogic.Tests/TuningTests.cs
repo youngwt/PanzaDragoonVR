@@ -105,7 +105,7 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(new[]
         {
             "tuning.json: canopy_height must be a number from 4 to 100; using the built-in 10",
-            "tuning.json: floor_depth must be a number from 3 to 50; using the built-in 6",
+            "tuning.json: floor_depth must be a number from 3 to 50; using the built-in 8.999",
             "tuning.json: floor_tile must be a number from 4 to 500; using the built-in 24",
         }, read.Problems);
     }
@@ -189,22 +189,22 @@ public sealed class TuningTests : IDisposable
     [Fact]
     public void CanopySpeed_WithTheBuiltIns_CrossesTheFloorsAngleFromTheEye()
     {
-        // The floor 7.6 m below the eye and the canopy 8.4 m above it.
-        Assert.Equal(6f * 8.4f / 7.6f, Tuning.BuiltIn.CanopySpeed, 1e-3f);
+        // The floor 10.599 m below the eye and the canopy 8.4 m above it.
+        Assert.Equal(10.676f * 8.4f / 10.599f * 0.995f, Tuning.BuiltIn.CanopySpeed, 1e-3f);
     }
 
     [Fact]
     public void CanopySpeed_IsScaled()
     {
         Assert.Equal(0f, (Tuning.BuiltIn with { CanopySpeedScale = 0f }).CanopySpeed);
-        Assert.Equal(2f * Tuning.BuiltIn.CanopySpeed, (Tuning.BuiltIn with { CanopySpeedScale = 2f }).CanopySpeed, 1e-3f);
+        Assert.Equal(2f * (Tuning.BuiltIn with { CanopySpeedScale = 1f }).CanopySpeed, (Tuning.BuiltIn with { CanopySpeedScale = 2f }).CanopySpeed, 1e-3f);
     }
 
     [Fact]
     public void Describe_NamesEverySettingAsTheFileDoes()
     {
         Assert.Equal(
-            "floor_depth 6, canopy_height 10, flight_speed 6, canopy_speed_scale 1, floor_tile 24, canopy_tile 48, seat_forward 0, seat_height 0, dragon_scale 1",
+            "floor_depth 8.999, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997",
             Tuning.BuiltIn.Describe());
     }
 
