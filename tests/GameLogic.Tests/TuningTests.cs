@@ -208,6 +208,104 @@ public sealed class TuningTests : IDisposable
             Tuning.BuiltIn.Describe());
     }
 
+    // ------------------------------------------------------------ writing and saving
+
+    [Fact]
+    public void Write_ReadsBackAsTheSameValuesWithNoProblems()
+    {
+        var tuning = new Tuning(7.1234567f, 99.99999f, 0.1f, 1.9999999f, 4.0000005f, 123.45678f, -1.2E-05f, 2.9999998f, 0.33333334f);
+
+        TuningRead read = Tuning.Parse(tuning.Write());
+
+        Assert.Equal(tuning, read.Tuning);
+        Assert.Empty(read.Problems);
+    }
+
+    [Fact]
+    public void Write_RangeEndsReadBackWithNoProblems()
+    {
+        foreach (Tuning.Setting setting in Tuning.Settings)
+        {
+            foreach (double end in new[] { setting.Min, setting.Max })
+            {
+                Tuning tuning = setting.Set(Tuning.BuiltIn, (float)end);
+
+                TuningRead read = Tuning.Parse(tuning.Write());
+
+                Assert.Equal(tuning, read.Tuning);
+                Assert.Empty(read.Problems);
+            }
+        }
+    }
+
+    [Fact]
+    public void Write_ManyValuesReadBackExactly()
+    {
+        var random = new Random(21);
+        for (int i = 0; i < 2000; i++)
+        {
+            var tuning = new Tuning(
+                3 + (47 * random.NextSingle()), 4 + (96 * random.NextSingle()), 30 * random.NextSingle(),
+                2 * random.NextSingle(), 4 + (496 * random.NextSingle()), 8 + (492 * random.NextSingle()),
+                (40 * random.NextSingle()) - 20, (6 * random.NextSingle()) - 3, 0.1f + (4.9f * random.NextSingle()));
+
+            TuningRead read = Tuning.Parse(tuning.Write());
+
+            Assert.Empty(read.Problems);
+            Assert.Equal(tuning, read.Tuning);
+        }
+    }
+
+    [Fact]
+    public void Write_OfTheBuiltInsIsTheExampleFile()
+    {
+        Assert.Equal(File.ReadAllText(FindExample()).ReplaceLineEndings("\n"), Tuning.BuiltIn.Write());
+    }
+
+    [Fact]
+    public void Save_ReplacesTheFileWithTheFullText()
+    {
+        Write("""{ "flight_speed": 8, "not_a_setting": 1 }""");
+        Tuning tuning = Tuning.BuiltIn with { SeatHeight = 0.5f };
+
+        Assert.Null(tuning.Save(_folder));
+
+        Assert.Equal(tuning.Write(), File.ReadAllText(Path.Combine(_folder, Tuning.FileName)));
+        Assert.Equal(tuning, Tuning.Load(_folder).Tuning);
+        Assert.Equal(new[] { Tuning.FileName }, Directory.GetFiles(_folder).Select(Path.GetFileName));
+    }
+
+    [Fact]
+    public void Save_WhenTheWriteFails_KeepsTheOldFileAndGivesTheReason()
+    {
+        Write("""{ "flight_speed": 8 }""");
+        Directory.CreateDirectory(Path.Combine(_folder, Tuning.FileName + ".tmp"));
+
+        string? reason = Tuning.BuiltIn.Save(_folder);
+
+        Assert.False(string.IsNullOrEmpty(reason));
+        Assert.DoesNotContain('\n', reason);
+        Assert.False(reason.EndsWith('.'));
+        Assert.Equal("""{ "flight_speed": 8 }""", File.ReadAllText(Path.Combine(_folder, Tuning.FileName)));
+    }
+
+    [Fact]
+    public void Save_WhenTheMoveFails_GivesTheReasonAndLeavesNoTemporaryFile()
+    {
+        Directory.CreateDirectory(Path.Combine(_folder, Tuning.FileName));
+
+        string? reason = Tuning.BuiltIn.Save(_folder);
+
+        Assert.False(string.IsNullOrEmpty(reason));
+        Assert.Empty(Directory.GetFiles(_folder));
+    }
+
+    [Fact]
+    public void Save_WhenTheFolderIsGone_GivesTheReason()
+    {
+        Assert.False(string.IsNullOrEmpty(Tuning.BuiltIn.Save(Path.Combine(_folder, "gone"))));
+    }
+
     // ------------------------------------------------------------ the example file
 
     [Fact]

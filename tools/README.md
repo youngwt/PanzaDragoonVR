@@ -202,7 +202,7 @@ With a filter, each C# project runs it, so the one with no matching test says so
 
 The Python tests cover the scripts in `tools/`, at present the manifest writer, the test model writer, the shared asset-rule cases and `plane_probe.py`'s unpacker. They use `unittest` from the standard library and work in temporary folders.
 
-`tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, its check of a model file (`game/Logic/GlbCheck.cs`), the development and release mode decision and the deletion of the disc image (`game/Logic/ExtractionMode.cs`), with a case for each: development mode, release mode on a first launch, a folder already extracted from the same disc by this extractor or by another version of it, or from a different disc, a failed extraction or one that wrote nothing (the image kept), the generator the game passes held to the library's, no disc, a deletion failing and a hand-written manifest; the tuning file (`game/Logic/Tuning.cs`: the built-in values, each setting read, out of range or of the wrong type, and `tools/tuning.example.json` matching the built-ins), the planes' scroll (`game/Logic/PlaneScroll.cs`) and the launch report board (`game/Logic/LaunchReport.cs`). That project compiles those files itself and does not reference Godot; it references the decoding library for the tests only, so they can check the game's strings against the library's, and `game/Logic/` itself uses neither. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
+`tests/GameLogic.Tests/` covers the game's logic that needs no engine types, which lives in `game/Logic/`. They include the game's own reading of the manifest, its check of a model file (`game/Logic/GlbCheck.cs`), the development and release mode decision and the deletion of the disc image (`game/Logic/ExtractionMode.cs`), with a case for each: development mode, release mode on a first launch, a folder already extracted from the same disc by this extractor or by another version of it, or from a different disc, a failed extraction or one that wrote nothing (the image kept), the generator the game passes held to the library's, no disc, a deletion failing and a hand-written manifest; the tuning file (`game/Logic/Tuning.cs`: the built-in values, each setting read, out of range or of the wrong type, `tools/tuning.example.json` matching the built-ins, the file written reading back the same and a failed save keeping the old file), the development mode's tuning list (`game/Logic/TuningMenu.cs`), the planes' scroll (`game/Logic/PlaneScroll.cs`) and the launch report board (`game/Logic/LaunchReport.cs`). That project compiles those files itself and does not reference Godot; it references the decoding library for the tests only, so they can check the game's strings against the library's, and `game/Logic/` itself uses neither. The first run downloads xUnit from NuGet into `~/.nuget`. Build output goes to `bin/` and `obj/` inside each test project, both git-ignored.
 
 `tests/Decoding.Tests/` covers the decoding library, `lib/PdzDecoding/` (see [Extracting from your own disc](#extracting-from-your-own-disc)): reading a cue sheet and the ISO9660 file system, finding and numbering the textures in a `.MDB`, decoding modes 1 and 5, finding `EPISODE3.PRG`'s colour upload tables and decoding modes 4 and 0 from them, unpacking and drawing the floor and canopy (the probe's hand-built streams, the literal pool, flipped pattern names, and a notice for no pool, too few maps or a bad stream), the dragon forms' geometry (`DragonsTests`: ten forms listed as models, a seat per form, a form's file or the table missing, malformed geometry, a texture that cannot be decoded, a flat polygon, three corners, matrix order, flips, the axes and the origin), the PNG writer, the model writer (`GlbWriter`: one part, parts, all four drawing modes, flips, a triangle, a second atlas, bad models, the atlas's border and pixels, UVs, the sampler, the materials, no `uri`, accessor bounds and the same bytes written twice), and extraction as a whole, with a case for each behaviour (disc present, no disc, a bad image, a repeated record, transparency; the nine Episode 3 files, mode 5, a file missing, none present, a file with no textures; two colour tables, one, none, a bad pair, a colour code no pair filled, and modes 1 and 5 unchanged; the staging folder: none left behind, progress by disc file, the previous extraction kept while writing and replaced after, a failure part way, a leftover staging folder, and the disc file named in a disc file's error; the list of a disc image's own files, which release mode deletes, and a `.cue` that names an `.iso` beside it counted as one image). Every disc image, `.MDB` and `.CGB` it uses is built by the tests in a temporary folder; nothing comes from the disc.
 
@@ -328,7 +328,7 @@ tools/push-assets.sh --clear my-assets      # the same, emptying the headset's f
 tools/push-assets.sh --clear                # only empty it: the game runs on placeholders (also with a folder holding no files)
 ```
 
-`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the device scripts (`build-quest.sh`, `push-assets.sh`, `push-tuning.sh` and `compare-headset.sh`) share the app's package name and its folder on the headset, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
+`push-assets.sh` runs `write_manifest.py --check` on the folder first and copies nothing if it reports a problem. It copies the folder's contents, not the folder itself, so `my-assets/manifest.json` lands at `files/manifest.json`. Without `--clear`, files already on the headset stay; the game ignores any the new manifest does not list. The copy goes as a `tar` stream through `adb exec-in`, since `adb push` runs on the host from inside the Flatpak sandbox and the host cannot see the sandbox's `/tmp`. Like `build-quest.sh`, it runs `adb` on the host when inside the sandbox; the device scripts (`build-quest.sh`, `push-assets.sh`, `push-tuning.sh`, `pull-tuning.sh` and `compare-headset.sh`) share the app's package name and its folder on the headset, that `adb` call and finding the connected headset through `quest-adb.sh`, which they source and which is not run on its own.
 
 The app is not restarted. Start it again to see the change, with `tools/build-quest.sh` or from the headset's library.
 
@@ -359,7 +359,22 @@ The asset contract's "Tuning" section is the full definition. To try new values:
 
 To go back to the built-ins, run `tools/push-tuning.sh --remove`, or push `tools/tuning.example.json` itself.
 
-`push-tuning.sh` checks that the file is JSON and copies it through `adb exec-in` as `push-assets.sh` does. Nothing can be changed from inside the headset. On a desktop run, put `tuning.json` in the `PDZ_ASSETS` folder.
+`push-tuning.sh` checks that the file is JSON and copies it through `adb exec-in` as `push-assets.sh` does. On a desktop run, put `tuning.json` in the `PDZ_ASSETS` folder.
+
+#### Changing the values in the headset
+
+In development mode (an empty `development` file at the top of the asset folder; see the asset contract's "Development and release modes", and remember it extracts on every launch) a list of all nine settings can be shown above the left controller. Without the marker there is no list, and nothing on the controllers does anything. All the controls are on the right controller:
+
+| Control | Does |
+|---------|------|
+| B | shows or hides the list; it starts hidden, and while it is hidden only B does anything |
+| Stick pushed up or down | picks the setting above or below, once a push, wrapping at the ends; let the stick come back to the middle for the next |
+| Stick held right or left | raises or lowers the picked setting, faster the further it is pushed, stopping at the range's ends; the scene follows at once |
+| A | saves every value as `tuning.json`, replacing the whole file (a field that is not a setting is dropped); the list says `saved`, or `not saved:` and why, in which case the old file stays |
+
+Only A writes the file: a change not saved is gone when the app stops. An edit survives the re-read of the folder after extraction, and extraction leaves a saved `tuning.json` alone, but `push-assets.sh --clear` removes it, as it does a pushed one.
+
+To keep a saved file on the PC, run `tools/pull-tuning.sh my-tuning.json`. It fails if the headset has no `tuning.json`, copies it byte for byte through `adb exec-out` and replaces `my-tuning.json` only after a full copy.
 
 The game logs what it uses at launch, for example:
 
@@ -389,6 +404,9 @@ flatpak-spawn --host "$ANDROID_HOME/platform-tools/adb" logcat -d | grep PDZ-ASS
 | `supplied: <ids>; placeholders: <ids>` or `no asset was supplied: running on placeholders (...)` | The summary, last. |
 | `tuning (...): floor_depth <n>, ...` | The tuning the scene uses; see [Tuning the scene](#tuning-the-scene). |
 | `tuning.json: <problem>` | A problem with the tuning file; that setting, or every setting when the file cannot be read, keeps its built-in value. A warning. |
+| `development mode: B on the right controller shows the tuning list` | The list is available; see [Changing the values in the headset](#changing-the-values-in-the-headset). |
+| `tuning.json: saved from the tuning list: floor_depth <n>, ...` | A pressed: the file now holds these values. |
+| `tuning.json: not saved from the tuning list (<reason>); the old file stays` | A pressed, but the file could not be written. A warning. |
 
 An ID the manifest does not list gets its placeholder with no warning: that is the normal state before an image is supplied.
 

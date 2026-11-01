@@ -334,7 +334,9 @@ A tuning problem alone puts the board up, as an asset problem does; with other p
 
 ## Tuning
 
-The floor's depth, the canopy's height, how fast they scroll, how much of each one copy of its image covers and the player's seat on the dragon and its size belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change is seen when the app is started again. It is never changed in the headset.
+The floor's depth, the canopy's height, how fast they scroll, how much of each one copy of its image covers and the player's seat on the dragon and its size belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change to the file from outside is seen when the app is started again.
+
+In development mode only (see Development and release modes), the file can also change in the headset. A list of every setting, hidden until asked for and shown above the left controller, changes the values live with the right controller, each within its range, and saves on the press of A. A save replaces `tuning.json` with every setting, written so it reads back as the same values under the rules below; if it fails, the old file stays. Nothing else writes the file, extraction leaves it alone, and `tools/pull-tuning.sh` copies it to the PC. In release mode there is no list. The spec's no-HUD rule is unaffected: the list is on the controller, and for development only.
 
 `tuning.json` is one JSON object. Every field is optional and every value a number; the example holds the built-in values:
 
@@ -374,6 +376,6 @@ Ranges include their ends, and are narrow enough that each allowed value gives a
 
 ## Not in the contract
 
-- **Tuning values in the manifest.** Floor depth, canopy height and scroll speed belong to the game. They are set in `tuning.json` (see Tuning), which the manifest does not list and `format` does not cover; they are never changed in the headset.
+- **Tuning values in the manifest.** Floor depth, canopy height and scroll speed belong to the game. They are set in `tuning.json` (see Tuning), which the manifest does not list and `format` does not cover; only development mode's tuning list changes them in the headset (see Tuning).
 - **Copyrighted files in the repository or the app.** Nothing the tool writes is committed or packed into the APK. The built-in placeholders are the author's own work.
 - **How the game reaches the folder from Godot.** Story 1.4 settles that; the contract fixes only the location.

@@ -6,7 +6,8 @@
 #   tools/push-tuning.sh --remove    remove tuning.json from the headset; the game uses its built-in values
 #
 # The file is checked to be JSON first; the game checks each setting at launch and puts any problem on
-# the board. The app is not restarted; start it again to see the change.
+# the board. The app is not restarted; start it again to see the change. To copy a file saved in the
+# headset back to the PC, see pull-tuning.sh.
 #
 # Exit status: 0 pushed (or removed), 1 something failed; one line on stderr says what.
 

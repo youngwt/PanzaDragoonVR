@@ -16,7 +16,8 @@ namespace PanzaDragoonVR;
 /// The floor and canopy scroll past as though the player were flying forwards, placed and paced by the
 /// asset folder's <c>tuning.json</c> or the built-in values.
 /// This file holds the scene and its assets; the other jobs are in the <c>Main.*.cs</c> files beside it:
-/// extraction, the board, the OpenXR session, the refresh rate, the scroll and the tuning.
+/// extraction, the board, the OpenXR session, the refresh rate, the scroll, the tuning and the development
+/// mode's tuning list.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -40,6 +41,7 @@ public partial class Main : Node3D
             ShowProgress(_extraction.Board);
         }
 
+        StartTuningMenu();
         _openXr = StartOpenXr();
         if (_openXr == null)
         {
@@ -52,8 +54,8 @@ public partial class Main : Node3D
     }
 
     /// <summary>
-    /// Places the board and the dragon's seat until the head is tracked, watches extraction while it runs and scrolls the
-    /// floor and canopy.
+    /// Places the board and the dragon's seat until the head is tracked, watches extraction while it runs, drives the
+    /// development mode's tuning list and scrolls the floor and canopy.
     /// </summary>
     public override void _Process(double delta)
     {
@@ -63,6 +65,7 @@ public partial class Main : Node3D
         }
 
         WatchExtraction();
+        DriveTuningMenu(delta);
         Scroll(delta);
     }
 
@@ -212,11 +215,17 @@ public partial class Main : Node3D
     /// <summary>Gives a flat plane a tiling image that needs no light, and returns its material for the scroll.</summary>
     private ShaderMaterial Dress(MeshInstance3D plane, Texture2D image, float tileMetres)
     {
-        Vector2 size = ((PlaneMesh)plane.Mesh).Size;
         var material = new ShaderMaterial { Shader = _tiling };
         material.SetShaderParameter("image", image);
-        material.SetShaderParameter("tiles", new Vector2(size.X / tileMetres, size.Y / tileMetres));
+        SetTiles(material, plane, tileMetres);
         plane.MaterialOverride = material;
         return material;
+    }
+
+    /// <summary>Sets how many copies of the image a plane shows, one for each <paramref name="tileMetres"/> of it.</summary>
+    private static void SetTiles(ShaderMaterial? material, MeshInstance3D plane, float tileMetres)
+    {
+        Vector2 size = ((PlaneMesh)plane.Mesh).Size;
+        material?.SetShaderParameter("tiles", new Vector2(size.X / tileMetres, size.Y / tileMetres));
     }
 }

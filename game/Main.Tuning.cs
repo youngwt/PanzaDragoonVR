@@ -10,6 +10,8 @@ namespace PanzaDragoonVR;
 /// The scene's tuning job: reads <c>tuning.json</c> from the asset folder once, at launch, and places the
 /// floor and canopy planes and the dragon's seat from it. Its problems join the launch report each time it is built, so they
 /// survive the board's rebuild after extraction. A change to the file is seen when the app is started again.
+/// In development mode the tuning list changes <see cref="_tuning"/> live and saves the file (<c>Main.TuningMenu.cs</c>); because
+/// the file is read only once, its edits survive that rebuild too.
 /// </summary>
 public partial class Main
 {
