@@ -36,7 +36,7 @@ These describe what the code does today. Follow them in new code. The exceptions
 
 ### The decoding library (`lib/PdzDecoding/`)
 
-- All Saturn-format knowledge lives here: disc images, file systems, `.MDB`/`.CGB` textures, PNG writing. The game (`game/DiscExtraction.cs`) and the PC command (`tools/pdz-extract/`) only call it. It uses no Godot types.
+- All Saturn-format knowledge lives here: disc images, file systems, `.MDB`/`.CGB` textures and geometry, PNG and `.glb` writing. The game (`game/DiscExtraction.cs`) and the PC command (`tools/pdz-extract/`) only call it. It uses no Godot types.
 - It targets `net9.0` (the APK) and `net10.0`. The game references it as a project.
 - A disc image or disc file it cannot read throws `DecodingException`, whose message is one line with no full stop, so callers can put it after `<tool>: error: ` or a `PDZ-ASSETS` tag.
 - Its output must be byte-for-byte the same on the PC and the headset. Do not use .NET's compressors for files it writes: they differ between runtimes (the PNG writer stores its data uncompressed for this reason).

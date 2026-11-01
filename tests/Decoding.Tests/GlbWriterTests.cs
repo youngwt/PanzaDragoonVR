@@ -591,27 +591,44 @@ public sealed class GlbWriterTests
     public void Write_SampleEqualsTheRecordedFile(string sample)
     {
         byte[] written = GlbWriter.Write(Sample(sample));
+        ExportForTheValidator(sample, written);
+        (string name, byte[] recorded) = AsRecorded(sample, written);
+        if (Environment.GetEnvironmentVariable("PDZ_RECORD_EXPECTED") == "1")
+        {
+            Record(name, recorded);
+            return;
+        }
 
-        // tools/validate-gltf.sh sets this to have the samples written for the validator.
+        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "models", name)), recorded);
+    }
+
+    /// <summary>tools/validate-gltf.sh sets <c>PDZ_GLB_SAMPLES</c> to have the samples written for the validator.</summary>
+    private static void ExportForTheValidator(string sample, byte[] written)
+    {
         if (Environment.GetEnvironmentVariable("PDZ_GLB_SAMPLES") is { Length: > 0 } samples)
         {
             Directory.CreateDirectory(samples);
             File.WriteAllBytes(Path.Combine(samples, sample + ".glb"), written);
         }
+    }
 
-        // A sample with a full 2048 x 2048 atlas is 16 MB of stored PNG, too large to commit, so only its SHA-256 is recorded.
+    /// <summary>
+    /// The expected file's name and bytes. A sample with a full 2048 x 2048 atlas is 16 MB of stored PNG, too
+    /// large to commit, so only its SHA-256 is recorded.
+    /// </summary>
+    private static (string Name, byte[] Recorded) AsRecorded(string sample, byte[] written)
+    {
         bool whole = written.Length <= RecordedWholeBytes;
         string name = sample + (whole ? ".glb" : ".glb.sha256");
         byte[] recorded = whole ? written : Encoding.ASCII.GetBytes(Convert.ToHexString(SHA256.HashData(written)).ToLowerInvariant() + "\n");
-        if (Environment.GetEnvironmentVariable("PDZ_RECORD_EXPECTED") == "1")
-        {
-            string folder = Path.Combine(SourceFolder(), "expected", "models");
-            Directory.CreateDirectory(folder);
-            File.WriteAllBytes(Path.Combine(folder, name), recorded);
-            return;
-        }
+        return (name, recorded);
+    }
 
-        Assert.Equal(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "expected", "models", name)), recorded);
+    private static void Record(string name, byte[] recorded)
+    {
+        string folder = Path.Combine(SourceFolder(), "expected", "models");
+        Directory.CreateDirectory(folder);
+        File.WriteAllBytes(Path.Combine(folder, name), recorded);
     }
 
     /// <summary>The largest sample recorded as a whole file; a larger one is recorded as its SHA-256.</summary>

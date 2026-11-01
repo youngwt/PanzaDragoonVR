@@ -76,3 +76,9 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-the-player-rides-the-chosen-dragon-in-the-headset-plan.md`
   summary: `tools/README.md`'s sample `pdz-extract` output still holds counts and an offset measured from the author's disc.
   evidence: `AGENTS.md` keeps values measured from the disc out of git, in notes as well as code; the lines predate this story, and history would still hold them.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-refactor-sweep-plan.md`
+  summary: The item about `tools/README.md`'s sample `pdz-extract` output holding values measured from the author's disc is closed; the samples now use placeholders.
+  evidence: The refactor sweep (ticket 8 of the riding the dragon epic), 2026-11-01. History still holds the old values, and the plan leaves history alone.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-refactor-sweep-plan.md`
+  summary: Values measured from the disc remain in tracked text outside the sweep's locations: comments in `lib/PdzDecoding/ColourBanks.cs` and `Planes.cs`, literals in `DragonsTests.cs` and `PlanesTests.cs`, and tables in `zwei-disc-formats.md` and older planning documents.
+  evidence: `AGENTS.md` keeps such values out of git; the sweep could not change test assertions, and history would still hold them. Which offsets count as "where to look" needs the author's reading.

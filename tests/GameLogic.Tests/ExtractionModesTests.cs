@@ -309,7 +309,7 @@ public sealed class ExtractionModesTests : IDisposable
     public void Generator_TheGamePassesIsTheLibrarys()
     {
         // The game's call, as written in game/DiscExtraction.cs: the library's generator is what it passes.
-        string game = File.ReadAllText(Path.Combine(RepositoryRoot(), "game", "DiscExtraction.cs"));
+        string game = File.ReadAllText(Path.Combine(Repository.Root(), "game", "DiscExtraction.cs"));
         Assert.Contains("ExtractionModes.Decide(mode, ExtractionModes.LoadOrigin(assetFolder), disc, generator: Manifest.Generator)", game);
         // The tests' current generator is the library's, so the cases above are the ones the game meets.
         Assert.Equal(PdzDecoding.Manifest.Generator, Current);
@@ -322,19 +322,5 @@ public sealed class ExtractionModesTests : IDisposable
             new PdzDecoding.SaturnHeader("SEGA SEGASATURN", "SEGA ENTERPRISES", "GS-9049", "V1.001", "19960101", ""), Array.Empty<PdzDecoding.ManifestEntry>());
 
         Assert.False(ExtractionModes.Decide(ExtractionMode.Release, ExtractionModes.ParseOrigin(written), Japanese, PdzDecoding.Manifest.Generator).Extract);
-    }
-
-    /// <summary>The repository's root: the nearest folder above the test's output that holds <c>game/DiscExtraction.cs</c>.</summary>
-    private static string RepositoryRoot()
-    {
-        for (DirectoryInfo? d = new(AppContext.BaseDirectory); d != null; d = d.Parent)
-        {
-            if (File.Exists(Path.Combine(d.FullName, "game", "DiscExtraction.cs")))
-            {
-                return d.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("the repository's root was not found above " + AppContext.BaseDirectory);
     }
 }

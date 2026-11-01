@@ -19,8 +19,6 @@ namespace PdzDecoding.Tests;
 /// </summary>
 public sealed class DragonsTests : IDisposable
 {
-    private static readonly Seat NoSeat = new(0, 0, 0);
-
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "pdz-dragons-" + Guid.NewGuid().ToString("N"));
 
     public DragonsTests() => Directory.CreateDirectory(_folder);
@@ -211,7 +209,7 @@ public sealed class DragonsTests : IDisposable
         int root = Dragons.BodyRoot(mdb);
         BinaryPrimitives.WriteUInt32BigEndian(mdb.AsSpan(root), Load + (uint)mdb.Length - 8);
 
-        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", NoSeat));
+        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", default));
 
         Assert.Contains("mesh pointer", e.Message);
     }
@@ -223,7 +221,7 @@ public sealed class DragonsTests : IDisposable
         int mesh = (int)(BinaryPrimitives.ReadUInt32BigEndian(mdb.AsSpan(Dragons.BodyRoot(mdb))) - Load);
         BinaryPrimitives.WriteUInt32BigEndian(mdb.AsSpan(mesh + 4), 0xFFFFFF00); // A vertex count larger than the file.
 
-        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", NoSeat));
+        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", default));
 
         Assert.Contains("vertex list pointer", e.Message);
     }
@@ -235,7 +233,7 @@ public sealed class DragonsTests : IDisposable
         uint child = BinaryPrimitives.ReadUInt32BigEndian(mdb.AsSpan(Dragons.BodyRoot(mdb) + 4));
         BinaryPrimitives.WriteUInt32BigEndian(mdb.AsSpan((int)(child - Load) + 8), child); // The child is its own sibling.
 
-        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", NoSeat));
+        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", default));
 
         Assert.EndsWith("is reached twice", e.Message);
     }
@@ -246,7 +244,7 @@ public sealed class DragonsTests : IDisposable
         byte[] mdb = Mdb(new TestNode(Move(0, 0, 0), SquareMesh()));
         BinaryPrimitives.WriteUInt32BigEndian(mdb.AsSpan(Dragons.BodyRoot(mdb)), Load + (uint)mdb.Length - 40); // A last mesh too near the end.
 
-        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", NoSeat));
+        var e = Assert.Throws<DecodingException>(() => Dragons.Decode(mdb, Cgb(), "form01", default));
 
         Assert.EndsWith("run off the end of the file", e.Message);
     }

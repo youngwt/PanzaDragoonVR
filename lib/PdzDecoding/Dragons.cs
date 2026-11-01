@@ -23,8 +23,8 @@ public readonly record struct ExtractedModel(string Id, string Path);
 public sealed record DragonSources(int Forms, int SeatTable, int GreyPolygons)
 {
     /// <summary>
-    /// One line, with no full stop: <c>10 dragon forms, seats from 0x54840 of 1ST_READ.PRG</c>, followed
-    /// by <c>, 3 polygons drawn flat grey</c> when any are.
+    /// One line, with no full stop: <c>&lt;n&gt; dragon forms, seats from 0x... of 1ST_READ.PRG</c>, followed
+    /// by <c>, &lt;n&gt; polygons drawn flat grey</c> when any are.
     /// </summary>
     public string Describe() => string.Create(CultureInfo.InvariantCulture,
         $"{Forms} dragon forms, seats from 0x{SeatTable:X} of {Dragons.SeatFile}") +
@@ -56,11 +56,14 @@ public static class Dragons
     /// <summary>The form the player rides, by its number from 1: the author's choice for the demo.</summary>
     public const int RideForm = 9;
 
+    /// <summary>The folder inside the output folder that the dragon forms go in.</summary>
+    internal const string ModelFolder = "models";
+
     /// <summary>The asset ID of the form the player rides.</summary>
     public const string RideId = "dragon.ride";
 
     /// <summary>Where the form the player rides goes in the asset folder.</summary>
-    public const string RidePath = "models/dragon_ride.glb";
+    public const string RidePath = ModelFolder + "/dragon_ride.glb";
 
     /// <summary>The disc file holding the seat table.</summary>
     public const string SeatFile = "1ST_READ.PRG";
@@ -80,6 +83,7 @@ public static class Dragons
     /// <summary>For each index the game's tables use, the place of its form in <see cref="FormFiles"/>: A, I, B, F, C, D, H, E, G, J.</summary>
     public static readonly IReadOnlyList<int> GameOrder = new[] { 0, 8, 1, 5, 2, 3, 7, 4, 6, 9 };
 
+    private const int SeatSize = 12;
     private const int NodeSize = 12;
     private const int MatrixSize = 48;
     private const int MeshHeaderSize = 32;
@@ -87,10 +91,10 @@ public static class Dragons
     private const int PolygonSize = 16;
 
     /// <summary>The asset ID of a form, by its number from 1: <c>dragon.form01</c>.</summary>
-    public static string FormId(int number) => string.Create(CultureInfo.InvariantCulture, $"dragon.form{number:D2}");
+    private static string FormId(int number) => string.Create(CultureInfo.InvariantCulture, $"dragon.form{number:D2}");
 
     /// <summary>Where a form goes in the asset folder, by its number from 1: <c>models/dragon_form01.glb</c>.</summary>
-    public static string FormPath(int number) => string.Create(CultureInfo.InvariantCulture, $"models/dragon_form{number:D2}.glb");
+    public static string FormPath(int number) => string.Create(CultureInfo.InvariantCulture, $"{ModelFolder}/dragon_form{number:D2}.glb");
 
     /// <summary>
     /// Every form of the disc as a <c>.glb</c>, and the ridden one again as <see cref="RideId"/>, or null and a one-line notice, with no full stop, saying why
@@ -137,7 +141,7 @@ public static class Dragons
             {
                 reading = FormFiles[i];
                 int number = i + 1;
-                DecodedDragon dragon = Decode(files[i].Mdb, files[i].Cgb, FormId(number).Split('.')[1], seats[i]);
+                DecodedDragon dragon = Decode(files[i].Mdb, files[i].Cgb, RootName(FormId(number)), seats[i]);
                 grey += dragon.GreyPolygons;
                 written.Add((new ExtractedModel(FormId(number), FormPath(number)), GlbWriter.Write(dragon.Model)));
             }
@@ -145,7 +149,7 @@ public static class Dragons
             // Decoded again for its own root name, as the asset contract's naming rule says.
             int forms = written.Count;
             reading = FormFiles[RideForm - 1];
-            Model ride = Decode(files[RideForm - 1].Mdb, files[RideForm - 1].Cgb, RideId.Split('.')[1], seats[RideForm - 1]).Model;
+            Model ride = Decode(files[RideForm - 1].Mdb, files[RideForm - 1].Cgb, RootName(RideId), seats[RideForm - 1]).Model;
             written.Add((new ExtractedModel(RideId, RidePath), GlbWriter.Write(ride)));
             return (new DragonModels(new DragonSources(forms, table, grey), written), null);
         }
@@ -154,6 +158,9 @@ public static class Dragons
             return (null, $"{reading}: {e.Message}");
         }
     }
+
+    /// <summary>A model's root name, from its asset ID: what follows the prefix, <c>form01</c> of <c>dragon.form01</c>.</summary>
+    private static string RootName(string id) => id.Split('.')[1];
 
     /// <summary>
     /// The seat table in <paramref name="firstRead"/>: the bytes of <paramref name="roots"/> (the body root
@@ -177,7 +184,7 @@ public static class Dragons
         }
 
         int table = match + SeatTableGap;
-        if (table + GameOrder.Count * 12L > firstRead.Length)
+        if (table + GameOrder.Count * (long)SeatSize > firstRead.Length)
         {
             throw new DecodingException("the seat table would run off the end of the file");
         }
@@ -185,7 +192,7 @@ public static class Dragons
         var seats = new Seat[GameOrder.Count];
         for (int i = 0; i < GameOrder.Count; i++)
         {
-            ReadOnlySpan<byte> entry = firstRead.AsSpan(table + i * 12, 12);
+            ReadOnlySpan<byte> entry = firstRead.AsSpan(table + i * SeatSize, SeatSize);
             seats[GameOrder[i]] = new Seat(BinaryPrimitives.ReadInt32BigEndian(entry), BinaryPrimitives.ReadInt32BigEndian(entry[4..]), BinaryPrimitives.ReadInt32BigEndian(entry[8..]));
         }
 

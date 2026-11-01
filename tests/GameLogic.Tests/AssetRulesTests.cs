@@ -109,18 +109,6 @@ public sealed class AssetRulesTests
         }
     }
 
-    /// <summary>The cases folder, found by walking up from the test build's folder to the repository.</summary>
-    private static string FindCases()
-    {
-        for (DirectoryInfo? here = new(AppContext.BaseDirectory); here != null; here = here.Parent)
-        {
-            string candidate = Path.Combine(here.FullName, "tests", "fixtures", "asset-rules");
-            if (Directory.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        throw new DirectoryNotFoundException($"tests/fixtures/asset-rules was not found above {AppContext.BaseDirectory}");
-    }
+    /// <summary>The cases folder.</summary>
+    private static string FindCases() => Path.Combine(Repository.Root(), "tests", "fixtures", "asset-rules");
 }

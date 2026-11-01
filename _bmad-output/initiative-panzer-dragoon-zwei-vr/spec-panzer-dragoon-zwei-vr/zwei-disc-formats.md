@@ -28,15 +28,15 @@ What is known about the disc as of 2026-10-30 (first written 2026-10-06), worked
 - `.CGB` is raw VDP1 pixel data with no header.
 - The paired `.MDB` holds, per polygon, four big-endian words in VDP1 command order: CMDPMOD, CMDCOLR, CMDSRCA, CMDSIZE.
 - Width is `(CMDSIZE >> 8) * 8`. Height is `CMDSIZE & 0xFF`.
-- CMDSRCA and CMDCOLR are VRAM addresses divided by 8. The address each `.CGB` loads at is not in the file; `tools/cgb_textures.py` infers it from the records (0x49000 for `E03B0N0`, 0x20000 for `E03CMN`).
-- 9,020 textures across all 77 pairs:
+- CMDSRCA and CMDCOLR are VRAM addresses divided by 8. The address each `.CGB` loads at is not in the file; `tools/cgb_textures.py` infers it from the records, and it differs from file to file.
+- The textures across all the pairs:
 
-| Colour mode | Count | State |
-|-------------|-------|-------|
-| 1: 16 colours through a lookup table | 4,873 | Decoded in colour. The 32-byte RGB555 table is inside the `.CGB`. By eye on `E03B0N0`, `E03BOSS`, `DRA01A` |
-| 4: 256 colours | 4,033 | Palette is in VDP2 colour RAM, filled from `EPISODE3.PRG` for Episode 3 (see Palettes). Coloured by eye on `E03CMN` and `E03END`; the extractor colours them from the 0xE23C table (ticket 2.6) |
-| 0: 16 colours from a colour bank | 100 records found by the scan, not all real | Lead: same colour RAM as mode 4. In Episode 3 the clear case is `E03BOSS`'s shadows (colour code 0x400, colour RAM bank 4: one dark colour); most other mode 0 records do not fit their `.CGB` and are likely false |
-| 5 | 13 | Not handled |
+| Colour mode | State |
+|-------------|-------|
+| 1: 16 colours through a lookup table | Decoded in colour. The 32-byte RGB555 table is inside the `.CGB`. By eye on `E03B0N0`, `E03BOSS`, `DRA01A` |
+| 4: 256 colours | Palette is in VDP2 colour RAM, filled from `EPISODE3.PRG` for Episode 3 (see Palettes). Coloured by eye on `E03CMN` and `E03END`; the extractor colours them from the table it finds (ticket 2.6) |
+| 0: 16 colours from a colour bank | Records found by the scan, not all real. Lead: same colour RAM as mode 4. In Episode 3 the clear case is `E03BOSS`'s shadows (one dark colour); most other mode 0 records do not fit their `.CGB` and are likely false |
+| 5 | Not handled |
 
 - `.MDB` geometry: see Models.
 
@@ -169,7 +169,7 @@ So one Episode 3 `.MDB` does not have the dragon's layout: it has the same tree 
 
 ### On the PAL disc
 
-Confirmed: 131 of the 132 `DRA*`, `COMMON*` and `E03*` files are byte for byte the same on MK-81022 V1.000, including every `.MDB`, `.CGB`, `.MTB` and `.GRB`. Only `COMMON.DAT` differs.
+Confirmed: the `DRA*`, `COMMON*` and `E03*` files are byte for byte the same on MK-81022 V1.000, including every `.MDB`, `.CGB`, `.MTB` and `.GRB`. Only `COMMON.DAT` differs.
 
 ### Not known
 

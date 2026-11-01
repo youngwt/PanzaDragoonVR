@@ -53,6 +53,12 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
     /// <summary>How many disc files had at least one PNG written.</summary>
     public int DiscFilesWritten => DiscFiles.Count(f => f.Files.Count > 0);
 
+    /// <summary>How many files the manifest lists: every texture PNG, the floor and canopy and every model.</summary>
+    public int AssetCount => Files.Count + PlaneFiles.Count + ModelFiles.Count;
+
+    /// <summary>Whether any texture, plane or model was written, and so a manifest.</summary>
+    public bool WroteAnything => AssetCount > 0;
+
     /// <summary>Textures numbered but not written, in all files and modes.</summary>
     public int Skipped => DiscFiles.Sum(f => f.Skipped);
 
@@ -79,8 +85,8 @@ public sealed record ExtractionResult(SaturnHeader Source, IReadOnlyList<DiscFil
     /// colour table modes 0 and 4 were coloured from or why there is none, the textures left out by
     /// mode, the floor and canopy's sources or why there are none, the dragons or why there are none,
     /// and the files missing or with no textures, for example
-    /// <c>E03CMN 125, E03B0N0 28; colour table at 0xE23C of EPISODE3.PRG (table 2 of 2), 5 blocks; floor and canopy from EPISODE3.PRG: cells at 0x3FDAC, maps at 0x52608 and 0x5287C, colours at 0x52C44 and 0x53244; 10 dragon forms, seats from 0x54840 of 1ST_READ.PRG; missing: E03END (no E03END.CGB)</c>
-    /// or <c>E03CMN 8; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 1, mode 4 116; no floor and canopy: the disc has no EPISODE3.PRG; no dragons: the disc has no DRA01A.MDB</c>.
+    /// <c>E03CMN &lt;n&gt;, E03B0N0 &lt;n&gt;; colour table at 0x... of EPISODE3.PRG (table &lt;i&gt; of &lt;n&gt;), &lt;n&gt; blocks; floor and canopy from EPISODE3.PRG: cells at 0x..., maps at 0x... and 0x..., colours at 0x... and 0x...; &lt;n&gt; dragon forms, seats from 0x... of 1ST_READ.PRG; missing: E03END (no E03END.CGB)</c>
+    /// or <c>E03CMN &lt;n&gt;; no colours for modes 0 and 4: the disc has no EPISODE3.PRG; left out: mode 0 &lt;n&gt;, mode 4 &lt;n&gt;; no floor and canopy: the disc has no EPISODE3.PRG; no dragons: the disc has no DRA01A.MDB</c>.
     /// </summary>
     public string Details()
     {
@@ -159,9 +165,6 @@ public static class Extraction
 
     /// <summary>The folder inside the output folder that the disc files' folders go in.</summary>
     private const string ImageFolder = "images/e03";
-
-    /// <summary>The folder inside the output folder that the dragon forms go in.</summary>
-    private const string ModelFolder = "models";
 
     /// <summary>Where the floor (<see cref="Planes.FloorId"/>) goes in the asset folder.</summary>
     public const string FloorPath = ImageFolder + "/floor.png";
@@ -302,7 +305,7 @@ public static class Extraction
 
             if (dragons != null)
             {
-                Directory.CreateDirectory(Path.Combine(staging, ModelFolder));
+                Directory.CreateDirectory(Path.Combine(staging, Dragons.ModelFolder));
                 foreach ((ExtractedModel file, byte[] glb) in dragons.Files)
                 {
                     File.WriteAllBytes(Path.Combine(staging, file.Path), glb);
@@ -337,7 +340,7 @@ public static class Extraction
 
             if (dragons != null)
             {
-                Directory.CreateDirectory(Path.Combine(outputFolder, ModelFolder));
+                Directory.CreateDirectory(Path.Combine(outputFolder, Dragons.ModelFolder));
                 foreach ((ExtractedModel file, _) in dragons.Files)
                 {
                     File.Move(Path.Combine(staging, file.Path), Path.Combine(outputFolder, file.Path), overwrite: true);

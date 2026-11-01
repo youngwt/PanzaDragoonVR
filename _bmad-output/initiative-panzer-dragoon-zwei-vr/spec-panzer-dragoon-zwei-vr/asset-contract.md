@@ -378,4 +378,4 @@ Ranges include their ends, and are narrow enough that each allowed value gives a
 
 - **Tuning values in the manifest.** Floor depth, canopy height and scroll speed belong to the game. They are set in `tuning.json` (see Tuning), which the manifest does not list and `format` does not cover; only development mode's tuning list changes them in the headset (see Tuning).
 - **Copyrighted files in the repository or the app.** Nothing the tool writes is committed or packed into the APK. The built-in placeholders are the author's own work.
-- **How the game reaches the folder from Godot.** Story 1.4 settles that; the contract fixes only the location.
+- **How the game reaches the folder from Godot.** Story 1.4 settled that, in `game/AssetFolder.cs`; the contract fixes only the location.

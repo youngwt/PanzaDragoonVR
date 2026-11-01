@@ -19,5 +19,5 @@ public static class AssetIds
     public const string E03Flyer = "e03.flyer";
 
     /// <summary>The dragon the player rides; its placeholder is the grey dragon built in <see cref="RiddenDragon"/>.</summary>
-    public const string DragonRide = "dragon.ride";
+    public const string DragonRide = Dragons.RideId;
 }

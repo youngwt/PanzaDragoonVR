@@ -8,11 +8,11 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// The scene's board job: the launch report board, what goes on it, and standing it in front of the head.
-/// The dragon's seat is put below the head at the same moments, so <see cref="PlaceBoard"/> does that too.
+/// The dragon's seat is put below the head at the same moments, so <see cref="PlaceBoardAndSeat"/> does that too.
 /// </summary>
 public partial class Main
 {
-    private bool _boardPlaced;
+    private bool _boardAndSeatPlaced;
     private LaunchReport _report = LaunchReport.Nothing;
 
     private LaunchReportPanel Board => GetNode<LaunchReportPanel>("LaunchReport");
@@ -33,14 +33,14 @@ public partial class Main
         }
     }
 
-    private void OnPoseRecentered() => _boardPlaced = false;
+    private void OnPoseRecentered() => _boardAndSeatPlaced = false;
 
     /// <summary>
     /// Stands the launch report board in front of where the head faces and puts the dragon's seat below the
     /// head, once the headset tracks it: the head pose is not tracked on the first frames, so this is tried
     /// each frame until it is.
     /// </summary>
-    private void PlaceBoard()
+    private void PlaceBoardAndSeat()
     {
         if (XRServer.GetTracker("head") is not XRPositionalTracker head || head.GetPose("default") is not XRPose pose || !pose.HasTrackingData)
         {
@@ -55,9 +55,9 @@ public partial class Main
         }
 
         Board.GlobalTransform = new Transform3D(new Basis(Vector3.Up, place.Yaw), new Vector3(place.X, place.Y, place.Z));
-        _boardPlaced = true;
+        _boardAndSeatPlaced = true;
         GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} board placed in front of the head at ({place.X:0.00}, {place.Y:0.00}, {place.Z:0.00})"));
-        var dragon = GetNode<RiddenDragon>("Dragon");
+        RiddenDragon dragon = Dragon;
         dragon.SitUnder(camera.Origin.X, camera.Origin.Z);
         GD.Print(string.Create(CultureInfo.InvariantCulture, $"{AssetFolder.LogTag} dragon's seat placed from the head at ({dragon.GlobalPosition.X:0.00}, {dragon.GlobalPosition.Z:0.00})"));
     }

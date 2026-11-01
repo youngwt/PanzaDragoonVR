@@ -38,8 +38,7 @@ public partial class Main
         }
         catch (Exception e)
         {
-            read = new TuningRead(Tuning.BuiltIn,
-                new[] { $"{Tuning.FileName}: cannot be read: {DiscExtraction.Reason(e)}; using the built-in values" }, Found: true);
+            read = Tuning.CannotBeRead(DiscExtraction.Reason(e));
         }
 
         _tuning = read.Tuning;
@@ -54,10 +53,10 @@ public partial class Main
     }
 
     /// <summary>Puts the floor plane <see cref="Tuning.FloorDepth"/> below the play area's floor and the canopy plane <see cref="Tuning.CanopyHeight"/> above it, and adjusts the dragon's seat.</summary>
-    private void PlacePlanes()
+    private void PlacePlanesAndSeat()
     {
-        GetNode<Node3D>("Ground").Position = new Vector3(0, -_tuning.FloorDepth, 0);
-        GetNode<Node3D>("Sky").Position = new Vector3(0, _tuning.CanopyHeight, 0);
-        GetNode<RiddenDragon>("Dragon").Adjust(_tuning.SeatForward, _tuning.SeatHeight, _tuning.DragonScale);
+        Ground.Position = new Vector3(0, -_tuning.FloorDepth, 0);
+        Sky.Position = new Vector3(0, _tuning.CanopyHeight, 0);
+        Dragon.Adjust(_tuning.SeatForward, _tuning.SeatHeight, _tuning.DragonScale);
     }
 }

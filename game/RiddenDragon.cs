@@ -21,6 +21,9 @@ public partial class RiddenDragon : Node3D
     /// <summary>A paler grey, so the head, and so the front, can be told from the tail at a glance.</summary>
     private static readonly Color HeadGrey = new(0.82f, 0.82f, 0.82f);
 
+    /// <summary>The turn that points a model's front the way of flight. It lives here rather than in the scene, so the convention cannot be lost from the scene.</summary>
+    private static readonly Basis Facing = new(Vector3.Up, Mathf.Pi);
+
     private Node3D? _placeholder;
     private Node3D? _carried;
     private float _sceneHeight;
@@ -29,8 +32,7 @@ public partial class RiddenDragon : Node3D
 
     public override void _Ready()
     {
-        // The turn lives here rather than in the scene, so the convention cannot be lost from the scene.
-        Basis = new Basis(Vector3.Up, Mathf.Pi);
+        Basis = Facing;
         _sceneHeight = Position.Y;
         _placeholder = Placeholder();
         AddChild(_placeholder);
@@ -50,7 +52,7 @@ public partial class RiddenDragon : Node3D
     public void Adjust(float forward, float height, float scale)
     {
         _forward = forward;
-        Basis = new Basis(Vector3.Up, Mathf.Pi).Scaled(Vector3.One * scale);
+        Basis = Facing.Scaled(Vector3.One * scale);
         Position = new Vector3(Position.X, _sceneHeight - height, _headZ + forward);
     }
 

@@ -22,7 +22,7 @@ if (args.Length == 1 && args[0] is "-h" or "--help")
     Console.WriteLine("a colour upload table in EPISODE3.PRG; with none, they are left out and a notice says why.");
     Console.WriteLine($"It also writes the floor and canopy from EPISODE3.PRG as {Extraction.FloorPath} and");
     Console.WriteLine($"{Extraction.CanopyPath}; when they cannot be found or unpacked, a notice says why.");
-    Console.WriteLine("It writes the ten dragon forms as models/dragon_form01.glb to models/dragon_form10.glb,");
+    Console.WriteLine($"It writes the ten dragon forms as {Dragons.FormPath(1)} to {Dragons.FormPath(Dragons.FormFiles.Count)},");
     Console.WriteLine($"and form {Dragons.RideForm} again as {Dragons.RidePath};");
     Console.WriteLine("when any cannot be decoded or their seats cannot be found, none are written and a notice says why.");
     return 0;
@@ -53,7 +53,7 @@ try
         ? $"{Tool}: {result.PlaneLine()}"
         : $"{Tool}: {result.PlaneLine()}; the game keeps its placeholders for them");
     Console.WriteLine($"{Tool}: {result.DragonLine()}");
-    if (result.Files.Count == 0 && result.PlaneFiles.Count == 0 && result.ModelFiles.Count == 0)
+    if (!result.WroteAnything)
     {
         Console.WriteLine($"{Tool}: found no textures to write: nothing written");
     }
@@ -70,7 +70,7 @@ try
             Console.WriteLine($"{Tool}: wrote {result.DragonSources!.Forms} dragon forms as {result.ModelFiles[0].Path} to {result.ModelFiles[result.DragonSources.Forms - 1].Path}, and form {Dragons.RideForm} as {Dragons.RidePath}");
         }
 
-        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.Files.Count + result.PlaneFiles.Count + result.ModelFiles.Count} assets");
+        Console.WriteLine($"{Tool}: wrote {result.ManifestPath} listing {result.AssetCount} assets");
     }
 
     foreach (DiscFileResult file in result.DiscFiles)

@@ -64,9 +64,9 @@ public partial class Main
         if (step.TuningChanged)
         {
             _tuning = _tuningMenu.Tuning;
-            PlacePlanes();
-            SetTiles(_floorMaterial, GetNode<MeshInstance3D>("Ground"), _tuning.FloorTile);
-            SetTiles(_canopyMaterial, GetNode<MeshInstance3D>("Sky"), _tuning.CanopyTile);
+            PlacePlanesAndSeat();
+            SetTiles(_floorMaterial, Ground, _tuning.FloorTile);
+            SetTiles(_canopyMaterial, Sky, _tuning.CanopyTile);
         }
 
         if (step.SaveAsked)

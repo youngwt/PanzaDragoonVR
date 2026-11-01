@@ -26,6 +26,12 @@ public partial class Main : Node3D
     private string? _folder;
     private bool _located;
 
+    private MeshInstance3D Ground => GetNode<MeshInstance3D>("Ground");
+
+    private MeshInstance3D Sky => GetNode<MeshInstance3D>("Sky");
+
+    private RiddenDragon Dragon => GetNode<RiddenDragon>("Dragon");
+
     public override void _Ready()
     {
         _readout = GetNode<FrameRateReadout>("XROrigin3D/XRCamera3D/FrameRateReadout");
@@ -59,9 +65,9 @@ public partial class Main : Node3D
     /// </summary>
     public override void _Process(double delta)
     {
-        if (_openXr != null && !_boardPlaced)
+        if (_openXr != null && !_boardAndSeatPlaced)
         {
-            PlaceBoard();
+            PlaceBoardAndSeat();
         }
 
         WatchExtraction();
@@ -81,43 +87,36 @@ public partial class Main : Node3D
         // The report is in the log already.
         OnBoard("the launch report", () => Board.Display(report));
 
-        PlacePlanes();
-        _floorMaterial = Dress(GetNode<MeshInstance3D>("Ground"), floor ?? PlaceholderTextures.Ground(), _tuning.FloorTile);
-        _canopyMaterial = Dress(GetNode<MeshInstance3D>("Sky"), canopy ?? PlaceholderTextures.Sky(), _tuning.CanopyTile);
+        PlacePlanesAndSeat();
+        _floorMaterial = Dress(Ground, floor ?? PlaceholderTextures.Ground(), _tuning.FloorTile);
+        _canopyMaterial = Dress(Sky, canopy ?? PlaceholderTextures.Sky(), _tuning.CanopyTile);
         // The new images carry on from where the old ones had scrolled to.
         ApplyScroll();
+        // Whichever fails, its placeholder shows instead and everything else keeps what it loaded.
         var cube = GetNode<FlyingCube>("Cube");
+        CarryOrPlaceholder(AssetIds.E03Flyer, "flown", flyer, cube.Carry);
+        CarryOrPlaceholder(AssetIds.DragonRide, "shown", dragon, Dragon.Carry);
+    }
+
+    /// <summary>
+    /// Hands <paramref name="model"/> to <paramref name="carry"/>. If that throws, it warns, naming
+    /// <paramref name="id"/> and what could not be done with the model, frees the model and carries the placeholder.
+    /// </summary>
+    private static void CarryOrPlaceholder(string id, string done, Node3D? model, Action<Node3D?> carry)
+    {
         try
         {
-            cube.Carry(flyer);
+            carry(model);
         }
         catch (Exception e)
         {
-            // The grey cube flies instead; the floor and canopy keep what they loaded.
-            GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.E03Flyer}: the model could not be flown ({DiscExtraction.Reason(e)}); using the placeholder");
-            if (flyer != null && IsInstanceValid(flyer))
+            GD.PushWarning($"{AssetFolder.LogTag} {id}: the model could not be {done} ({DiscExtraction.Reason(e)}); using the placeholder");
+            if (model != null && IsInstanceValid(model))
             {
-                flyer.Free();
+                model.Free();
             }
 
-            cube.Carry(null);
-        }
-
-        var ridden = GetNode<RiddenDragon>("Dragon");
-        try
-        {
-            ridden.Carry(dragon);
-        }
-        catch (Exception e)
-        {
-            // The grey dragon is ridden instead; everything else keeps what it loaded.
-            GD.PushWarning($"{AssetFolder.LogTag} {AssetIds.DragonRide}: the model could not be shown ({DiscExtraction.Reason(e)}); using the placeholder");
-            if (dragon != null && IsInstanceValid(dragon))
-            {
-                dragon.Free();
-            }
-
-            ridden.Carry(null);
+            carry(null);
         }
     }
 

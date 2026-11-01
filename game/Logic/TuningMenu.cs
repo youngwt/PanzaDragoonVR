@@ -22,10 +22,10 @@ public readonly record struct TuningMenuStep(bool TuningChanged, bool SaveAsked)
 public sealed class TuningMenu
 {
     /// <summary>How far the stick must be pushed up or down to move the pick.</summary>
-    public const float PickAt = 0.7f;
+    private const float PickAt = 0.7f;
 
     /// <summary>How near the middle the stick must come back for the next pick.</summary>
-    public const float RearmBelow = 0.3f;
+    private const float RearmBelow = 0.3f;
 
     /// <summary>How far the stick must be pushed left or right to change the value.</summary>
     public const float ChangeAbove = 0.2f;
@@ -63,7 +63,7 @@ public sealed class TuningMenu
         _aHeld = readings.A;
 
         Pick(readings.StickY);
-        FollowSidewaysHold(readings.StickX);
+        NoteChangeHeldWhileHidden(readings.StickX);
         if (!Shown)
         {
             return default;
@@ -120,7 +120,7 @@ public sealed class TuningMenu
     }
 
     /// <summary>Notes a sideways hold begun while hidden; it changes nothing until the stick comes back within <see cref="ChangeAbove"/>.</summary>
-    private void FollowSidewaysHold(float stickX)
+    private void NoteChangeHeldWhileHidden(float stickX)
     {
         if (Math.Abs(stickX) <= ChangeAbove)
         {

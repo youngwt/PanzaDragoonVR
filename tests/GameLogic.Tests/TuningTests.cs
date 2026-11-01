@@ -321,18 +321,6 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(9, json.RootElement.EnumerateObject().Select(field => field.Name).Distinct().Count());
     }
 
-    /// <summary><c>tools/tuning.example.json</c>, found by walking up from the test build's folder to the repository.</summary>
-    private static string FindExample()
-    {
-        for (DirectoryInfo? here = new(AppContext.BaseDirectory); here != null; here = here.Parent)
-        {
-            string candidate = Path.Combine(here.FullName, "tools", "tuning.example.json");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        throw new FileNotFoundException($"tools/tuning.example.json was not found above {AppContext.BaseDirectory}");
-    }
+    /// <summary><c>tools/tuning.example.json</c>.</summary>
+    private static string FindExample() => Path.Combine(Repository.Root(), "tools", "tuning.example.json");
 }

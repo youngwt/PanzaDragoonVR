@@ -130,13 +130,8 @@ public sealed record Tuning(
     /// <summary>Reads <c>tuning.json</c> from <paramref name="folder"/>; no folder or no file gives the built-ins and no problems.</summary>
     public static TuningRead Load(string? folder)
     {
-        if (folder == null)
-        {
-            return new TuningRead(BuiltIn, Array.Empty<string>(), Found: false);
-        }
-
-        string path = Path.Combine(folder, FileName);
-        if (!File.Exists(path))
+        string? path = folder == null ? null : Path.Combine(folder, FileName);
+        if (path == null || !File.Exists(path))
         {
             return new TuningRead(BuiltIn, Array.Empty<string>(), Found: false);
         }
@@ -208,7 +203,8 @@ public sealed record Tuning(
         }
     }
 
-    private static TuningRead CannotBeRead(string reason) =>
+    /// <summary>The built-ins and the one problem line of a file that cannot be read, for <paramref name="reason"/>.</summary>
+    public static TuningRead CannotBeRead(string reason) =>
         new(BuiltIn, new[] { $"{FileName}: cannot be read: {reason}; using the built-in values" }, Found: true);
 
     private static string Shown(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
