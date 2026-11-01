@@ -3,7 +3,7 @@ title: 'A debug menu for tweaking values in the headset'
 type: 'chore'
 ticket: '20'
 created: '2026-10-31'
-status: 'built'
+status: done
 baseline_revision: 'a5470f7fdf526879c976d9f15260e865cfc7e4c8'
 route: 'oneshot'
 route_source: 'auto'

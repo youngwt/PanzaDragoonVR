@@ -3,7 +3,7 @@ title: 'The author tweaks tuning values in the headset'
 type: 'feature'
 ticket: '21'
 created: '2026-11-01'
-status: 'built'
+status: done
 baseline_revision: '7408d7238ffabf709183c166360553719f5f4a69'
 route: 'full'
 route_source: 'auto'
