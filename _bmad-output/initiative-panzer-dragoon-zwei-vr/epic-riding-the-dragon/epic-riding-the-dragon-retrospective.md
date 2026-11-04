@@ -211,7 +211,7 @@ Proposed; the author decides what runs.
 
 ## Acceptance verdict
 
-**accepted-with-open-items** (criteria declared), as the machine verdict. The author has not yet decided.
+**accepted-with-open-items** (criteria declared). The machine verdict, confirmed by the author on 2026-11-04 (see Author's decisions).
 
 - **Done when 1:** met in the evidence. Extraction writes the ten forms and `dragon.ride` on both discs, with 0 validator errors, and identical on the PC and the headset in 4.7. The author opened the forms in F3D (plan 4.5, the author's line), and this retrospective's run confirms it on the PC.
 - **Done when 2:** met. Form 9 was chosen on 2026-10-30 (epic Notes).
@@ -221,7 +221,12 @@ Proposed; the author decides what runs.
 
 ## Open questions
 
-- Will the author accept the epic on the marks given, with A2 to follow, or hold it open until the headset look is recorded?
 - Which offsets in `zwei-disc-formats.md` and the code comments count as "where to look", and so may stay (A1)?
 - .NET 9's support ends on 2026-11-10. The decision of 2026-10-26 stands until Godot 4.8 is stable. Is there news of 4.8 that changes it?
 - Should the next work be the wing spike (backlog 18), or A3 and A4 first?
+
+## Author's decisions
+
+- 2026-11-04: the epic is accepted with open items and closed now; the headset look (A2) follows at the next headset session rather than holding the epic open.
+- 2026-11-04: A6 done: the previous retrospective's A4 notes are added to backlog 5, 7, 12 and 13, and R7 to backlog 19.
+- 2026-11-04: the order after this retrospective is A2 at the next headset session, then stories for A3 and A4, then backlog 18.

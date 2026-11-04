@@ -6,6 +6,7 @@ covers: [CAP-5, CAP-3]
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Riding the dragon
@@ -51,6 +52,7 @@ The dragon model and the player's seat on it. For CAP-3 this epic delivers model
 - Decision: the extraction always writes all ten dragon forms, on the PC and the headset (user, 2026-10-29).
 - Decision: story 6 (was backlog 8) goes to the build without `refine`; its criteria are written during the build (user, 2026-10-29).
 - Decision: the wing animation spike is backlog 18 (user, 2026-10-29).
+- Decision: epic closed (author, 2026-11-04), accepted with open items on the retrospective's evidence (`epic-riding-the-dragon-retrospective.md`). Done when 1 and 2 are met with records; Done when 3 and 4 were seen on the placeholder and on form 1, and on form 9 rest on the author's marks of 4.7 and 4.8. The look in the headset that names each item on form 9 after the sweep, with 90 Hz on the extracted assets, follows at the next headset session (the retrospective's A2).
 
 ## References
 
