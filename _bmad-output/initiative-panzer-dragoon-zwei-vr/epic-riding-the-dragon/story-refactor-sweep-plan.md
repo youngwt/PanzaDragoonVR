@@ -3,7 +3,7 @@ title: 'Refactor sweep'
 type: 'refactor'
 ticket: '8'
 created: '2026-11-01'
-status: 'built'
+status: done
 baseline_revision: 'f7a2f4555ea7bf98554e27b27a41c92a529c0461'
 route: 'full'
 route_source: 'auto'
@@ -91,6 +91,8 @@ Quick lens, one pass: 1 low patched; 2 rejected; 1 deferred (found by the implem
 - `tools/build-quest.sh`, then `tools/compare-headset.sh` -- expected: identical
 - `unzip -l game/build/PanzaDragoonVR.apk` -- expected: `PdzDecoding.dll` and no disc data
 - `git diff --cached --name-only` before commit -- expected: no game data
+
+Author, 2026-11-04: marked done. The install, `tools/compare-headset.sh` and the headset look were not run in this session.
 
 **Manual checks (if no CLI):**
 - In the headset, the third acceptance criterion, and the tuning list still works.
