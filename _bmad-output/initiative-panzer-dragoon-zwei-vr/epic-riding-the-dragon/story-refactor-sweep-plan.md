@@ -94,5 +94,7 @@ Quick lens, one pass: 1 low patched; 2 rejected; 1 deferred (found by the implem
 
 Author, 2026-11-04: marked done. The install, `tools/compare-headset.sh` and the headset look were not run in this session.
 
+Headset, later on 2026-11-04 (the retrospective's A2): the swept build installed; the APK holds `PdzDecoding.dll` and no disc data; development mode extracted the JP cue on launch, and `tools/compare-headset.sh` reported identical, the manifest included. The author, in the headset after a recentre, said "all good" to each item asked: wings either side, head in front, tail behind, steady over the scrolling forest, 90 Hz, no seam on the floor, the canopy's speed against the floor, and the tuning list working. The log's frame-rate line read 90 Hz on target, with 0.33% of frames slow over the session.
+
 **Manual checks (if no CLI):**
 - In the headset, the third acceptance criterion, and the tuning list still works.

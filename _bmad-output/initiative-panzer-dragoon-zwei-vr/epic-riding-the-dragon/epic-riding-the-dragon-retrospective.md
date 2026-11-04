@@ -181,7 +181,15 @@ Run for this retrospective on 2026-11-04, on the PC at `a0362e1`:
 - `pdz-extract` on the JP cue and the PAL ISO, into `extracted/retro4-JP` and `extracted/retro4-PAL`. Both exit 0, and each output is identical (`diff -r`) to 4.8's after-sweep run. Each writes the ten forms and `dragon.ride`, and `dragon_ride.glb` is byte-identical between the two discs.
 - `tools/validate-gltf.sh` on all 22 `.glb` files from both discs: 0 errors, 0 warnings.
 
-Not run: the headset, which was not connected (`adb devices` listed none). So the swept game code, the seat, the facing, the tuning list after the sweep and the frame rate with extracted assets were not exercised (F10, F11, F13).
+Not run when this retrospective was written: the headset, which was not connected (`adb devices` listed none). So the swept game code, the seat, the facing, the tuning list after the sweep and the frame rate with extracted assets were not exercised then (F10, F11, F13).
+
+Run later the same day, as A2, on the headset with 4.8's build (`a0362e1`):
+
+- `tools/build-quest.sh`: built, installed and launched. The APK holds `PdzDecoding.dll` and no disc data.
+- Development mode extracted the JP cue on launch. `tools/compare-headset.sh` reported identical, the manifest included. This is also the first check since the sweep that the library's .NET 9 build on the headset matches the PC's.
+- The headset's `tuning.json` held the built-ins exactly, so the look was at the built-ins.
+- The author, after a recentre, said "all good" to each item asked: the wings either side, the head in front, the tail behind, the dragon steady over the scrolling forest, the readout holding 90 Hz, no seam on the floor, the canopy's speed against the floor, and the tuning list working.
+- The log's frame-rate line read target 90, an average of 90, and 0.33% of frames slow over the session. The log shows the seat placed under the head after the recentre.
 
 ## Previous-retro follow-through
 
@@ -215,9 +223,9 @@ Proposed; the author decides what runs.
 
 - **Done when 1:** met in the evidence. Extraction writes the ten forms and `dragon.ride` on both discs, with 0 validator errors, and identical on the PC and the headset in 4.7. The author opened the forms in F3D (plan 4.5, the author's line), and this retrospective's run confirms it on the PC.
 - **Done when 2:** met. Form 9 was chosen on 2026-10-30 (epic Notes).
-- **Done when 3 and 4:** met on the placeholder in 4.1, and on form 1 in 4.6. For form 9 they rest on the author marking 4.7 done when asked for the four items (F10). After the sweep they were not checked again (F11). The author's marks are a human decision and count. But no recorded look names the wings, head, tail and steadiness on the ridden form.
+- **Done when 3 and 4:** met on the placeholder in 4.1, and on form 1 in 4.6. For form 9 they rest on the author marking 4.7 done when asked for the four items (F10). After the sweep they were not checked again (F11). The author's marks are a human decision and count. A2, on 2026-11-04 after the sweep, then recorded the look item by item on form 9 (see Behavior verification), so both now rest on a named record.
 - All eight tickets are done, so nothing forces a rejection. No finding blocks development mode, the only mode in use.
-- The open items are A2 (the headset look and 90 Hz), A3 (R1 to R3, release mode and the version) and A1 (disc values in git).
+- The open items are A3 (R1 to R3, release mode and the version), A4 (the seat's maths) and A1 (disc values in git). A2 is closed.
 
 ## Open questions
 
@@ -230,3 +238,4 @@ Proposed; the author decides what runs.
 - 2026-11-04: the epic is accepted with open items and closed now; the headset look (A2) follows at the next headset session rather than holding the epic open.
 - 2026-11-04: A6 done: the previous retrospective's A4 notes are added to backlog 5, 7, 12 and 13, and R7 to backlog 19.
 - 2026-11-04: the order after this retrospective is A2 at the next headset session, then stories for A3 and A4, then backlog 18.
+- 2026-11-04: A2 done. The author looked in the headset with the swept build and said "all good" to each item; recorded in Behavior verification and in the sweep's plan.
