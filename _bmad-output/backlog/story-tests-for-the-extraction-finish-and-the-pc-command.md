@@ -29,3 +29,6 @@ Verify: tests fail if the finish decision deletes after a failure, if `pdz-extra
 ## Notes
 
 - Source: carried out of the in-game extraction epic at its close (author, 2026-10-21); kept in the backlog.
+- Added from the forest floor and canopy retrospective (R4, F6, F7), carried by the riding the dragon retrospective (A6), 2026-11-04:
+  - two `Planes` branches have no test: a map that would go past the end of VRAM, and colours that run past the end of `EPISODE3.PRG` (both in `lib/PdzDecoding/Planes.cs`: the map's check in `FromProgram`, the colours' in `FindSources`);
+  - split `lib/PdzDecoding/Extraction.cs` and `tests/Decoding.Tests/ExtractionTests.cs` (over 1,200 lines) when this ticket edits them.

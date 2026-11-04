@@ -39,3 +39,4 @@ When a folder holding a symbolic link is pushed, or the copy fails on the headse
 
 - Source: carried out of the engine spike epic at its close (author, 2026-10-16); kept in the backlog for a possible backlog epic later.
 - Unverified: found by reading, not run.
+- Added from the forest floor and canopy retrospective (R5), carried by the riding the dragon retrospective (A6), 2026-11-04: the script's header and its `--clear` message do not say that `--clear` also deletes `tuning.json`, `disc/` and the `development` marker; only `tools/README.md` says so for `tuning.json`. Say it in both.

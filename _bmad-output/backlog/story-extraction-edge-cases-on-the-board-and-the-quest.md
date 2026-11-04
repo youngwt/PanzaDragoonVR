@@ -29,3 +29,4 @@ Verify: tests show each of the four cases fixed; `compare-headset.sh` reports id
 ## Notes
 
 - Source: carried out of the in-game extraction epic at its close (author, 2026-10-21); kept in the backlog.
+- Added from the forest floor and canopy retrospective (F6), carried by the riding the dragon retrospective (A6), 2026-11-04: split `lib/PdzDecoding/Extraction.cs` when this ticket edits it. It has grown past 450 lines, through epics 3 and 4.

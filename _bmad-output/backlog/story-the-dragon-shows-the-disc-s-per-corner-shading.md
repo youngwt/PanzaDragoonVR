@@ -32,3 +32,6 @@ Verify: in the headset the dragon's back is bright and its belly dark as the dis
 
 - Source: left out of the riding the dragon epic in its story 6; the author liked the unshaded dragons and chose to leave it (author, 2026-10-30).
 - Unknown: which episode's table the demo would use, and whether a form's table covers it in all episodes the demo needs.
+- Added from the riding the dragon retrospective (R7, A6), 2026-11-04, as this ticket reads the same polygon words. Neither gap is known to occur on the dragons, and both were found by reading:
+  - `Dragons.Painter.Paint` (`lib/PdzDecoding/Dragons.cs`) reads an untextured polygon's `CMDCOLR` as RGB555 without checking the bit that marks a colour-bank code;
+  - `Dragons.ModeOf` maps only two colour-calculation modes to `half`, so shadow, half-luminance and Gouraud polygons draw at full strength with no count. Gouraud is this ticket's subject.
