@@ -3,7 +3,7 @@ title: 'The seat is tested and placed on its own'
 type: 'refactor'
 ticket: ''
 created: '2026-11-08'
-status: 'built'
+status: 'done'
 baseline_revision: '46e3fad0716036f075aae272f706e40311595bba'
 route: 'full'
 route_source: 'auto'
@@ -108,3 +108,5 @@ Quick lens, one pass: low 4; 3 patched, 1 rejected.
 
 **Manual checks (if no CLI):**
 - The second and third acceptance criteria, by the author in the headset.
+
+Headset, 2026-11-08: `tools/build-quest.sh` installed and started; the APK holds `PdzDecoding.dll` and no disc data. The author looked after recentring and said "lgtm" to the three checks asked: the dragon as before, a recentre while looking down, and the list's three decimals with the seat settings moving the dragon. The log shows each recentre placing the seat, 90 Hz on target. Every recentre in the log also placed the board on the same frame: the head never looked close enough to straight down to give no board pose, so the seat placed without the board was not seen in use.
