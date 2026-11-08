@@ -3,7 +3,7 @@ title: "Extraction's dragons fail safely and a change in output needs a new vers
 type: 'bugfix'
 ticket: ''
 created: '2026-11-08'
-status: 'built'
+status: 'done'
 baseline_revision: 'c4bfa0378360b643abac772f00158d7c8a2767e2'
 route: 'full'
 route_source: 'auto'
