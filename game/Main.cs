@@ -60,12 +60,13 @@ public partial class Main : Node3D
     }
 
     /// <summary>
-    /// Places the board and the dragon's seat until the head is tracked, watches extraction while it runs, drives the
-    /// development mode's tuning list and scrolls the floor and canopy.
+    /// Tries each frame to place the board and the dragon's seat until both are placed, the board waiting while the
+    /// head looks straight up or down, watches extraction while it runs, drives the development mode's tuning list
+    /// and scrolls the floor and canopy.
     /// </summary>
     public override void _Process(double delta)
     {
-        if (_openXr != null && !_boardAndSeatPlaced)
+        if (_openXr != null && !(_boardPlaced && _seatPlaced))
         {
             PlaceBoardAndSeat();
         }

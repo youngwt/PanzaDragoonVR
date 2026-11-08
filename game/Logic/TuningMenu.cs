@@ -16,8 +16,9 @@ public readonly record struct TuningMenuStep(bool TuningChanged, bool SaveAsked)
 /// <summary>
 /// The development mode's list of tuning settings: B shows or hides it, the stick pushed up or down picks a
 /// setting, held left or right changes it, and A asks for a save. While it is hidden only B does anything.
-/// Presses and pushes begun while it is hidden do not act when it appears. Nothing here uses the engine, so
-/// it is tested on the PC; the game feeds it each frame's readings.
+/// Presses and pushes begun while it is hidden do not act when it appears, nor does an A pressed on the frame
+/// that shows it. Nothing here uses the engine, so it is tested on the PC; the game feeds it each frame's
+/// readings.
 /// </summary>
 public sealed class TuningMenu
 {
@@ -53,12 +54,14 @@ public sealed class TuningMenu
     /// <summary>Takes one frame's readings, <paramref name="delta"/> seconds after the last.</summary>
     public TuningMenuStep Step(TuningMenuReadings readings, double delta)
     {
+        bool pressedA = readings.A && !_aHeld;
         if (readings.B && !_bHeld)
         {
             Shown = !Shown;
+            // An A pressed with the B that shows the list was pressed while it was hidden: it saves nothing.
+            pressedA &= !Shown;
         }
 
-        bool pressedA = readings.A && !_aHeld;
         _bHeld = readings.B;
         _aHeld = readings.A;
 
@@ -78,7 +81,10 @@ public sealed class TuningMenu
         _note = reason == null ? "saved" : $"not saved: {reason}";
     }
 
-    /// <summary>The list's text: one line a setting, the picked one marked, then the controls and how the last save went.</summary>
+    /// <summary>
+    /// The list's text: one line a setting to three decimals, as the built-ins are given, the picked one marked,
+    /// then the controls and how the last save went.
+    /// </summary>
     public string Text()
     {
         var text = new StringBuilder();
@@ -87,7 +93,7 @@ public sealed class TuningMenu
             Tuning.Setting setting = Tuning.Settings[i];
             text.Append(i == Picked ? "> " : "  ")
                 .Append(setting.Name).Append("  ")
-                .Append(setting.Get(Tuning).ToString("0.00", CultureInfo.InvariantCulture))
+                .Append(setting.Get(Tuning).ToString("0.000", CultureInfo.InvariantCulture))
                 .Append('\n');
         }
 

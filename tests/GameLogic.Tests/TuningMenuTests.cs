@@ -169,6 +169,37 @@ public sealed class TuningMenuTests
     }
 
     [Fact]
+    public void AWithTheBThatShows_ShowsTheListAndSavesNothing()
+    {
+        var menu = new TuningMenu(Tuning.BuiltIn);
+
+        TuningMenuStep step = menu.Step(new TuningMenuReadings(0, 0, A: true, B: true), 0.1);
+
+        Assert.True(menu.Shown);
+        Assert.False(step.SaveAsked);
+    }
+
+    [Fact]
+    public void AOnALaterFrame_AfterTheShowingFrame_Saves()
+    {
+        var menu = new TuningMenu(Tuning.BuiltIn);
+        menu.Step(new TuningMenuReadings(0, 0, A: true, B: true), 0.1);
+
+        Assert.False(menu.Step(PressA, 0.1).SaveAsked);
+        menu.Step(Nothing, 0.1);
+        Assert.True(menu.Step(PressA, 0.1).SaveAsked);
+    }
+
+    [Fact]
+    public void AOnTheFrameAfterB_Saves()
+    {
+        var menu = new TuningMenu(Tuning.BuiltIn);
+        menu.Step(PressB, 0.1);
+
+        Assert.True(menu.Step(PressA, 0.1).SaveAsked);
+    }
+
+    [Fact]
     public void Save_GivesTheListItsOutcome_AndAChangeClearsIt()
     {
         TuningMenu menu = Shown();
@@ -235,9 +266,9 @@ public sealed class TuningMenuTests
 
         string[] lines = menu.Text().Split('\n');
 
-        Assert.Equal("  floor_depth  9.00", lines[0]);
-        Assert.Equal("> canopy_height  10.00", lines[1]);
-        Assert.Equal("  dragon_scale  1.00", lines[8]);
+        Assert.Equal("  floor_depth  8.999", lines[0]);
+        Assert.Equal("> canopy_height  10.000", lines[1]);
+        Assert.Equal("  dragon_scale  0.997", lines[8]);
         Assert.Equal(10, lines.Length);
     }
 }

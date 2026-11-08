@@ -1,5 +1,7 @@
 #nullable enable
+using System;
 using Godot;
+using PanzaDragoonVR.Logic;
 
 namespace PanzaDragoonVR;
 
@@ -9,7 +11,8 @@ namespace PanzaDragoonVR;
 /// Its origin is the seat: a model's origin is put there, as the asset contract's Models section says.
 /// The tuning file's offsets move the dragon from there the other way to the player, and its scale turns about the seat.
 /// Models face +Z, as glTF does, and the game flies towards -Z, so this node is turned 180 degrees about Y
-/// to point a model's front the way of flight.
+/// to point a model's front the way of flight. <see cref="SeatPlacement"/> works out the seat's position, facing
+/// and scale; this node applies them as its global transform and keeps no arithmetic of its own.
 /// Its own shapes are the grey placeholder dragon for <see cref="AssetIds.DragonRide"/>, built in the same
 /// model axes so that a hand-made model tests the same convention; a model the asset folder supplies sits
 /// at the seat in their place.
@@ -21,40 +24,27 @@ public partial class RiddenDragon : Node3D
     /// <summary>A paler grey, so the head, and so the front, can be told from the tail at a glance.</summary>
     private static readonly Color HeadGrey = new(0.82f, 0.82f, 0.82f);
 
-    /// <summary>The turn that points a model's front the way of flight. It lives here rather than in the scene, so the convention cannot be lost from the scene.</summary>
-    private static readonly Basis Facing = new(Vector3.Up, Mathf.Pi);
-
     private Node3D? _placeholder;
     private Node3D? _carried;
-    private float _sceneHeight;
-    private float _headZ;
-    private float _forward;
+    private SeatPlacement? _seat;
 
     public override void _Ready()
     {
-        Basis = Facing;
-        _sceneHeight = Position.Y;
+        Vector3 scene = GlobalPosition;
+        _seat = new SeatPlacement(scene.X, scene.Y, scene.Z);
+        Apply(_seat.Pose);
         _placeholder = Placeholder();
         AddChild(_placeholder);
     }
 
-    /// <summary>Puts the seat directly below a head at this world X and Z, with the forward offset; its height stays as it is.</summary>
-    public void SitUnder(float headX, float headZ)
-    {
-        _headZ = headZ;
-        GlobalPosition = new Vector3(headX, GlobalPosition.Y, headZ + _forward);
-    }
+    /// <summary>Puts the seat directly below a head at this world X and Z, with the tuning's offsets; its height stays as it is.</summary>
+    public void SitUnder(float headX, float headZ) => Apply(Seat.Under(headX, headZ));
 
     /// <summary>
     /// Moves the player <paramref name="forward"/> metres towards the head and <paramref name="height"/> metres
-    /// up the dragon, by moving the dragon the other way (the game flies towards -Z), and scales it about the seat.
+    /// up the dragon, by moving the dragon the other way, and scales it about the seat; see <see cref="SeatPlacement.Adjust"/>.
     /// </summary>
-    public void Adjust(float forward, float height, float scale)
-    {
-        _forward = forward;
-        Basis = Facing.Scaled(Vector3.One * scale);
-        Position = new Vector3(Position.X, _sceneHeight - height, _headZ + forward);
-    }
+    public void Adjust(float forward, float height, float scale) => Apply(Seat.Adjust(forward, height, scale));
 
     /// <summary>
     /// Shows <paramref name="model"/> at the seat in place of the placeholder dragon, which is no longer drawn;
@@ -77,6 +67,14 @@ public partial class RiddenDragon : Node3D
 
         AddChild(model);
         SetPlaceholderShown(false);
+    }
+
+    private SeatPlacement Seat => _seat ?? throw new InvalidOperationException("the dragon's seat is used before the dragon is ready");
+
+    /// <summary>The seat's pose as this node's global transform: the facing and scale about the seat, at the seat.</summary>
+    private void Apply(SeatPose pose)
+    {
+        GlobalTransform = new Transform3D(new Basis(Vector3.Up, pose.Yaw).Scaled(Vector3.One * pose.Scale), new Vector3(pose.X, pose.Y, pose.Z));
     }
 
     private void SetPlaceholderShown(bool shown)
