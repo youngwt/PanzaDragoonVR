@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -8,8 +9,8 @@ namespace PanzaDragoonVR.Logic.Tests;
 /// <summary>
 /// The progress board and the extraction failure lines, one or more tests per case the game words:
 /// disc present (progress by disc file), no disc (the launch report as before),
-/// a damaged image (cannot be read, or failed on a disc file) and a failure part way, as the asset
-/// contract's extraction rows word them.
+/// a damaged image (cannot be read, or failed on a disc file), a failure part way and a success that
+/// left out the floor and canopy or the dragons, as the asset contract's extraction rows word them.
 /// </summary>
 public sealed class ExtractionLinesTests
 {
@@ -117,5 +118,69 @@ public sealed class ExtractionLinesTests
         Assert.Equal(failed.Problems, report.Problems);
         Assert.Equal(report.AllLines.Count, 3 + 1 + failed.Details.Count + failed.Problems.Count);
         Assert.EndsWith("the full list is in the log under PDZ-ASSETS", report.ShownLines[^1]);
+    }
+
+    [Fact]
+    public void LeftOut_DragonsMissing_NamesTheDragonsAndTheNotice()
+    {
+        Assert.Equal(new[]
+        {
+            "The dragons were not extracted: the disc has no DRA05E.MDB. The dragon ridden is the placeholder; the rest was extracted.",
+        }, ExtractionLines.LeftOut(null, "the disc has no DRA05E.MDB"));
+    }
+
+    [Fact]
+    public void LeftOut_PlanesMissing_NamesTheFloorAndCanopyAndTheNotice()
+    {
+        Assert.Equal(new[]
+        {
+            "The floor and canopy were not extracted: the disc has no EPISODE3.PRG. They show their placeholders; the rest was extracted.",
+        }, ExtractionLines.LeftOut("the disc has no EPISODE3.PRG", null));
+    }
+
+    [Fact]
+    public void LeftOut_BothMissing_FloorAndCanopyFirst()
+    {
+        IReadOnlyList<string> lines = ExtractionLines.LeftOut("p", "d");
+
+        Assert.Equal(new[] { ExtractionLines.NoFloorAndCanopy("p"), ExtractionLines.NoDragons("d") }, lines);
+    }
+
+    [Fact]
+    public void LeftOut_AllWritten_NoLine()
+    {
+        Assert.Empty(ExtractionLines.LeftOut(null, null));
+    }
+
+    [Fact]
+    public void WithExtractionLeftOut_NoLines_IsTheReportAsItIs()
+    {
+        Assert.Same(LaunchReport.Nothing, LaunchReport.Nothing.WithExtractionLeftOut(Array.Empty<string>()));
+    }
+
+    [Fact]
+    public void WithExtractionLeftOut_NothingElseToSay_IsAProblemBoard()
+    {
+        LaunchReport report = LaunchReport.Nothing.WithExtractionLeftOut(ExtractionLines.LeftOut(null, "DRA03C: bad"));
+
+        Assert.Equal(LaunchReportKind.Problems, report.Kind);
+        Assert.Equal(new[]
+        {
+            "Part of the disc image was not extracted",
+            ExtractionLines.NoDragons("DRA03C: bad"),
+        }, report.ShownLines);
+    }
+
+    [Fact]
+    public void WithExtractionLeftOut_ManyFolderProblems_StillShowsTheLinesAndKeepsTheProblems()
+    {
+        LaunchReport failed = LaunchReport.Failed("/files", "one", Enumerable.Range(0, 10).Select(i => $"problem {i}"));
+
+        LaunchReport report = failed.WithExtractionLeftOut(ExtractionLines.LeftOut("p", "d"));
+
+        Assert.Equal(ExtractionLines.NoFloorAndCanopy("p"), report.ShownLines[1]);
+        Assert.Equal(ExtractionLines.NoDragons("d"), report.ShownLines[2]);
+        Assert.Equal(failed.Heading, report.ShownLines[3]);
+        Assert.Equal(failed.Problems, report.Problems);
     }
 }

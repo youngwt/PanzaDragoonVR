@@ -144,7 +144,7 @@ The extractor writes the ten dragon forms as `model` assets, one for each `DRA` 
 - Each holds the form's body tree only: no shadow, no extra wing frames, no rider. Each mesh-bearing node is one part, named `node` and its two-digit depth-first index (`node13`), with its origin at the translation of its matrices' product. The root node is named `form01` and so on.
 - Each model's origin is the seat: the rider's offset for that form, read from the table in `1ST_READ` on the disc in hand and subtracted before the conversion to glTF. The table is found by searching `1ST_READ` for the ten forms' body roots in the game's order, so it is found on any disc that holds it, not looked up by disc.
 - A polygon whose texture cannot be decoded from its `.CGB` alone is drawn in flat grey, and the count is in the extractor's line. A flat polygon takes its colour from CMDCOLR.
-- They are an addition, as the floor and canopy are, and all or nothing: a disc with a form's `.MDB` or `.CGB` missing, no table or malformed geometry writes no model and still has its other assets written, and the extractor gives a one-line notice, `no dragons: <reason>`. An earlier run's models stay in the folder, unlisted.
+- They are an addition, as the floor and canopy are, and all or nothing: a disc with a form's `.MDB` or `.CGB` missing, no table, malformed geometry or a model the writer rejects writes no model and still has its other assets written, and the extractor gives a one-line notice, `no dragons: <reason>`. An earlier run's models stay in the folder, unlisted.
 - The game asks only for `dragon.ride`, so as the table under What the game does at launch says, the others change nothing it shows. To look at one in the headset, list it under `dragon.ride` in a folder of your own.
 
 ### Paths
@@ -214,6 +214,7 @@ The game extracts the assets on the headset at launch, and the PC command does t
 
 - While extraction runs, the scene is shown on what the folder already holds, and a board in the world shows progress by disc file. When it finishes, the game reads the folder again.
 - A failed extraction is reported on the launch report board with the reason, and the game carries on with what the folder held, or placeholders.
+- A successful extraction that left out the floor and canopy or the dragons says so on the launch report board, a line for each with the extractor's notice, as the launch table's extraction rows say.
 
 ## Models
 
@@ -320,6 +321,8 @@ Extraction, when it runs, adds these:
 | More than one disc image in `disc/` | More than one disc image, with their names. Nothing is extracted. | What the folder already holds. |
 | The disc image cannot be read, or is not a Saturn disc | The disc image cannot be read, with the reason. | What the folder already holds. |
 | Extraction fails part way | Extraction failed, with the disc file and the reason. The previous contents are kept. | What the folder already holds. |
+| Extraction succeeds without the floor and canopy | The floor and canopy were not extracted, with the extractor's notice. Not a failure: in release mode the disc image is still deleted. | The new assets, with the placeholders for `e03.floor` and `e03.canopy`. |
+| Extraction succeeds without the dragons | The dragons were not extracted, with the extractor's notice. Not a failure: in release mode the disc image is still deleted. | The new assets, with the placeholder for `dragon.ride`. |
 
 Tuning adds these:
 

@@ -3,6 +3,8 @@ using System.Buffers.Binary;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -13,7 +15,7 @@ namespace PdzDecoding.Tests;
 
 /// <summary>
 /// The dragon forms' geometry, a test or more per row of the story's matrix (both discs, a form's file
-/// missing, no table, malformed geometry, a texture that cannot be decoded, a flat polygon, three corners),
+/// missing, no table, malformed geometry, a model the writer rejects, a texture that cannot be decoded, a flat polygon, three corners),
 /// then matrix order, flips, the axis conversion, the origin and the parts. Every <c>.MDB</c>, <c>.CGB</c>
 /// and <c>1ST_READ</c> is built here; nothing comes from the disc.
 /// </summary>
@@ -192,6 +194,25 @@ public sealed class DragonsTests : IDisposable
         Assert.EndsWith("has corner index 9 of a mesh with 4 vertices", result.DragonNotice);
         Assert.DoesNotContain('\n', result.DragonNotice!);
         Assert.Single(result.Files);
+    }
+
+    [Fact]
+    public void Write_WriterRejectsTheModel_ThrowsOneLineDecodingException()
+    {
+        var model = new Model("form01", new[] { new ModelPart("node00", Vector3.Zero, Array.Empty<ModelQuad>()) });
+
+        var e = Assert.Throws<DecodingException>(() => Dragons.Write(model));
+
+        Assert.Equal("the model cannot be written: part 'node00' has no quads", e.Message);
+        Assert.IsType<ArgumentException>(e.InnerException);
+    }
+
+    [Fact]
+    public void Write_ValidModel_IsTheWritersBytes()
+    {
+        Model model = Decode(Form(0)).Model;
+
+        Assert.Equal(GlbWriter.Write(model), Dragons.Write(model));
     }
 
     [Fact]
@@ -501,4 +522,58 @@ public sealed class DragonsTests : IDisposable
 
         Assert.Contains("\"kind\": \"model\",", Encoding.UTF8.GetString(written));
     }
+
+    // ------------------------------------------------------------ the recorded output and the version
+
+    /// <summary>
+    /// Everything extraction writes from a synthetic disc with textures, the floor and canopy, the ten forms
+    /// and the ride, as one SHA-256, recorded beside <see cref="Extraction.Version"/> in
+    /// <c>expected/extraction-output.sha256</c> as <c>&lt;version&gt; &lt;sha256&gt;</c>. Output that changes
+    /// while the version stays the same fails, because release mode trusts the version to say when to
+    /// extract again; a new version fails until it is recorded with <c>PDZ_RECORD_EXPECTED=1</c>.
+    /// </summary>
+    [Fact]
+    public void Run_WholeOutput_EqualsTheRecordedOutputForThisVersion()
+    {
+        string cue = WithForms(new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }
+            .With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb())
+            .With("EPISODE3.PRG", SyntheticPlanes.PlaneProgram())).WriteCue(_folder);
+        ExtractionResult result = Run(cue);
+        Assert.Equal(2, result.PlaneFiles.Count);
+        Assert.Equal(11, result.ModelFiles.Count);
+
+        string line = $"{Extraction.Version} {OutputHash(Path.Combine(_folder, "out"))}\n";
+        if (Environment.GetEnvironmentVariable("PDZ_RECORD_EXPECTED") == "1")
+        {
+            File.WriteAllText(Path.Combine(SourceFolder(), "expected", RecordedOutput), line);
+            return;
+        }
+
+        string[] recorded = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "expected", RecordedOutput)).Trim().Split(' ');
+        Assert.True(recorded[0] == Extraction.Version,
+            $"Extraction.Version is {Extraction.Version} and the output was recorded for {recorded[0]}: record again with PDZ_RECORD_EXPECTED=1");
+        Assert.True(recorded[1] == line.Trim().Split(' ')[1],
+            $"extraction's output changed: raise Extraction.Version and record again (recorded for {recorded[0]})");
+    }
+
+    private const string RecordedOutput = "extraction-output.sha256";
+
+    /// <summary>
+    /// One SHA-256 over every file under <paramref name="folder"/>, in ordinal order of their paths: of a
+    /// line per file, its own SHA-256, two spaces and its path with forward slashes, as <c>sha256sum</c> gives.
+    /// </summary>
+    private static string OutputHash(string folder)
+    {
+        var lines = new StringBuilder();
+        foreach (string path in Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(folder, f).Replace('\\', '/')).OrderBy(f => f, StringComparer.Ordinal))
+        {
+            lines.Append(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(folder, path)))).ToLowerInvariant())
+                .Append("  ").Append(path).Append('\n');
+        }
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(lines.ToString()))).ToLowerInvariant();
+    }
+
+    private static string SourceFolder([CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
 }

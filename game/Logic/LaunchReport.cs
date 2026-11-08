@@ -168,6 +168,32 @@ public sealed class LaunchReport
         return new LaunchReport(LaunchReportKind.Problems, NothingExtracted, details, Problems);
     }
 
+    /// <summary>The heading of a report that leads with the parts a successful extraction left out.</summary>
+    public const string PartlyExtracted = "Part of the disc image was not extracted";
+
+    /// <summary>
+    /// This report with the parts a successful extraction left out (see <see cref="ExtractionLines.LeftOut"/>)
+    /// at its head, as <see cref="WithExtractionProblem"/> puts a failure: the lines, then this report's
+    /// heading and details, then its problems. The lines are details, not problems, so they are always on
+    /// the board however many problems the folder has. With none, this report as it is.
+    /// </summary>
+    public LaunchReport WithExtractionLeftOut(IReadOnlyList<string> lines)
+    {
+        if (lines.Count == 0)
+        {
+            return this;
+        }
+
+        var details = new List<string>(lines);
+        if (Kind != LaunchReportKind.None)
+        {
+            details.Add(Heading);
+            details.AddRange(Details);
+        }
+
+        return new LaunchReport(LaunchReportKind.Problems, PartlyExtracted, details, Problems);
+    }
+
     /// <summary>
     /// This report with the tuning file's problems (see <see cref="Tuning"/>) ahead of its own, so the
     /// board names them however many problems the folder has. With none, this report as it is. A report

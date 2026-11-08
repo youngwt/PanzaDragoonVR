@@ -135,7 +135,7 @@ public static class ExtractionModes
 
     /// <summary>
     /// Whether the disc image is deleted once extraction has ended: in release mode, after a successful
-    /// extraction that wrote something (<paramref name="wroteAnything"/>: a texture or a plane); never
+    /// extraction that wrote something (<paramref name="wroteAnything"/>: a texture, a plane or a model); never
     /// after a failure, which keeps the image as it keeps the previous contents, nor after an extraction
     /// that wrote nothing (see <see cref="NothingWrittenLine"/>).
     /// </summary>

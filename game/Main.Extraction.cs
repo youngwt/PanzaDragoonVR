@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using Godot;
 using PanzaDragoonVR.Logic;
 
@@ -16,7 +17,7 @@ public partial class Main
     /// <summary>
     /// While extraction runs, logs its steps and keeps the board up to date; when it ends, reads the
     /// asset folder again and dresses the scene in what it now holds, with the launch report on the
-    /// board, led by the extraction problem when it failed.
+    /// board, led by the extraction problem when it failed, or by the parts it left out when it succeeded without them.
     /// </summary>
     private void WatchExtraction()
     {
@@ -39,12 +40,10 @@ public partial class Main
             }
 
             string? problem = _extraction.Problem;
+            IReadOnlyList<string> leftOut = _extraction.LeftOut;
             _extraction = null;
             (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, LaunchReport report) = LoadAssets();
-            if (problem != null)
-            {
-                report = report.WithExtractionProblem(problem);
-            }
+            report = problem != null ? report.WithExtractionProblem(problem) : report.WithExtractionLeftOut(leftOut);
 
             AssetFolder.LogReport(report);
             ShowAssets(floor, canopy, flyer, dragon, report);

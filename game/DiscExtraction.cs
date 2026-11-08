@@ -48,7 +48,7 @@ public sealed class DiscExtraction
         ? ExtractionLines.Progress(_image, Step(p.Stage), p.DiscFile, p.Number, p.Count)
         : ExtractionLines.Starting(_image);
 
-    /// <summary>Whether the background work has ended; <see cref="Problem"/> is then set.</summary>
+    /// <summary>Whether the background work has ended; <see cref="Problem"/> and <see cref="LeftOut"/> are then set.</summary>
     public bool IsFinished { get; private set; }
 
     /// <summary>
@@ -56,6 +56,13 @@ public sealed class DiscExtraction
     /// or null when it succeeded or had nothing to write.
     /// </summary>
     public string? Problem { get; private set; }
+
+    /// <summary>
+    /// Once finished, the launch report's lines for the parts a successful extraction left out, the floor
+    /// and canopy or the dragons (see <see cref="ExtractionLines.LeftOut"/>); empty when all was written,
+    /// or when extraction failed or wrote nothing. The disc image is still deleted in release mode.
+    /// </summary>
+    public IReadOnlyList<string> LeftOut { get; private set; } = Array.Empty<string>();
 
     /// <summary>
     /// Looks in the folder's <c>disc/</c> and, when it holds one disc image, decides by the folder's mode
@@ -192,7 +199,7 @@ public sealed class DiscExtraction
         }
     }
 
-    private static void Succeeded(ExtractionResult result, string seconds)
+    private void Succeeded(ExtractionResult result, string seconds)
     {
         if (!result.WroteAnything)
         {
@@ -204,6 +211,7 @@ public sealed class DiscExtraction
         GD.Print($"{AssetFolder.LogTag} extracted {result.Files.Count} textures from {result.DiscFilesWritten} disc files " +
             $"of {result.Source.Product} {result.Source.Version} into {result.Folder}, listed in {result.ManifestPath}, " +
             $"in {seconds} s ({result.Details()})");
+        LeftOut = ExtractionLines.LeftOut(result.PlaneNotice, result.DragonNotice);
     }
 
     /// <summary>The disc image's product and version from its Saturn header, or null when it cannot be read.</summary>

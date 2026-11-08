@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 
 namespace PanzaDragoonVR.Logic;
 
@@ -17,8 +18,9 @@ public enum ExtractionStep
 }
 
 /// <summary>
-/// The words of extraction in the headset and the log: the progress board shown while it runs, and the
-/// line the launch report gives when it fails, worded as the asset contract's extraction rows of
+/// The words of extraction in the headset and the log: the progress board shown while it runs, the
+/// line the launch report gives when it fails and the lines it gives when it succeeds without the
+/// floor and canopy or the dragons, worded as the asset contract's extraction rows of
 /// "What the game does at launch". Nothing here uses the engine or the decoding library, so it is tested on the PC.
 /// </summary>
 public static class ExtractionLines
@@ -87,4 +89,29 @@ public static class ExtractionLines
     /// </summary>
     public static string FailedMoving(string reason) =>
         $"Extraction failed while moving files into place: {reason}. Some new files may already be in place; the previous manifest is kept.";
+
+    /// <summary>
+    /// The floor and canopy were not extracted, with the library's one-line notice; the rest was, and the
+    /// two planes show their placeholders.
+    /// </summary>
+    public static string NoFloorAndCanopy(string notice) =>
+        $"The floor and canopy were not extracted: {notice}. They show their placeholders; the rest was extracted.";
+
+    /// <summary>
+    /// The dragons were not extracted, with the library's one-line notice; the rest was, and the dragon
+    /// ridden is the placeholder.
+    /// </summary>
+    public static string NoDragons(string notice) =>
+        $"The dragons were not extracted: {notice}. The dragon ridden is the placeholder; the rest was extracted.";
+
+    /// <summary>
+    /// After a successful extraction, the launch report's line for each part left out: the floor and
+    /// canopy (<paramref name="planeNotice"/>), then the dragons (<paramref name="dragonNotice"/>), each
+    /// with the library's notice. Empty when both notices are null, so all was written.
+    /// </summary>
+    public static IReadOnlyList<string> LeftOut(string? planeNotice, string? dragonNotice) => new[]
+    {
+        planeNotice == null ? null : NoFloorAndCanopy(planeNotice),
+        dragonNotice == null ? null : NoDragons(dragonNotice),
+    }.OfType<string>().ToList();
 }

@@ -98,7 +98,7 @@ public static class Dragons
 
     /// <summary>
     /// Every form of the disc as a <c>.glb</c>, and the ridden one again as <see cref="RideId"/>, or null and a one-line notice, with no full stop, saying why
-    /// there are none: a form's file or the seat table is missing, or some geometry is malformed. It is all
+    /// there are none: a form's file or the seat table is missing, some geometry is malformed or the writer rejects a model. It is all
     /// ten or none, and nothing here stops the rest of extraction.
     /// </summary>
     public static (DragonModels? Models, string? Notice) FromDisc(DiscImage disc)
@@ -136,6 +136,7 @@ public static class Dragons
             (int table, Seat[] seats) = FindSeats(disc.ReadFile(seatFile), roots);
 
             var written = new List<(ExtractedModel, byte[])>();
+            var models = new List<Model>();
             int grey = 0;
             for (int i = 0; i < files.Count; i++)
             {
@@ -143,19 +144,37 @@ public static class Dragons
                 int number = i + 1;
                 DecodedDragon dragon = Decode(files[i].Mdb, files[i].Cgb, RootName(FormId(number)), seats[i]);
                 grey += dragon.GreyPolygons;
-                written.Add((new ExtractedModel(FormId(number), FormPath(number)), GlbWriter.Write(dragon.Model)));
+                models.Add(dragon.Model);
+                written.Add((new ExtractedModel(FormId(number), FormPath(number)), Write(dragon.Model)));
             }
 
-            // Decoded again for its own root name, as the asset contract's naming rule says.
+            // The ridden form again, under its own root name, as the asset contract's naming rule says.
             int forms = written.Count;
             reading = FormFiles[RideForm - 1];
-            Model ride = Decode(files[RideForm - 1].Mdb, files[RideForm - 1].Cgb, RootName(RideId), seats[RideForm - 1]).Model;
-            written.Add((new ExtractedModel(RideId, RidePath), GlbWriter.Write(ride)));
+            written.Add((new ExtractedModel(RideId, RidePath), Write(models[RideForm - 1] with { Name = RootName(RideId) })));
             return (new DragonModels(new DragonSources(forms, table, grey), written), null);
         }
         catch (DecodingException e)
         {
             return (null, $"{reading}: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="model"/> as a <c>.glb</c>, through <see cref="GlbWriter.Write"/>. A model the writer
+    /// rejects, which a decoded form should never be, is a <see cref="DecodingException"/> with the writer's
+    /// reason on one line, so <see cref="FromDisc"/> turns it into its notice like any other.
+    /// </summary>
+    /// <exception cref="DecodingException">The writer or its atlas rejected the model.</exception>
+    public static byte[] Write(Model model)
+    {
+        try
+        {
+            return GlbWriter.Write(model);
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            throw new DecodingException("the model cannot be written: " + DecodingException.OneLine(e.Message), e);
         }
     }
 
