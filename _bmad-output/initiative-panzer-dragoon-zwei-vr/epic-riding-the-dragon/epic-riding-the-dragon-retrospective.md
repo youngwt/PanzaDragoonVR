@@ -239,3 +239,4 @@ Proposed; the author decides what runs.
 - 2026-11-04: A6 done: the previous retrospective's A4 notes are added to backlog 5, 7, 12 and 13, and R7 to backlog 19.
 - 2026-11-04: the order after this retrospective is A2 at the next headset session, then stories for A3 and A4, then backlog 18.
 - 2026-11-04: A2 done. The author looked in the headset with the swept build and said "all good" to each item; recorded in Behavior verification and in the sweep's plan.
+- 2026-11-09: A1 dropped. Anything that is not an image, mesh or sound may be in git, so simple values measured from the disc, such as offsets, may stay; `AGENTS.md`'s rule now says so. F2 is accepted on this.

@@ -82,3 +82,6 @@
 - source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-refactor-sweep-plan.md`
   summary: Values measured from the disc remain in tracked text outside the sweep's locations: comments in `lib/PdzDecoding/ColourBanks.cs` and `Planes.cs`, literals in `DragonsTests.cs` and `PlanesTests.cs`, and tables in `zwei-disc-formats.md` and older planning documents.
   evidence: `AGENTS.md` keeps such values out of git; the sweep could not change test assertions, and history would still hold them. Which offsets count as "where to look" needs the author's reading.
+- source_plan: `_bmad-output/initiative-panzer-dragoon-zwei-vr/epic-riding-the-dragon/story-refactor-sweep-plan.md`
+  summary: The item about values measured from the disc remaining in tracked text is closed; such values may stay.
+  evidence: The author, 2026-11-09: anything that is not an image, mesh or sound is fine in git, simple offsets included. `AGENTS.md`'s rule was changed to match, and the riding the dragon retrospective's A1 was dropped.

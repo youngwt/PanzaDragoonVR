@@ -8,7 +8,7 @@ This is a hard rule. Never commit the disc image, anything extracted or decoded 
 - Keep `rom/`, `extracted/` and `tools/mednafen/` git-ignored, and write decoded output only under `extracted/`. That includes `pdz-extract`'s output folder.
 - The APK must hold no disc data: the game extracts on the headset into its asset folder, which is outside the APK. After a build, `unzip -l game/build/PanzaDragoonVR.apk` should list `PdzDecoding.dll` and no disc data: no `.cue`, no track `.bin` from the disc (`assets/.godot/uid_cache.bin` is Godot's own and always there), and nothing under `disc/` or `images/e03/`.
 - Before any commit, check the staged file list for game data.
-- Values copied or measured from the disc stay out of git too, in notes as well as code: positions, colours, sizes, counts. A constant the game needs from the disc is read by the extractor, written to a config file in the asset folder and read at launch. Layouts, and where to look on the disc, are format notes and are fine.
+- What stays out is the disc's content: images, meshes and sound, as files or embedded in code, tests or notes. Simple values measured from the disc, such as offsets, sizes, counts and positions, are fine in code, tests and notes, as are layouts and where to look (author, 2026-11-09).
 - Tool source code, format notes, and test files the project generates itself (such as `tests/fixtures/asset-rules/`) are fine to commit.
 
 ## Conventions
