@@ -1,6 +1,6 @@
 # Zwei disc formats
 
-What is known about the disc as of 2026-10-30 (first written 2026-10-06), worked out from the image and one Episode 3 save state. "By eye" means confirmed only by looking at the output.
+What is known about the disc as of 2026-11-09 (first written 2026-10-06), worked out from the image and one Episode 3 save state. "By eye" means confirmed only by looking at the output.
 
 ## Disc
 
@@ -16,7 +16,7 @@ What is known about the disc as of 2026-10-30 (first written 2026-10-06), worked
 | `EPISODE3.DAT` | Repeating 3x4 matrices in 4.12 fixed point (rotation plus position) | Looks like recorded motion; what it drives is unknown |
 | `EPISODE3.SND`, `E3BOSS.SND` | Sound | Unexamined |
 | `E03CMN`, `E03B0N0`..`E03B1N2`, `E03BOSS`, `E03END` (`.MDB` + `.CGB`) | Episode 3 models and textures | Textures decoded; geometry in the second layout (see Models) |
-| `DRA01A`..`DRA10J` (`.MDB`, `.CGB`, `.MTB`) | The ten dragon forms | Textures and geometry worked out (see Models); `.MTB` unexamined |
+| `DRA01A`..`DRA10J` (`.MDB`, `.CGB`, `.MTB`) | The ten dragon forms | Textures and geometry worked out (see Models); `.MTB` is the forms' motion, worked out (see Motion) |
 | `DRAnnE01`..`E07.GRB` | Per-corner shading words, 8 bytes a polygon | Confirmed for Episode 3 and `DRA09I`: the game points the models at `E03` (see Shading) |
 | `COMMON.MDB`, `.CGB` | The rider | Geometry worked out (see The rider) |
 | `EPISODE2.SCB` (131,072 bytes) | The only `.SCB` on the disc | Guess: an Episode 2 scroll plane |
@@ -110,11 +110,11 @@ So one Episode 3 `.MDB` does not have the dragon's layout: it has the same tree 
 | 0x54840 | 0x548DC | Rider offsets, 10 of 3 longs |
 
 - Confirmed: for all ten, the body root found as the first unreferenced node equals the table's, the matrices follow its last mesh, and the shadow root is the last 12 bytes.
-- Each file also holds a body tree of 27 nodes; a shadow tree of 27 nodes, in the second layout, of 14 flat cards (lead that they are a shadow: flat, one colour table, drawn through the body's matrices, 0x06021722); and, in forms A, B, C, D, F and I only, 30 more roots of 3 nodes each, each with its own 3 matrices. Those are wing meshes in steps whose tips move: lead that they are 15 flapping frames a side, for backlog 18. The still pose does not need them.
+- Each file also holds a body tree of 27 nodes; a shadow tree of 27 nodes, in the second layout, of 14 flat cards (lead that they are a shadow: flat, one colour table, drawn through the body's matrices, 0x06021722); and, in forms A, B, C, D, F and I only, 30 more roots of 3 nodes each, each with its own 3 matrices. Those are 15 wing shapes a side that the game swaps into the wing nodes while the dragon raises or lowers its wings, not flapping frames (confirmed by code, see Motion: wing shapes). The still pose and the wing beat do not need them.
 - Body nodes, depth first, the same in all ten (body parts by eye on `DRA01A`): 0 root; 1 to 5 hind leg at -X; 6 to 10 hind leg at +X; 11 trunk; 12 neck; 13 head; 14 empty; 15 to 20 tail; 21 to 23 wing at -X; 24 to 26 wing at +X. Mesh-bearing nodes vary between 17 and 24; the others are joints.
 - Each form's measured size is left out of these notes: the spike's scripts in `extracted/spike-mdb/` print it. Forms differ a lot in size, `DRA05E` the smallest and `DRA10J` the largest (confirmed by measuring the rest pose).
 
-- Separately moving parts: yes, the nodes. Confirmed: in the state the 27 live matrices at 0x0607CD88 are not the file's, with legs, wings and tail each turned their own way. Each mesh-bearing node is one `ModelPart`, its origin the translation of its product of matrices. The game copies 27 x 12 bytes for the tree (0x144) and animates from `.MTB`, whose format this spike did not look into.
+- Separately moving parts: yes, the nodes. Confirmed: in the state the 27 live matrices at 0x0607CD88 are not the file's, with legs, wings and tail each turned their own way. Each mesh-bearing node is one `ModelPart`, its origin the translation of its product of matrices. The game copies 27 x 12 bytes for the tree (0x144) and animates from `.MTB` (see Motion).
 
 ### Link to the texture records
 
@@ -177,11 +177,76 @@ Confirmed: the `DRA*`, `COMMON*` and `E03*` files are byte for byte the same on 
 - The bytes before a dragon's first mesh (0x40 zeros) and the 0x20-byte zero blocks between some meshes. Lead: they stand for the empty joints. A few larger gaps in `DRA07G` and `DRA08H` were not looked at.
 - Why `DRA02E06.GRB` is a little over twenty tables.
 - Where `E03END`'s 64 comes from, and how `E03CMN`'s pieces are placed.
-- `.MTB`: sizes are not a whole number of 27 x 12 bytes in general, so it is not simply that. Backlog 18.
 
 ### How the drawing was made
 
 Walk the body root's tree, multiply matrices, take each polygon's four corners, sample its decoded texture (corner A top left, B top right, C bottom right, D bottom left, then the flips), multiply by shading, add the rider at the table's offset, z-buffered. `python3 draw2.py` in `extracted/spike-mdb/` writes `out/forms_quarter_sheet.png` (all ten, with the rider) and `out/DRA01A_above.png`, `_side.png`, `_behind.png`.
+
+## Motion: `.MTB`
+
+Found 2026-11-09 (spike, backlog 18), from the files, the Episode 3 save state and the code in Ghidra. **Confirmed** and **lead** as in Models. Addresses are the JP disc's unless named. The throwaway scripts are in `extracted/spike-mtb/` (git-ignored), the drawings in `extracted/spike-mtb/out/`.
+
+The answer in short: the wing beat, like all the dragon's movement, is in the form's own `.MTB`, as one Euler-angle pose per frame for 24 of the 27 body nodes. The game steps through the frames with no blending between them. Form 9, `DRA09I`, has a full wing beat in its own files, and the save state is caught on frame 25 of it.
+
+### Load and layout
+
+- Every `DRA*.MTB` loads at 0x20215000. Confirmed: the form loader 0x0601ECAC passes the literal at 0x0601ED20 with the form's `.MTB` name, and in the state `DRA09I.MTB` is at that address byte for byte. (The same loader also loads `SANAGI.MTB`; not looked at.)
+- Big-endian. A file is frame records, then a table of absolute pointers that fills the end of the file. Each frame takes 300 bytes in all: a 288-byte pose and a 4-byte pointer in each of three tables (below), so the file size is a whole number of 300 bytes and the pointer table starts at `size - size / 300 * 12`. Confirmed: all ten sizes divide by 300, every pointer lands inside the file in increasing order, and the pointers run to the table's own start.
+- A record is 12 bytes, six signed words: `tx ty tz rx ry rz`. The translation is in units of 16 (multiply by 16 for whole units), and the angles are 4,096 to a turn (both confirmed by the fit below).
+- A pose is split into three parts with their own pointers. For a motion of n frames, the pointer table holds n pointers to part A, then n to part B, then n to part C, and the frames are stored in the same order (all A, all B, all C). Then the next motion follows.
+
+| Part | Records | Body nodes (Models numbering) |
+|------|---------|-------------------------------|
+| A | 8 (96 bytes) | 12 neck, 13 head, 15 to 20 tail |
+| B | 10 (120 bytes) | 0 root, 2 to 5 hind leg at -X, 7 to 10 hind leg at +X, 11 trunk |
+| C | 6 (72 bytes) | 21 to 23 wing at -X, 24 to 26 wing at +X |
+
+- Nodes 1, 6 (the hip joints) and 14 (the empty node) are not in the file: the game copies their matrices from the `.MDB` each frame. Confirmed by code (0x0601FF04, below) and by the state, where those three live matrices equal the file's.
+- The node mapping is confirmed by code: 0x0601FF04 calls 0x0601FDB4 for node 0 with B's first record, then 0x0601FE64 with node numbers 2 to 5 and 7 to 11 on B's records 1 to 9, 12, 13 and 15 to 20 on A's, 21 to 26 on C's. The translations agree: each record's translation times 16 is near the `.MDB` matrix's for the node it drives, exactly in `DRA07G` and `DRA10J` and within 1,151 units in the rest (checked over every frame of all ten forms; some leg, wing and tail nodes change length a little through a motion).
+
+### Building a node's matrix
+
+- The local matrix is `Ry(ry) * Rx(rx) * Rz(rz)` with the translation `(tx, ty, tz) * 16`, replacing the `.MDB` matrix. `R` is the usual right-handed rotation (`Rz = [[c, -s, 0], [s, c, 0], [0, 0, 1]]`). Then the tree is multiplied as in Models.
+- Confirmed by fit: of the six orders, `y x z` rebuilds all 24 of the state's live local matrices at 0x0607CD88 from `DRA09I` motion slot 0, frame 25, with every element within 4e-5 of the state's (the next-best frame is over 100 times worse), and every translation exactly. The other orders do not fit any frame. Confirmed by code: 0x0601FE64 starts from the identity, then calls the Y, X and Z rotations in that order, each with `angle << 16` plus a per-node value, then writes the translation shifted left by 4.
+- The game adds its own per-node angle (from a 0x70-byte record per node) and, for node 0, a translation; they are zero in the state. Lead: they turn the head and body for steering. The drawing and the fit ignore them.
+
+### Motions
+
+- The motions are listed in 1ST_READ, not in the `.MTB`. A table of 10 pointers at 1ST_READ file offset 0x54750 (0x0605C750), in the form-index order of Models (0 A, 1 I, ...), points at each form's 12 slots. A slot is 16 bytes: pointers to its A, B and C pointer lists, then the frame count as 16.16 (a whole number). A slot of zeros is a motion the form does not have. The slots are at file offsets 0x53BC0 to 0x5433F, 0xC0 a form, in the files' order (A, B, C, D, E, F, G, H, I, J). On PAL the slot table is 0x9C later (0x53C5C), same bytes; the code is 0x44 later.
+- Every non-zero slot names a run of the file whose three pointer lists are each its frame count long (confirmed on all ten forms). Some slots share a run (slots 3 and 4 in most forms), and a few runs are in no slot (`DRA06F`'s last, `DRA10J`'s second).
+- Which slot is which, from the code that chooses them (0x0601EB94) and the wing angles. Slots 0, 1, 5 and 6 loop; 3 and 4 play once then return to 0; 7 then 5; 8 then 6; 10 then 5; 11 then 0. By the wing root's roll: slot 0 is the wing beat, slot 1 a glide (wings near level, a slow ripple), slot 10 raises the wings, slot 11 lowers them, slots 5 to 9 are held with the wings raised (5 flutters, 6 holds them still while the tail and legs move), 3 and 4 are a beat that starts at the top. 0x0601EB94 sets nothing for slots 2 and 9 (slot 2 is a short beat); lead that they are unused or started elsewhere. The meanings beyond "wings up, down, held" are a lead.
+
+| Form | Slots present | Slot 0 (wing beat) frames |
+|------|---------------|---------------------------|
+| `DRA01A`, `DRA02B`, `DRA09I` | all 12 | 54 |
+| `DRA06F` | all 12 | 54 |
+| `DRA03C` | all 12 | 65 |
+| `DRA04D` | all 12 | 59 |
+| `DRA05E` | 0, 2, 3, 4 | 19 |
+| `DRA07G` | 0, 2 (the same run) | 86 |
+| `DRA08H` | 0, 2 | 44 |
+| `DRA10J` | 0, 1 (the same run), 2 | 59 |
+
+- Slot 0 moves the wings in all ten forms (confirmed: both wing roots' roll changes over the run). Slot 1 is as long as slot 0, and `DRA07G`'s slot 2 shares slot 0's run; the others run from 19 to 41 frames. `python3 slots.py` in `extracted/spike-mtb/` lists every form's slots and counts.
+- Playback (confirmed by code, 0x0601FF04 and 0x0602057A): a 16.16 phase advances by a speed each update and wraps at the slot's count; the frame shown is the phase's whole part, with no blending between frames or between motions. A queued motion starts when the phase wraps. In the state the phase is 25.0, the count 54.0, the speed 1.0 and the slot 0 (object at 0x0607CC44, phase at + 0x1A74, speed at + 0x1AC0, slot at + 0x1AC7, form at + 0x1AC8).
+- Rate: one frame per update at speed 1.0. How often the update runs is not traced; lead that it is once per game frame. At 30 updates a second `DRA09I`'s beat would take 1.8 seconds, at 60 0.9. Checking it needs the emulator run on, or the main loop traced.
+
+### `DRA09I`'s wing beat
+
+- Slot 0, 54 frames, a loop: the wings start level, rise to the top at frame 9, beat down to the bottom at frame 26, then come back up slowly to level. The root bobs and pitches, and the tail and legs move with the beat. Confirmed by drawing (wing tips above the body at frame 9, below it at frame 26; +Y is up as in Models), and the author is to recognise it by eye.
+- To draw a pose: read the slot from the table above (or split the file's pointer list where the stride goes from 72 bytes back to 96), take frame f's A, B and C records, build the 24 local matrices as above, keep the `.MDB` matrices for nodes 1, 6 and 14, and draw as in Models. `python3 drawpose.py` in `extracted/spike-mtb/` writes `out/DRA09I_beat_behind_sheet.png` and `_side_sheet.png`: the rest pose, then frames 9 (raised), 17 and 26 (lowered).
+
+### Wing shapes
+
+- The 30 extra roots of forms A, B, C, D, F and I are 15 shapes of each wing (3 nodes each). Confirmed by code: tables at 0x0605C778 (1ST_READ file offset 0x54778, the -X wing) and 0x0605C7A0 (0x547A0, the +X wing) point, per form index 0 to 5, at 15 roots each; 0x0601F70C(k) copies shape k's three mesh pointers into the live tree's wing nodes 21 to 23 and 24 to 26 (it also sets a shading pointer in the new meshes, not followed).
+- 0x06020F7E steps k from 0 to 14 by 0.5 an update while slot 10 (raise) plays and from 14 to 0 while slot 11 (lower) plays; 0x0601F826 sets shape 14 whenever the slot is 5 to 9. So the wings change shape as they are raised and keep the last shape while held up. In the wing beat (slot 0) the wings keep the body's own meshes (confirmed: the state's live tree has the file's mesh pointers).
+- These six forms are the ones with all 12 slots. Forms E, G, H and J have no shapes and no raise or lower motions.
+
+### Not known (motion)
+
+- How often the motion update runs (the rate above). Not traced in the spike's first session.
+- What sets the speed, and the per-node angles the game adds.
+- Slot 2's use, and `SANAGI.MTB`.
 
 ## Palettes for colour banks (modes 0 and 4)
 
