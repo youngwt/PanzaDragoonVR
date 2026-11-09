@@ -58,3 +58,10 @@ These describe what the code does today. Follow them in new code. The exceptions
 The asset rules are in `tools/manifest.py` for the PC and in `game/Logic/` for the game, and the two must agree. A new or changed rule gets a shared case in `tests/fixtures/asset-rules/`, which both test suites run.
 
 The tuning file (`tuning.json`) is read in two places: `tools/push-tuning.sh` checks it is JSON as the game reads it (a byte-order mark allowed, `NaN` and `Infinity` not), and `game/Logic/Tuning.cs` reads it. `Tuning.Write` in the same file is the one writer, for the headset's tuning list in development mode, and must give only what `Tuning.Parse` accepts; `tools/pull-tuning.sh` copies the result to the PC. Its built-in values are in four: `Tuning.BuiltIn` in `game/Logic/Tuning.cs`, `tools/tuning.example.json` (a test holds it to `Tuning.BuiltIn`), the tuning section of `tools/README.md` and the asset contract (`_bmad-output/initiative-panzer-dragoon-zwei-vr/spec-panzer-dragoon-zwei-vr/asset-contract.md`). A change to a setting, a range or a built-in value changes them all.
+
+The extractor's version, `Extraction.Version` in `lib/PdzDecoding/Extraction.cs`, reaches release mode as the generator `pdz-extract <version>` (`Manifest.Generator`), which the game compares with a folder's manifest. A rise changes it in `<Version>` in `lib/PdzDecoding/PdzDecoding.csproj` (the same with `.0` added; a test in `ExtractionModesTests` holds the two together), in the generator and the history of rises in `tools/README.md`'s manifest paragraph, and in the asset contract's manifest example and its extraction example; the tests and recorded files that name it fail until they are updated.
+
+## Plans and the author's checks
+
+- A ticket whose acceptance is a look in the headset names each item to look at, and is marked done only when the author has given a word on each, recorded in its plan. When the author marks it done without that, the plan says which checks were not made.
+- A change that goes against a frozen plan's Never, on the author's word, is its own commit, and the commit and the plan both name the decision.

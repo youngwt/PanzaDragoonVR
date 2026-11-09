@@ -11,7 +11,7 @@ namespace PanzaDragoonVR.Logic.Tests;
 /// covers: development (twice), release on a first launch, already extracted by this extractor or by an
 /// older or newer one, a different disc, release failure (the image kept), an extraction that wrote nothing
 /// (the image kept), no disc, deletion failing, and a hand-written manifest; with the generator the game
-/// passes held to the library's.
+/// passes held to the library's, and the library's project version to the extractor's.
 /// </summary>
 public sealed class ExtractionModesTests : IDisposable
 {
@@ -313,6 +313,15 @@ public sealed class ExtractionModesTests : IDisposable
         Assert.Contains("ExtractionModes.Decide(mode, ExtractionModes.LoadOrigin(assetFolder), disc, generator: Manifest.Generator)", game);
         // The tests' current generator is the library's, so the cases above are the ones the game meets.
         Assert.Equal(PdzDecoding.Manifest.Generator, Current);
+    }
+
+    [Fact]
+    public void LibraryVersion_TheProjectsIsTheExtractors()
+    {
+        // A rise in Extraction.Version, which release mode meets as the generator, changes the library's own version with it.
+        var project = System.Xml.Linq.XDocument.Load(Path.Combine(Repository.Root(), "lib", "PdzDecoding", "PdzDecoding.csproj"));
+        string version = Assert.Single(project.Descendants("Version")).Value;
+        Assert.Equal($"{PdzDecoding.Extraction.Version}.0", version);
     }
 
     [Fact]
