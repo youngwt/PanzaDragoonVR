@@ -16,7 +16,8 @@ namespace PdzDecoding.Tests;
 /// <summary>
 /// The dragon forms' geometry, a test or more per row of the story's matrix (both discs, a form's file
 /// missing, no table, malformed geometry, a model the writer rejects, a texture that cannot be decoded, a flat polygon, three corners),
-/// then matrix order, flips, the axis conversion, the origin and the parts. Every <c>.MDB</c>, <c>.CGB</c>
+/// then matrix order, flips, the axis conversion, the origin and the parts, then the wing beat (both discs,
+/// the motion unreadable, its keys). Every <c>.MDB</c>, <c>.CGB</c>
 /// and <c>1ST_READ</c> is built here; nothing comes from the disc.
 /// </summary>
 public sealed class DragonsTests : IDisposable
@@ -523,11 +524,353 @@ public sealed class DragonsTests : IDisposable
         Assert.Contains("\"kind\": \"model\",", Encoding.UTF8.GetString(written));
     }
 
+    // ------------------------------------------------------------ the wing beat: both discs
+
+    private string DiscWithBeatingForms(Func<int, TestNode>? body = null, Func<int, MotionSlot, MotionSlot>? slot = null, string? without = null) =>
+        WithBeatingForms(new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }.With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb()), body, slot, without)
+            .WriteCue(_folder);
+
+    private sealed record GlbJson(JsonElement Json, byte[] Bin);
+
+    private static GlbJson ReadGlb(byte[] glb)
+    {
+        int length = BinaryPrimitives.ReadInt32LittleEndian(glb.AsSpan(12));
+        using JsonDocument json = JsonDocument.Parse(glb.AsMemory(20, length));
+        return new GlbJson(json.RootElement.Clone(), glb[(20 + length + 8)..]);
+    }
+
+    [Fact]
+    public void Run_BeatingForms_EveryModelHasOneSteppedWingBeatOnTheMovedParts()
+    {
+        ExtractionResult result = Run(DiscWithBeatingForms());
+
+        Assert.Equal(11, result.ModelFiles.Count);
+        foreach (ExtractedModel file in result.ModelFiles)
+        {
+            GlbJson glb = ReadGlb(File.ReadAllBytes(Output(file.Path)));
+            JsonElement animation = Assert.Single(glb.Json.GetProperty("animations").EnumerateArray());
+            Assert.Equal(Dragons.BeatName, animation.GetProperty("name").GetString());
+            JsonElement[] samplers = animation.GetProperty("samplers").EnumerateArray().ToArray();
+            Assert.All(samplers, s => Assert.Equal("STEP", s.GetProperty("interpolation").GetString()));
+            JsonElement input = glb.Json.GetProperty("accessors")[samplers[0].GetProperty("input").GetInt32()];
+            Assert.Equal(BeatFrames, input.GetProperty("count").GetInt32());
+
+            JsonElement[] nodes = glb.Json.GetProperty("nodes").EnumerateArray().ToArray();
+            var targets = animation.GetProperty("channels").EnumerateArray()
+                .Select(c => (nodes[c.GetProperty("target").GetProperty("node").GetInt32()].GetProperty("name").GetString()!, c.GetProperty("target").GetProperty("path").GetString()!))
+                .ToArray();
+            Assert.Equal(MovedParts.SelectMany(p => new[] { (p, "rotation"), (p, "translation") }), targets);
+        }
+    }
+
+    [Fact]
+    public void Run_BeatingForms_EachFormCarriesItsOwnBeat()
+    {
+        Run(DiscWithBeatingForms());
+
+        for (int i = 0; i < 10; i++)
+        {
+            (byte[] mtb, MotionSlot slot) = BeatMtb(i);
+            byte[] mdb = Mdb(Body(i), Padding(i));
+            Model model = Dragons.Decode(mdb, Cgb(), $"form{i + 1:D2}", SeatOf(i)).Model with { Animation = Dragons.WingBeat(mdb, mtb, slot, SeatOf(i)) };
+            Assert.Equal(GlbWriter.Write(model), File.ReadAllBytes(Output($"models/dragon_form{i + 1:D2}.glb")));
+        }
+
+        int ride = Dragons.RideForm - 1;
+        (byte[] rideMtb, MotionSlot rideSlot) = BeatMtb(ride);
+        byte[] rideMdb = Mdb(Body(ride), Padding(ride));
+        Model rideModel = Dragons.Decode(rideMdb, Cgb(), "ride", SeatOf(ride)).Model with { Animation = Dragons.WingBeat(rideMdb, rideMtb, rideSlot, SeatOf(ride)) };
+        Assert.Equal(GlbWriter.Write(rideModel), File.ReadAllBytes(Output(Dragons.RidePath)));
+    }
+
+    [Fact]
+    public void Run_BeatingForms_TheLineSaysWhereTheBeatsCameFrom()
+    {
+        ExtractionResult result = Run(DiscWithBeatingForms());
+
+        Assert.Equal(0x123 - Dragons.MotionTableGap, result.DragonSources!.MotionTable);
+        Assert.Null(result.DragonSources.NoBeat);
+        Assert.Contains("; 10 dragon forms, seats from 0x173 of 1ST_READ.PRG, wing beats from 0x83 of 1ST_READ.PRG", result.Details());
+        Assert.DoesNotContain("no wing beat", result.Details());
+    }
+
+    [Fact]
+    public void Run_BeatingFormsTwice_WritesTheSameBytes()
+    {
+        string cue = DiscWithBeatingForms();
+        Run(cue);
+        byte[] first = File.ReadAllBytes(Output(Dragons.RidePath));
+        Run(cue);
+
+        Assert.Equal(first, File.ReadAllBytes(Output(Dragons.RidePath)));
+    }
+
+    // ------------------------------------------------------------ the wing beat: motion unreadable
+
+    /// <summary>Every form written still, as <see cref="Dragons.Decode"/> alone gives it, and the line saying why.</summary>
+    private void AssertStill(ExtractionResult result, Func<int, TestNode> body, string why)
+    {
+        Assert.Equal(11, result.ModelFiles.Count);
+        Assert.Null(result.DragonSources!.MotionTable);
+        Assert.Equal(why, result.DragonSources.NoBeat);
+        Assert.EndsWith($", no wing beat: {why}", result.DragonLine());
+        for (int i = 0; i < 10; i++)
+        {
+            byte[] expected = GlbWriter.Write(Dragons.Decode(Mdb(body(i), Padding(i)), Cgb(), $"form{i + 1:D2}", SeatOf(i)).Model);
+            Assert.Equal(expected, File.ReadAllBytes(Output($"models/dragon_form{i + 1:D2}.glb")));
+        }
+
+        Assert.False(ReadGlb(File.ReadAllBytes(Output(Dragons.RidePath))).Json.TryGetProperty("animations", out _));
+    }
+
+    [Fact]
+    public void Run_NoMotionTable_DragonsStillAndTheLineSaysWhy()
+    {
+        ExtractionResult result = Run(DiscWithForms());
+
+        AssertStill(result, Form, "1ST_READ.PRG: it holds no motion table 0xA0 before the body roots");
+    }
+
+    [Fact]
+    public void Run_MotionTableBeforeTheFile_DragonsStillAndTheLineSaysWhy()
+    {
+        var disc = new SyntheticDisc().With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb());
+        var roots = Dragons.FormFiles.Select((_, i) => RootAddress(Form(i), Padding(i))).ToList();
+        WithForms(disc, Dragons.SeatFile).With(Dragons.SeatFile, FirstRead(roots, lead: 0x10));
+
+        AssertStill(Run(disc.WriteCue(_folder)), Form, "1ST_READ.PRG: it holds no motion table 0xA0 before the body roots");
+    }
+
+    [Fact]
+    public void Run_MtbMissing_DragonsStillAndTheLineSaysWhy()
+    {
+        ExtractionResult result = Run(DiscWithBeatingForms(without: "DRA04D.MTB"));
+
+        AssertStill(result, Body, "the disc has no DRA04D.MTB");
+    }
+
+    [Fact]
+    public void Run_SlotPointerOutsideTheMtb_DragonsStillAndTheLineSaysWhy()
+    {
+        ExtractionResult result = Run(DiscWithBeatingForms(slot: (i, s) => i == 1 ? s with { B = 0x20300000 } : s));
+
+        AssertStill(result, Body, "DRA02B: a slot 0 pointer, 0x20300000, is outside the .MTB");
+    }
+
+    [Fact]
+    public void Run_FrameCountNotWhole_DragonsStillAndTheLineSaysWhy()
+    {
+        var disc = new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }.With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb());
+        WithBeatingForms(disc, without: Dragons.SeatFile);
+        var roots = Dragons.FormFiles.Select((_, i) => RootAddress(Body(i), Padding(i))).ToList();
+        var slots = Dragons.FormFiles.Select((_, i) => BeatMtb(i).Slot).ToList();
+        byte[] data = FirstRead(roots, slots);
+        int slot = (int)(BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(0x123 - Dragons.MotionTableGap)) - Dragons.FirstReadLoadAddress);
+        BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(slot + 12), 0x00038000); // 3.5 frames: DRA01A, first in the game's order.
+        disc.With(Dragons.SeatFile, data);
+
+        AssertStill(Run(disc.WriteCue(_folder)), Body, "1ST_READ.PRG: DRA01A's wing beat has a frame count of 0x00038000, not a whole number of frames above 0");
+    }
+
+    [Fact]
+    public void Run_BodyNotTwentySevenNodes_DragonsStillAndTheLineSaysWhy()
+    {
+        TestNode Body3(int i) => i == 2 ? Form(i) : Body(i);
+
+        ExtractionResult result = Run(DiscWithBeatingForms(body: Body3));
+
+        AssertStill(result, Body3, "DRA03C: the body tree is not the 27 nodes the motion is for: it has 1");
+    }
+
+    [Fact]
+    public void Run_RestTurnNotARotation_DragonsStillAndTheLineSaysWhy()
+    {
+        // Node 23 of DRA01A has a rest matrix with no turn at all, which has no inverse.
+        TestNode Flat(int i) => i == 0
+            ? Body(node => node == 23 ? new[] { 0, 0, 0, RestMove(0, 23).X, 0, 0, 0, RestMove(0, 23).Y, 0, 0, 0, RestMove(0, 23).Z } : RestMatrix(0, node))
+            : Body(i);
+
+        ExtractionResult result = Run(DiscWithBeatingForms(body: Flat));
+
+        AssertStill(result, Flat, "DRA01A: the rest turn of node23 cannot be inverted");
+    }
+
+    [Fact]
+    public void WingBeat_FramePointerOutsideTheMtb_Throws()
+    {
+        (byte[] mtb, MotionSlot slot) = BeatMtb(0);
+        BinaryPrimitives.WriteUInt32BigEndian(mtb.AsSpan((int)(slot.C - Dragons.MotionLoadAddress) + 4), 0x20215FFC);
+
+        var e = Assert.Throws<DecodingException>(() => Dragons.WingBeat(Mdb(Body(0)), mtb, slot, default));
+
+        Assert.Equal("a frame pointer, 0x20215FFC, is outside the .MTB", e.Message);
+    }
+
+    [Fact]
+    public void WingBeat_SlotPointerBeforeTheMtb_Throws()
+    {
+        (byte[] mtb, MotionSlot slot) = BeatMtb(0);
+
+        var e = Assert.Throws<DecodingException>(() => Dragons.WingBeat(Mdb(Body(0)), mtb, slot with { A = 0x20214000 }, default));
+
+        Assert.Equal("a slot 0 pointer, 0x20214000, is outside the .MTB", e.Message);
+    }
+
+    // ------------------------------------------------------------ the wing beat: its keys
+
+    private static ModelAnimation Beat(int frames, Func<int, int, TestRecord> record, Seat seat = default) =>
+        Dragons.WingBeat(Mdb(Body(0)), Mtb(frames, record).Mtb, Mtb(frames, record).Slot, seat);
+
+    [Fact]
+    public void WingBeat_IsSteppedAtThirtyFramesASecondWithOneKeyAFrame()
+    {
+        ModelAnimation beat = Beat(5, (f, node) => BeatRecord(0, f, node));
+
+        Assert.Equal("wing_beat", beat.Name);
+        Assert.Equal(30, beat.FramesPerSecond);
+        Assert.Equal(MovedParts, beat.Channels.Select(c => c.Part));
+        Assert.All(beat.Channels, c => Assert.Equal((5, 5), (c.Rotations.Count, c.Translations.Count)));
+    }
+
+    [Fact]
+    public void WingBeat_RestRecords_GiveNoTurnAndTheOrigins()
+    {
+        var seat = new Seat(0, 160, -320);
+        Model rest = Dragons.Decode(Mdb(Body(0)), Cgb(), "form01", seat).Model;
+
+        ModelAnimation beat = Beat(2, (_, node) => RestRecord(0, node), seat);
+
+        foreach (ModelChannel channel in beat.Channels)
+        {
+            ModelPart part = rest.Parts.Single(p => p.Name == channel.Part);
+            Assert.All(channel.Rotations, q => Assert.Equal(Quaternion.Identity, q));
+            Assert.All(channel.Translations, t => Assert.Equal(part.Origin, t));
+        }
+    }
+
+    [Fact]
+    public void WingBeat_RootsOwnMotion_IsLeftOut()
+    {
+        ModelAnimation with = Beat(3, (f, node) => BeatRecord(0, f, node));
+        ModelAnimation without = Beat(3, (f, node) => node == 0 ? RestRecord(0, 0) : BeatRecord(0, f, node));
+
+        Assert.DoesNotContain(with.Channels, c => c.Part is "node00" or "node01");
+        for (int c = 0; c < with.Channels.Count; c++)
+        {
+            Assert.Equal(without.Channels[c].Rotations, with.Channels[c].Rotations);
+            Assert.Equal(without.Channels[c].Translations, with.Channels[c].Translations);
+        }
+    }
+
+    /// <summary>
+    /// A record's local matrix for quarter turns, worked out here with whole numbers: <c>Ry * Rx * Rz</c>,
+    /// the translation times 16.
+    /// </summary>
+    private static int[] QuarterTurnMatrix(TestRecord r)
+    {
+        static (int C, int S) Turn(int angle) => (((angle / 1024 % 4) + 4) % 4) switch { 0 => (1, 0), 1 => (0, 1), 2 => (-1, 0), _ => (0, -1) };
+        static int[,] Mul(int[,] a, int[,] b)
+        {
+            var m = new int[3, 3];
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    m[i, j] = a[i, 0] * b[0, j] + a[i, 1] * b[1, j] + a[i, 2] * b[2, j];
+                }
+            }
+
+            return m;
+        }
+
+        Assert.True(r.Rx % 1024 == 0 && r.Ry % 1024 == 0 && r.Rz % 1024 == 0);
+        (int cx, int sx) = Turn(r.Rx);
+        (int cy, int sy) = Turn(r.Ry);
+        (int cz, int sz) = Turn(r.Rz);
+        int[,] x = { { 1, 0, 0 }, { 0, cx, -sx }, { 0, sx, cx } };
+        int[,] y = { { cy, 0, sy }, { 0, 1, 0 }, { -sy, 0, cy } };
+        int[,] z = { { cz, -sz, 0 }, { sz, cz, 0 }, { 0, 0, 1 } };
+        int[,] t = Mul(Mul(y, x), z);
+        return new[]
+        {
+            t[0, 0] * One, t[0, 1] * One, t[0, 2] * One, r.Tx * 16,
+            t[1, 0] * One, t[1, 1] * One, t[1, 2] * One, r.Ty * 16,
+            t[2, 0] * One, t[2, 1] * One, t[2, 2] * One, r.Tz * 16,
+        };
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void WingBeat_Keys_PutEveryCornerWhereTheFramesMatricesPutIt(int frame)
+    {
+        var seat = new Seat(0, 320, 640);
+        Model rest = Dragons.Decode(Mdb(Body(0)), Cgb(), "form01", seat).Model;
+        TestNode posedBody = Body(node => node == 0 ? RestMatrix(0, 0) : QuarterTurnMatrix(BeatRecord(0, frame, node)));
+        Model posed = Dragons.Decode(Mdb(posedBody), Cgb(), "form01", seat).Model;
+
+        ModelAnimation beat = Beat(BeatFrames, (f, node) => BeatRecord(0, f, node), seat);
+
+        foreach (ModelPart part in rest.Parts)
+        {
+            ModelChannel? channel = beat.Channels.SingleOrDefault(c => c.Part == part.Name);
+            Quaternion q = channel?.Rotations[frame] ?? Quaternion.Identity;
+            Vector3 t = channel?.Translations[frame] ?? part.Origin;
+            ModelPart want = posed.Parts.Single(p => p.Name == part.Name);
+            Assert.Equal(want.Origin, t);
+            for (int k = 0; k < part.Quads.Count; k++)
+            {
+                Vector3[] corners = { part.Quads[k].A, part.Quads[k].B, part.Quads[k].C, part.Quads[k].D };
+                Vector3[] wanted = { want.Quads[k].A, want.Quads[k].B, want.Quads[k].C, want.Quads[k].D };
+                for (int c = 0; c < 4; c++)
+                {
+                    Vector3 got = Vector3.Transform(corners[c], q) + t;
+                    Assert.True(Vector3.Distance(wanted[c] + want.Origin, got) < 1e-5f, $"{part.Name} frame {frame} corner {c}: {got} where {wanted[c] + want.Origin}");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void WingBeat_Rotations_AreUnitQuaternionsWithWNotBelowZero()
+    {
+        ModelAnimation beat = Beat(8, (f, node) => node == 23 ? RestRecord(0, node) with { Rx = (short)(f * 333), Ry = (short)(f * -517), Rz = (short)(f * 1201) } : RestRecord(0, node));
+
+        Assert.All(beat.Channels.SelectMany(c => c.Rotations), q =>
+        {
+            Assert.InRange(q.Length(), 1 - 1e-6f, 1 + 1e-6f);
+            Assert.True(q.W >= 0);
+        });
+    }
+
+    [Fact]
+    public void Sin_TableHasTheQuartersExactlyAndIsWithinOneStepOfTheSine()
+    {
+        Assert.Equal((0, 65536, 0, -65536), (Dragons.Sin(0), Dragons.Sin(1024), Dragons.Sin(2048), Dragons.Sin(3072)));
+        Assert.Equal((65536, 0, -65536), (Dragons.Cos(0), Dragons.Cos(1024), Dragons.Cos(2048)));
+        Assert.Equal(Dragons.Sin(-1024), Dragons.Sin(3072));
+        Assert.Equal(46341, Dragons.Sin(512)); // sin 45° is 46340.95 in 16.16.
+        for (int a = 0; a < 4096; a++)
+        {
+            Assert.InRange(Dragons.Sin(a) - Math.Sin(a * Math.PI / 2048) * 65536, -0.5001, 0.5001);
+        }
+    }
+
+    [Fact]
+    public void DragonSources_Describe_NamesTheBeatsOrWhyThereAreNone()
+    {
+        Assert.Equal("10 dragon forms, seats from 0x54840 of 1ST_READ.PRG, wing beats from 0x54750 of 1ST_READ.PRG, 2 polygons drawn flat grey",
+            new DragonSources(10, 0x54840, 2, 0x54750).Describe());
+        Assert.Equal("10 dragon forms, seats from 0x54840 of 1ST_READ.PRG, no wing beat: the disc has no DRA01A.MTB",
+            new DragonSources(10, 0x54840, 0, null, "the disc has no DRA01A.MTB").Describe());
+    }
+
     // ------------------------------------------------------------ the recorded output and the version
 
     /// <summary>
     /// Everything extraction writes from a synthetic disc with textures, the floor and canopy, the ten forms
-    /// and the ride, as one SHA-256, recorded beside <see cref="Extraction.Version"/> in
+    /// and the ride with their wing beats, as one SHA-256, recorded beside <see cref="Extraction.Version"/> in
     /// <c>expected/extraction-output.sha256</c> as <c>&lt;version&gt; &lt;sha256&gt;</c>. Output that changes
     /// while the version stays the same fails, because release mode trusts the version to say when to
     /// extract again; a new version fails until it is recorded with <c>PDZ_RECORD_EXPECTED=1</c>.
@@ -535,7 +878,7 @@ public sealed class DragonsTests : IDisposable
     [Fact]
     public void Run_WholeOutput_EqualsTheRecordedOutputForThisVersion()
     {
-        string cue = WithForms(new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }
+        string cue = WithBeatingForms(new SyntheticDisc { Product = "GS-9049", Version = "V1.001" }
             .With("E03B0N0.MDB", Mdb(Record())).With("E03B0N0.CGB", Cgb())
             .With("EPISODE3.PRG", SyntheticPlanes.PlaneProgram())).WriteCue(_folder);
         ExtractionResult result = Run(cue);

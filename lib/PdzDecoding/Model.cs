@@ -56,9 +56,24 @@ public sealed record ModelQuad(
 public sealed record ModelPart(string Name, Vector3 Origin, IReadOnlyList<ModelQuad> Quads);
 
 /// <summary>
+/// One part's keys in a <see cref="ModelAnimation"/>, one per frame: the part node's rotation and its
+/// translation, in glTF terms, which replace the node's own while the animation plays. A part at rest
+/// has the identity rotation and its <see cref="ModelPart.Origin"/> as its translation.
+/// </summary>
+public sealed record ModelChannel(string Part, IReadOnlyList<Quaternion> Rotations, IReadOnlyList<Vector3> Translations);
+
+/// <summary>
+/// A looping motion of a model's parts, stepped: frame <c>f</c> is shown from <c>f / FramesPerSecond</c>
+/// seconds until the next. <paramref name="Name"/> is lowercase letters, digits and underscores.
+/// Every channel holds the same number of frames; a part with no channel stays where it is.
+/// </summary>
+public sealed record ModelAnimation(string Name, int FramesPerSecond, IReadOnlyList<ModelChannel> Channels);
+
+/// <summary>
 /// A model as the asset contract's Models section describes it, already in glTF terms (metres,
 /// +Y up, front facing +Z): the geometry decoder that fills it owns the conversion from the
 /// Saturn's units and axes. <paramref name="Name"/> names the root node, the last level of the
-/// asset ID (<c>flyer</c> for <c>e03.flyer</c>). <see cref="GlbWriter"/> writes it as a <c>.glb</c>.
+/// asset ID (<c>flyer</c> for <c>e03.flyer</c>). <paramref name="Animation"/>, when there is one,
+/// moves its parts. <see cref="GlbWriter"/> writes it as a <c>.glb</c>.
 /// </summary>
-public sealed record Model(string Name, IReadOnlyList<ModelPart> Parts);
+public sealed record Model(string Name, IReadOnlyList<ModelPart> Parts, ModelAnimation? Animation = null);

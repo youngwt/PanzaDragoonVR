@@ -109,11 +109,31 @@ public sealed class GlbWriterTests
         });
     }
 
+    /// <summary>A half-turn about Y as a quaternion, X, Y, Z, W.</summary>
+    private static readonly Quaternion HalfTurnY = new(0, 1, 0, 0);
+
+    /// <summary>A quarter-turn about Z, written as the exact float nearest each element.</summary>
+    private static readonly Quaternion QuarterTurnZ = new(0, 0, 0.70710677f, 0.70710677f);
+
+    /// <summary>The parts sample with a three-frame stepped animation of its two wings at 30 frames a second.</summary>
+    private static Model AnimatedSample() => PartsSample() with
+    {
+        Name = "animated",
+        Animation = new ModelAnimation("wing_beat", 30, new[]
+        {
+            new ModelChannel("left_wing", new[] { Quaternion.Identity, QuarterTurnZ, HalfTurnY },
+                new[] { new Vector3(-1, 0, 0.25f), new Vector3(-1, 0.5f, 0.25f), new Vector3(-1, -0.5f, 0.25f) }),
+            new ModelChannel("right_wing", new[] { Quaternion.Identity, Quaternion.Conjugate(QuarterTurnZ), Quaternion.Identity },
+                new[] { new Vector3(1, 0, 0.25f), new Vector3(1, 0.5f, 0.25f), new Vector3(1, 0, 0.25f) }),
+        }),
+    };
+
     public static IEnumerable<object[]> Samples() => new[]
     {
         new object[] { "one_part" },
         new object[] { "parts" },
         new object[] { "two_atlases" },
+        new object[] { "animated" },
     };
 
     private static Model Sample(string name) => name switch
@@ -121,6 +141,7 @@ public sealed class GlbWriterTests
         "one_part" => OnePartSample(),
         "parts" => PartsSample(),
         "two_atlases" => TwoAtlasesSample(),
+        "animated" => AnimatedSample(),
         _ => throw new ArgumentException(name),
     };
 
@@ -468,6 +489,87 @@ public sealed class GlbWriterTests
         Assert.Equal(32, Image(Write(OneModel(Square(0, 0, Pattern(12, 12)), Square(0, 0, Pattern(12, 12, seed: 1)))), 0).Size);
     }
 
+    // ------------------------------------------------------------ an animation
+
+    private static float[] AccessorFloats(Glb glb, int accessor, string type, int count)
+    {
+        JsonElement a = Array(glb.Json, "accessors")[accessor];
+        Assert.Equal(type, a.GetProperty("type").GetString());
+        Assert.Equal(count, a.GetProperty("count").GetInt32());
+        return Floats(glb, accessor);
+    }
+
+    [Fact]
+    public void Animated_OneSteppedAnimationOnThePartNodes()
+    {
+        Glb glb = Write(AnimatedSample());
+
+        JsonElement animation = Assert.Single(Array(glb.Json, "animations"));
+        Assert.Equal("wing_beat", animation.GetProperty("name").GetString());
+        JsonElement[] samplers = Array(animation, "samplers");
+        Assert.Equal(4, samplers.Length);
+        Assert.All(samplers, s => Assert.Equal("STEP", s.GetProperty("interpolation").GetString()));
+        Assert.Single(samplers.Select(s => s.GetProperty("input").GetInt32()).Distinct());
+
+        JsonElement[] channels = Array(animation, "channels");
+        Assert.Equal(new[] { (0, 2, "rotation"), (1, 2, "translation"), (2, 3, "rotation"), (3, 3, "translation") },
+            channels.Select(c => (c.GetProperty("sampler").GetInt32(), c.GetProperty("target").GetProperty("node").GetInt32(), c.GetProperty("target").GetProperty("path").GetString()!)));
+    }
+
+    [Fact]
+    public void Animated_InputIsFrameTimesWithMinAndMax()
+    {
+        Glb glb = Write(AnimatedSample());
+
+        int input = Array(Assert.Single(Array(glb.Json, "animations")), "samplers")[0].GetProperty("input").GetInt32();
+        JsonElement accessor = Array(glb.Json, "accessors")[input];
+        Assert.Equal(new[] { 0f, 1f / 30, 2f / 30 }, AccessorFloats(glb, input, "SCALAR", 3));
+        Assert.Equal(0, Array(accessor, "min")[0].GetDouble());
+        Assert.Equal((double)(float)(2 / 30.0), Array(accessor, "max")[0].GetDouble());
+    }
+
+    [Fact]
+    public void Animated_OutputsAreTheKeysAsVec4AndVec3()
+    {
+        Glb glb = Write(AnimatedSample());
+
+        JsonElement[] samplers = Array(Assert.Single(Array(glb.Json, "animations")), "samplers");
+        Assert.Equal(new[] { 0f, 0, 0, 1, 0, 0, 0.70710677f, 0.70710677f, 0, 1, 0, 0 }, AccessorFloats(glb, samplers[0].GetProperty("output").GetInt32(), "VEC4", 3));
+        Assert.Equal(new[] { -1f, 0, 0.25f, -1, 0.5f, 0.25f, -1, -0.5f, 0.25f }, AccessorFloats(glb, samplers[1].GetProperty("output").GetInt32(), "VEC3", 3));
+        Assert.Equal(new[] { 0f, 0, 0, 1, 0, 0, -0.70710677f, 0.70710677f, 0, 0, 0, 1 }, AccessorFloats(glb, samplers[2].GetProperty("output").GetInt32(), "VEC4", 3));
+    }
+
+    [Fact]
+    public void Animated_EverythingElseIsTheStillModelsBytes()
+    {
+        Model still = PartsSample() with { Name = "animated" };
+        Glb plain = Write(still);
+        Glb animated = Write(AnimatedSample());
+
+        // The animation's data follows everything else in the binary chunk, and its accessors and views follow the rest.
+        Assert.Equal(plain.Bin, animated.Bin[..plain.Bin.Length]);
+        foreach (string field in new[] { "nodes", "meshes", "materials", "textures", "samplers", "images" })
+        {
+            Assert.Equal(plain.Json.GetProperty(field).GetRawText(), animated.Json.GetProperty(field).GetRawText());
+        }
+
+        Assert.Equal(Array(plain.Json, "accessors").Select(a => a.GetRawText()), Array(animated.Json, "accessors").Take(Array(plain.Json, "accessors").Length).Select(a => a.GetRawText()));
+        Assert.Equal(Array(plain.Json, "bufferViews").Select(v => v.GetRawText()), Array(animated.Json, "bufferViews").Take(Array(plain.Json, "bufferViews").Length).Select(v => v.GetRawText()));
+    }
+
+    [Fact]
+    public void Animated_OnePartModel_AnimatesTheRootNode()
+    {
+        var model = OnePartSample() with
+        {
+            Animation = new ModelAnimation("bob", 30, new[] { new ModelChannel("body", new[] { Quaternion.Identity }, new[] { Vector3.UnitY }) }),
+        };
+
+        JsonElement channel = Array(Assert.Single(Array(Write(model).Json, "animations")), "channels")[0];
+
+        Assert.Equal(0, channel.GetProperty("target").GetProperty("node").GetInt32());
+    }
+
     // ------------------------------------------------------------ bad models
 
     public static IEnumerable<object[]> BadModels()
@@ -486,6 +588,18 @@ public sealed class GlbWriterTests
         yield return new object[] { OneModel(Square(0, 0, new ModelTexture(2, 2, new byte[15]))), "part 'body' quad 0 has a 2 x 2 texture of 15 bytes; it needs 16" };
         yield return new object[] { OneModel(Square(float.NaN, 0, null)), "part 'body' quad 0 corner A is not a finite position" };
         yield return new object[] { OneModel(Square(0, 0, null, (DrawingMode)4)), "part 'body' quad 0 has drawing mode 4, which is not one of opaque, cutout, half and mesh" };
+
+        Model Animated(ModelAnimation animation) => AnimatedSample() with { Animation = animation };
+        ModelChannel Still(string part, int frames = 3) => new(part, Enumerable.Repeat(Quaternion.Identity, frames).ToArray(), Enumerable.Repeat(Vector3.Zero, frames).ToArray());
+        yield return new object[] { Animated(new ModelAnimation("Beat", 30, new[] { Still("body") })), "the animation's name 'Beat' is not only lowercase letters, digits and underscores" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 0, new[] { Still("body") })), "the animation's frame rate is 0; it must be at least 1" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, System.Array.Empty<ModelChannel>())), "the animation has no channels" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, new[] { Still("body", 0) })), "the animation has no frames" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, new[] { Still("tail") })), "the animation's channel 0 is for part 'tail', which the model does not have" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, new[] { Still("body"), Still("body") })), "the animation's channel 1 is for part 'body', which an earlier channel moves" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, new[] { Still("body"), Still("left_wing", 2) })), "the animation's channel for part 'left_wing' has 2 rotations and 2 translations; the animation has 3 frames" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, new[] { Still("body") with { Rotations = new[] { Quaternion.Identity, new Quaternion(0, 0, 0, 2), Quaternion.Identity } } })), "the animation's channel for part 'body' has a rotation at frame 1 that is not a unit quaternion" };
+        yield return new object[] { Animated(new ModelAnimation("beat", 30, new[] { Still("body") with { Translations = new[] { Vector3.Zero, Vector3.Zero, new Vector3(float.NaN, 0, 0) } } })), "the animation's translation of part 'body' at frame 2 is not a finite position" };
     }
 
     [Theory]
@@ -538,10 +652,12 @@ public sealed class GlbWriterTests
             }
         }
 
-        foreach (string field in new[] { "animations", "skins", "cameras", "extensionsRequired" })
+        foreach (string field in new[] { "skins", "cameras", "extensionsRequired" })
         {
             Assert.False(glb.Json.TryGetProperty(field, out _));
         }
+
+        Assert.Equal(Sample(sample).Animation != null, glb.Json.TryGetProperty("animations", out _));
     }
 
     [Theory]

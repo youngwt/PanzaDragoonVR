@@ -16,20 +16,31 @@ public sealed record DecodedDragon(Model Model, int GreyPolygons);
 /// <summary>One <c>.glb</c> extraction wrote: its asset ID and its path relative to the output folder.</summary>
 public readonly record struct ExtractedModel(string Id, string Path);
 
-/// <summary>Where the dragons' seats came from, and what could not be drawn as the disc does.</summary>
+/// <summary>Where the dragons' seats and wing beats came from, and what could not be drawn as the disc does.</summary>
 /// <param name="Forms">How many forms were written.</param>
 /// <param name="SeatTable">The file offset in <c>1ST_READ</c> of the seat table.</param>
 /// <param name="GreyPolygons">Polygons over all forms whose texture could not be decoded.</param>
-public sealed record DragonSources(int Forms, int SeatTable, int GreyPolygons)
+/// <param name="MotionTable">The file offset in <c>1ST_READ</c> of the motion table the wing beats came from; null when the forms are still.</param>
+/// <param name="NoBeat">Why the forms are still: one line, no full stop. Null when they beat their wings.</param>
+public sealed record DragonSources(int Forms, int SeatTable, int GreyPolygons, int? MotionTable = null, string? NoBeat = null)
 {
     /// <summary>
     /// One line, with no full stop: <c>&lt;n&gt; dragon forms, seats from 0x... of 1ST_READ.PRG</c>, followed
-    /// by <c>, &lt;n&gt; polygons drawn flat grey</c> when any are.
+    /// by <c>, wing beats from 0x... of 1ST_READ.PRG</c> when they have them, <c>, &lt;n&gt; polygons drawn flat grey</c>
+    /// when any are, and <c>, no wing beat: &lt;why&gt;</c> when they are still.
     /// </summary>
     public string Describe() => string.Create(CultureInfo.InvariantCulture,
         $"{Forms} dragon forms, seats from 0x{SeatTable:X} of {Dragons.SeatFile}") +
-        (GreyPolygons == 0 ? "" : string.Create(CultureInfo.InvariantCulture, $", {GreyPolygons} {(GreyPolygons == 1 ? "polygon" : "polygons")} drawn flat grey"));
+        (MotionTable is int motions ? string.Create(CultureInfo.InvariantCulture, $", wing beats from 0x{motions:X} of {Dragons.SeatFile}") : "") +
+        (GreyPolygons == 0 ? "" : string.Create(CultureInfo.InvariantCulture, $", {GreyPolygons} {(GreyPolygons == 1 ? "polygon" : "polygons")} drawn flat grey")) +
+        (NoBeat == null ? "" : $", no wing beat: {NoBeat}");
 }
+
+/// <summary>
+/// A form's motion slot as <c>1ST_READ</c> holds it: the addresses of its lists of pointers to the pose
+/// parts A, B and C in the form's <c>.MTB</c>, and its number of frames.
+/// </summary>
+public readonly record struct MotionSlot(uint A, uint B, uint C, int Frames);
 
 /// <summary>The ten forms ready to write, in form order, then the form the player rides.</summary>
 public sealed record DragonModels(DragonSources Sources, IReadOnlyList<(ExtractedModel File, byte[] Glb)> Files);
@@ -41,6 +52,12 @@ public sealed record DragonModels(DragonSources Sources, IReadOnlyList<(Extracte
 /// found by its neighbour, the table of body roots, and not by an offset for each disc. Matrix products
 /// are integers, each sum of products shifted down as a whole, so the output is the same on every
 /// runtime; a position becomes a <c>float</c> once, at the end.
+/// <para>
+/// Each form also carries its wing beat, motion slot 0 of its <c>.MTB</c> ("Motion: <c>.MTB</c>" in the
+/// same notes), as a stepped animation of its parts, found through the motion table beside the body
+/// roots. Angles become matrices through an integer sine table, and a key's turn becomes a quaternion
+/// with only <c>+ - * /</c> and <see cref="Math.Sqrt"/>, so these too are the same on every runtime.
+/// </para>
 /// </summary>
 public static class Dragons
 {
@@ -83,6 +100,40 @@ public static class Dragons
     /// <summary>For each index the game's tables use, the place of its form in <see cref="FormFiles"/>: A, I, B, F, C, D, H, E, G, J.</summary>
     public static readonly IReadOnlyList<int> GameOrder = new[] { 0, 8, 1, 5, 2, 3, 7, 4, 6, 9 };
 
+    /// <summary>The address every <c>DRA</c> <c>.MTB</c> loads at, which its pointers and the motion slots' count from.</summary>
+    public const uint MotionLoadAddress = 0x20215000;
+
+    /// <summary>The address <c>1ST_READ</c> loads at, which the motion table's pointers count from.</summary>
+    public const uint FirstReadLoadAddress = 0x06008000;
+
+    /// <summary>Bytes from the start of the motion table to the start of the body roots table.</summary>
+    public const int MotionTableGap = 0xA0;
+
+    /// <summary>The nodes of a body tree the motion is laid out for.</summary>
+    public const int BodyNodes = 27;
+
+    /// <summary>The name of the wing beat's animation in every form's model.</summary>
+    public const string BeatName = "wing_beat";
+
+    /// <summary>Frames of the wing beat a second: the game's rate, as the author gives it.</summary>
+    public const int BeatFramesPerSecond = 30;
+
+    /// <summary>The body nodes that pose parts A, B and C drive, record by record.</summary>
+    private static readonly int[][] PoseNodes =
+    {
+        new[] { 12, 13, 15, 16, 17, 18, 19, 20 },
+        new[] { 0, 2, 3, 4, 5, 7, 8, 9, 10, 11 },
+        new[] { 21, 22, 23, 24, 25, 26 },
+    };
+
+    /// <summary>The largest distance from 1 a key rotation's length may have, as the writer allows.</summary>
+    private const float UnitTolerance = 1e-5f;
+
+    /// <summary>The root, whose own motion is left out: the dragon as a whole stays at the seat.</summary>
+    private const int RootNode = 0;
+
+    private const int SlotSize = 16;
+    private const int RecordSize = 12;
     private const int SeatSize = 12;
     private const int NodeSize = 12;
     private const int MatrixSize = 48;
@@ -133,7 +184,9 @@ public static class Dragons
                 return (null, $"the disc has no {SeatFile}");
             }
 
-            (int table, Seat[] seats) = FindSeats(disc.ReadFile(seatFile), roots);
+            byte[] firstRead = disc.ReadFile(seatFile);
+            (int table, Seat[] seats) = FindSeats(firstRead, roots);
+            (int? motionTable, ModelAnimation[]? beats, string? noBeat) = WingBeats(disc, firstRead, table - SeatTableGap, files, seats);
 
             var written = new List<(ExtractedModel, byte[])>();
             var models = new List<Model>();
@@ -143,16 +196,17 @@ public static class Dragons
                 reading = FormFiles[i];
                 int number = i + 1;
                 DecodedDragon dragon = Decode(files[i].Mdb, files[i].Cgb, RootName(FormId(number)), seats[i]);
+                Model model = beats == null ? dragon.Model : dragon.Model with { Animation = beats[i] };
                 grey += dragon.GreyPolygons;
-                models.Add(dragon.Model);
-                written.Add((new ExtractedModel(FormId(number), FormPath(number)), Write(dragon.Model)));
+                models.Add(model);
+                written.Add((new ExtractedModel(FormId(number), FormPath(number)), Write(model)));
             }
 
             // The ridden form again, under its own root name, as the asset contract's naming rule says.
             int forms = written.Count;
             reading = FormFiles[RideForm - 1];
             written.Add((new ExtractedModel(RideId, RidePath), Write(models[RideForm - 1] with { Name = RootName(RideId) })));
-            return (new DragonModels(new DragonSources(forms, table, grey), written), null);
+            return (new DragonModels(new DragonSources(forms, table, grey, motionTable, noBeat), written), null);
         }
         catch (DecodingException e)
         {
@@ -219,6 +273,170 @@ public static class Dragons
     }
 
     /// <summary>
+    /// Every form's wing beat, in <see cref="FormFiles"/>' order, with the motion table's file offset; or,
+    /// when any cannot be read, none and why, on one line with no full stop. It is all ten or none, and
+    /// nothing here stops the dragons being written still.
+    /// </summary>
+    private static (int? Table, ModelAnimation[]? Beats, string? NoBeat) WingBeats(
+        DiscImage disc, byte[] firstRead, int rootsTable, List<(byte[] Mdb, byte[] Cgb)> files, Seat[] seats)
+    {
+        string reading = SeatFile;
+        try
+        {
+            (int table, MotionSlot[] slots) = FindMotions(firstRead, rootsTable);
+            var beats = new ModelAnimation[files.Count];
+            for (int i = 0; i < files.Count; i++)
+            {
+                reading = FormFiles[i];
+                if (disc.Find(FormFiles[i] + ".MTB") is not DiscFile mtb)
+                {
+                    return (null, null, $"the disc has no {FormFiles[i]}.MTB");
+                }
+
+                beats[i] = WingBeat(files[i].Mdb, disc.ReadFile(mtb), slots[i], seats[i]);
+            }
+
+            return (table, beats, null);
+        }
+        catch (DecodingException e)
+        {
+            return (null, null, $"{reading}: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The motion table in <paramref name="firstRead"/>, <see cref="MotionTableGap"/> before the body roots
+    /// table at <paramref name="rootsTable"/>: a pointer per form, in the game's order, to its 12 motion
+    /// slots. Returns the table's file offset and each form's slot 0, the wing beat, in <see cref="FormFiles"/>' order.
+    /// </summary>
+    /// <exception cref="DecodingException">The table or a slot is not inside the file, or a slot's frame count is not a whole number above 0.</exception>
+    public static (int Table, MotionSlot[] Slots) FindMotions(byte[] firstRead, int rootsTable)
+    {
+        int table = rootsTable - MotionTableGap;
+        string none = string.Create(CultureInfo.InvariantCulture, $"it holds no motion table 0x{MotionTableGap:X} before the body roots");
+        if (table < 0)
+        {
+            throw new DecodingException(none);
+        }
+
+        var slots = new MotionSlot[GameOrder.Count];
+        for (int i = 0; i < GameOrder.Count; i++)
+        {
+            uint pointer = BinaryPrimitives.ReadUInt32BigEndian(firstRead.AsSpan(table + i * 4));
+            long at = pointer - (long)FirstReadLoadAddress;
+            if (at < 0 || at % 4 != 0 || at + SlotSize > firstRead.Length)
+            {
+                throw new DecodingException(none);
+            }
+
+            ReadOnlySpan<byte> slot = firstRead.AsSpan((int)at, SlotSize);
+            uint count = BinaryPrimitives.ReadUInt32BigEndian(slot[12..]);
+            string form = FormFiles[GameOrder[i]];
+            if ((count & 0xFFFF) != 0 || count == 0 || count > 0x7FFF0000)
+            {
+                throw new DecodingException(string.Create(CultureInfo.InvariantCulture,
+                    $"{form}'s wing beat has a frame count of 0x{count:X8}, not a whole number of frames above 0"));
+            }
+
+            slots[GameOrder[i]] = new MotionSlot(BinaryPrimitives.ReadUInt32BigEndian(slot), BinaryPrimitives.ReadUInt32BigEndian(slot[4..]),
+                BinaryPrimitives.ReadUInt32BigEndian(slot[8..]), (int)(count >> 16));
+        }
+
+        return (table, slots);
+    }
+
+    /// <summary>
+    /// A form's wing beat from its <c>.MTB</c>, as <see cref="BeatName"/>: for every frame of
+    /// <paramref name="slot"/>, the pose's local matrices in place of the <c>.MDB</c>'s for the nodes it
+    /// drives, the root's left as the <c>.MDB</c> has it, and for every part one of those nodes moves (itself
+    /// or above it), a key: the turn from its rest pose, <c>R_f * R_rest⁻¹</c>, and its origin less
+    /// <paramref name="seat"/>, both in glTF terms as <see cref="Decode"/> gives the rest.
+    /// </summary>
+    /// <exception cref="DecodingException">The body tree is not <see cref="BodyNodes"/> nodes, a pointer is outside the <c>.MTB</c>, a part's rest turn cannot be inverted, a key is not a rotation, or a matrix product does not fit.</exception>
+    public static ModelAnimation WingBeat(byte[] mdb, byte[] mtb, MotionSlot slot, Seat seat)
+    {
+        List<(int Mesh, int Parent)> nodes = Walk(mdb, BodyRoot(mdb));
+        if (nodes.Count != BodyNodes)
+        {
+            throw new DecodingException(string.Create(CultureInfo.InvariantCulture, $"the body tree is not the {BodyNodes} nodes the motion is for: it has {nodes.Count}"));
+        }
+
+        if (slot.Frames < 1)
+        {
+            throw new DecodingException("the wing beat has no frames");
+        }
+
+        long[][] rest = RestLocals(mdb, nodes);
+        uint[] lists = { slot.A, slot.B, slot.C };
+        var frames = new int[PoseNodes.Length][];
+        for (int part = 0; part < PoseNodes.Length; part++)
+        {
+            frames[part] = FrameList(mtb, lists[part], slot.Frames, PoseNodes[part].Length * RecordSize);
+        }
+
+        var driven = new bool[nodes.Count];
+        foreach (int node in PoseNodes.SelectMany(n => n).Where(n => n != RootNode))
+        {
+            driven[node] = true;
+        }
+
+        var moved = new bool[nodes.Count];
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            moved[i] = driven[i] || (nodes[i].Parent >= 0 && moved[nodes[i].Parent]);
+        }
+
+        int[] parts = Enumerable.Range(0, nodes.Count).Where(i => nodes[i].Mesh != 0 && moved[i]).ToArray();
+        if (parts.Length == 0)
+        {
+            throw new DecodingException("the wing beat moves no part with a mesh");
+        }
+
+        var rotations = parts.Select(_ => new Quaternion[slot.Frames]).ToArray();
+        var translations = parts.Select(_ => new Vector3[slot.Frames]).ToArray();
+        try
+        {
+            long[][] restProducts = Products(nodes, rest);
+            var inverses = parts.Select(i => Inverse(restProducts[i], i)).ToArray();
+            for (int f = 0; f < slot.Frames; f++)
+            {
+                var local = (long[][])rest.Clone();
+                for (int part = 0; part < PoseNodes.Length; part++)
+                {
+                    for (int r = 0; r < PoseNodes[part].Length; r++)
+                    {
+                        if (PoseNodes[part][r] != RootNode)
+                        {
+                            local[PoseNodes[part][r]] = PoseMatrix(mtb, frames[part][f] + r * RecordSize);
+                        }
+                    }
+                }
+
+                long[][] products = Products(nodes, local);
+                for (int p = 0; p < parts.Length; p++)
+                {
+                    long[] product = products[parts[p]];
+                    Quaternion q = KeyRotation(product, inverses[p]);
+                    if (!float.IsFinite(q.X) || !float.IsFinite(q.Y) || !float.IsFinite(q.Z) || !float.IsFinite(q.W) || MathF.Abs(q.Length() - 1) > UnitTolerance)
+                    {
+                        throw new DecodingException(string.Create(CultureInfo.InvariantCulture, $"the turn of {PartName(parts[p])} at frame {f} is not a rotation"));
+                    }
+
+                    rotations[p][f] = q;
+                    translations[p][f] = ToGltf(product[3] - seat.X, product[7] - seat.Y, product[11] - seat.Z);
+                }
+            }
+        }
+        catch (OverflowException)
+        {
+            throw new DecodingException("a matrix product is too large to hold");
+        }
+
+        var channels = parts.Select((node, p) => new ModelChannel(PartName(node), rotations[p], translations[p])).ToArray();
+        return new ModelAnimation(BeatName, BeatFramesPerSecond, channels);
+    }
+
+    /// <summary>
     /// The file offset of a form's body root: the first node, in file order, that no other node points at.
     /// Nodes fill the end of the file, so they are read back from the end while three longs can be a node.
     /// Three zeros that nothing points at are not a root: there is nothing to walk.
@@ -280,21 +498,14 @@ public static class Dragons
             throw new DecodingException("the body tree holds no mesh");
         }
 
-        long matrices = nodes.Max(n => n.Mesh) + (long)MeshHeaderSize;
-        if (matrices + nodes.Count * (long)MatrixSize > mdb.Length)
-        {
-            throw new DecodingException($"the {nodes.Count} matrices after the last mesh run off the end of the file");
-        }
-
+        long[][] locals = RestLocals(mdb, nodes);
         var painter = new Painter(mdb, cgb);
         var parts = new List<ModelPart>();
-        var products = new long[nodes.Count][];
         try
         {
+            long[][] products = Products(nodes, locals);
             for (int i = 0; i < nodes.Count; i++)
             {
-                long[] local = ReadMatrix(mdb, (int)matrices + i * MatrixSize);
-                products[i] = nodes[i].Parent < 0 ? local : Multiply(products[nodes[i].Parent], local);
                 if (nodes[i].Mesh != 0)
                 {
                     parts.Add(Part(mdb, nodes[i].Mesh, i, products[i], seat, painter));
@@ -307,6 +518,246 @@ public static class Dragons
         }
 
         return new DecodedDragon(new Model(name, parts), painter.Grey);
+    }
+
+    /// <summary>The <c>.MDB</c>'s local matrix of each node of <paramref name="nodes"/>, from the table straight after the last mesh.</summary>
+    /// <exception cref="DecodingException">The table runs off the end of the file.</exception>
+    private static long[][] RestLocals(byte[] mdb, List<(int Mesh, int Parent)> nodes)
+    {
+        long matrices = nodes.Max(n => n.Mesh) + (long)MeshHeaderSize;
+        if (matrices + nodes.Count * (long)MatrixSize > mdb.Length)
+        {
+            throw new DecodingException($"the {nodes.Count} matrices after the last mesh run off the end of the file");
+        }
+
+        var locals = new long[nodes.Count][];
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            locals[i] = ReadMatrix(mdb, (int)matrices + i * MatrixSize);
+        }
+
+        return locals;
+    }
+
+    /// <summary>Each node's product of local matrices from the root down; a parent comes before its children in depth-first order.</summary>
+    /// <exception cref="OverflowException">A product does not fit.</exception>
+    private static long[][] Products(List<(int Mesh, int Parent)> nodes, long[][] locals)
+    {
+        var products = new long[nodes.Count][];
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            products[i] = nodes[i].Parent < 0 ? locals[i] : Multiply(products[nodes[i].Parent], locals[i]);
+        }
+
+        return products;
+    }
+
+    /// <summary>A part's name from its node's depth-first index: <c>node07</c>.</summary>
+    private static string PartName(int index) => string.Create(CultureInfo.InvariantCulture, $"node{index:D2}");
+
+    /// <summary>
+    /// The file offset of each frame's pose part in <paramref name="mtb"/>, from the list of
+    /// <paramref name="frames"/> pointers at <paramref name="list"/>, each to <paramref name="size"/> bytes.
+    /// </summary>
+    /// <exception cref="DecodingException">The list or a pose part is not inside the file.</exception>
+    private static int[] FrameList(byte[] mtb, uint list, int frames, int size)
+    {
+        long at = list - (long)MotionLoadAddress;
+        if (at < 0 || at + frames * 4L > mtb.Length)
+        {
+            throw new DecodingException(string.Create(CultureInfo.InvariantCulture, $"a slot 0 pointer, 0x{list:X8}, is outside the .MTB"));
+        }
+
+        var offsets = new int[frames];
+        for (int f = 0; f < frames; f++)
+        {
+            uint pointer = BinaryPrimitives.ReadUInt32BigEndian(mtb.AsSpan((int)at + f * 4));
+            long pose = pointer - (long)MotionLoadAddress;
+            if (pose < 0 || pose + size > mtb.Length)
+            {
+                throw new DecodingException(string.Create(CultureInfo.InvariantCulture, $"a frame pointer, 0x{pointer:X8}, is outside the .MTB"));
+            }
+
+            offsets[f] = (int)pose;
+        }
+
+        return offsets;
+    }
+
+    /// <summary>
+    /// The local matrix of a <c>.MTB</c> record at <paramref name="at"/>, six signed words <c>tx ty tz rx ry rz</c>:
+    /// <c>Ry * Rx * Rz</c> in 16.16, angles 4,096 to a turn, and the translation times 16 in whole units.
+    /// </summary>
+    private static long[] PoseMatrix(byte[] mtb, int at)
+    {
+        int Word(int i) => BinaryPrimitives.ReadInt16BigEndian(mtb.AsSpan(at + i * 2));
+        long[] m = Multiply(Multiply(RotationY(Word(4)), RotationX(Word(3))), RotationZ(Word(5)));
+        m[3] = Word(0) * 16L;
+        m[7] = Word(1) * 16L;
+        m[11] = Word(2) * 16L;
+        return m;
+    }
+
+    private static long[] RotationX(int angle)
+    {
+        long c = Cos(angle), s = Sin(angle);
+        return new[] { 0x10000, 0, 0, 0, 0, c, -s, 0, 0, s, c, 0L };
+    }
+
+    private static long[] RotationY(int angle)
+    {
+        long c = Cos(angle), s = Sin(angle);
+        return new[] { c, 0, s, 0, 0, 0x10000, 0, 0, -s, 0, c, 0L };
+    }
+
+    private static long[] RotationZ(int angle)
+    {
+        long c = Cos(angle), s = Sin(angle);
+        return new[] { c, -s, 0, 0, s, c, 0, 0, 0, 0, 0x10000, 0L };
+    }
+
+    /// <summary>The sine of <paramref name="angle"/>, 4,096 to a turn, in 16.16, from <see cref="QuarterSine"/>.</summary>
+    public static long Sin(int angle)
+    {
+        int a = angle & 4095;
+        int quarter = a >> 10, within = a & 1023;
+        long s = quarter is 0 or 2 ? QuarterSine[within] : QuarterSine[1024 - within];
+        return quarter < 2 ? s : -s;
+    }
+
+    /// <summary>The cosine of <paramref name="angle"/>, 4,096 to a turn, in 16.16.</summary>
+    public static long Cos(int angle) => Sin(angle + 1024);
+
+    /// <summary>The sine of 0 to 1,024 steps of 4,096 to a turn, in 16.16, rounded to nearest.</summary>
+    private static readonly long[] QuarterSine = BuildQuarterSine();
+
+    /// <summary>
+    /// <see cref="QuarterSine"/> by Taylor series in 2.60 fixed point, integers only, so every runtime builds
+    /// the same table: no library sine, whose last bit may differ.
+    /// </summary>
+    private static long[] BuildQuarterSine()
+    {
+        const int Scale = 60;
+        Int128 pi = 3622009729038561421; // π times 2^60.
+        var table = new long[1025];
+        for (int k = 0; k <= 1024; k++)
+        {
+            Int128 x = pi * k / 2048;
+            Int128 x2 = x * x >> Scale;
+            Int128 term = x, sum = x;
+            for (int n = 1; term != 0; n += 2)
+            {
+                term = -(term * x2 >> Scale) / ((n + 1) * (n + 2));
+                sum += term;
+            }
+
+            table[k] = (long)((sum + ((Int128)1 << (Scale - 17))) >> (Scale - 16));
+        }
+
+        return table;
+    }
+
+    /// <summary>
+    /// The exact inverse of a rest product's turn as its adjugate and determinant, each held as integers
+    /// (the adjugate in 32.32, the determinant in 48.48 of 16.16 inputs).
+    /// </summary>
+    /// <exception cref="DecodingException">The turn has no inverse.</exception>
+    /// <exception cref="OverflowException">The adjugate or determinant does not fit.</exception>
+    private static (Int128[] Adjugate, Int128 Determinant) Inverse(long[] m, int node)
+    {
+        Int128 a = m[0], b = m[1], c = m[2], d = m[4], e = m[5], f = m[6], g = m[8], h = m[9], i = m[10];
+        Int128[] adj;
+        Int128 det;
+        checked
+        {
+            adj = new[]
+            {
+                e * i - f * h, c * h - b * i, b * f - c * e,
+                f * g - d * i, a * i - c * g, c * d - a * f,
+                d * h - e * g, b * g - a * h, a * e - b * d,
+            };
+            det = a * adj[0] + b * adj[3] + c * adj[6];
+        }
+
+        if (det == 0 || !Exact(det))
+        {
+            throw new DecodingException(string.Create(CultureInfo.InvariantCulture, $"the rest turn of {PartName(node)} cannot be inverted"));
+        }
+
+        return (adj, det);
+    }
+
+    /// <summary>Whether an integer converts to a <c>double</c> exactly, so its conversion is the same on every runtime.</summary>
+    private static bool Exact(Int128 value) => value > -((Int128)1 << 53) && value < (Int128)1 << 53;
+
+    /// <summary>
+    /// A part's key rotation at a frame: its product's turn times the inverse of its rest turn, in glTF's
+    /// axes (the half-turn about Y flips the signs that mix Y with X or Z), as a unit quaternion with w not
+    /// below 0. Each element is one exact integer over another, divided once; the quaternion comes by the
+    /// trace method, with only <c>+ - * /</c> and <see cref="Math.Sqrt"/>.
+    /// </summary>
+    /// <exception cref="OverflowException">An element is too large to divide exactly.</exception>
+    private static Quaternion KeyRotation(long[] product, (Int128[] Adjugate, Int128 Determinant) inverse)
+    {
+        double det = (long)inverse.Determinant;
+        var m = new double[9];
+        for (int r = 0; r < 3; r++)
+        {
+            for (int c = 0; c < 3; c++)
+            {
+                Int128 sum = checked(product[r * 4] * inverse.Adjugate[c] + product[r * 4 + 1] * inverse.Adjugate[3 + c] + product[r * 4 + 2] * inverse.Adjugate[6 + c]);
+                if (!Exact(sum))
+                {
+                    throw new OverflowException();
+                }
+
+                // To glTF's axes: (x, y, z) to (-x, y, -z) on both sides, so an element mixing Y with X or Z changes sign.
+                double value = (long)sum / det;
+                m[r * 3 + c] = (r == 1) != (c == 1) ? -value : value;
+            }
+        }
+
+        double m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7], m22 = m[8];
+        double x, y, z, w;
+        double trace = m00 + m11 + m22;
+        if (trace > 0)
+        {
+            double s = Math.Sqrt(trace + 1) * 2;
+            w = s / 4;
+            x = (m21 - m12) / s;
+            y = (m02 - m20) / s;
+            z = (m10 - m01) / s;
+        }
+        else if (m00 > m11 && m00 > m22)
+        {
+            double s = Math.Sqrt(1 + m00 - m11 - m22) * 2;
+            w = (m21 - m12) / s;
+            x = s / 4;
+            y = (m01 + m10) / s;
+            z = (m02 + m20) / s;
+        }
+        else if (m11 > m22)
+        {
+            double s = Math.Sqrt(1 + m11 - m00 - m22) * 2;
+            w = (m02 - m20) / s;
+            x = (m01 + m10) / s;
+            y = s / 4;
+            z = (m12 + m21) / s;
+        }
+        else
+        {
+            double s = Math.Sqrt(1 + m22 - m00 - m11) * 2;
+            w = (m10 - m01) / s;
+            x = (m02 + m20) / s;
+            y = (m12 + m21) / s;
+            z = s / 4;
+        }
+
+        double length = Math.Sqrt(x * x + y * y + z * z + w * w);
+        double sign = w < 0 ? -1 : 1;
+
+        // Adding 0 turns a negative zero into zero.
+        return new Quaternion((float)(sign * x / length) + 0f, (float)(sign * y / length) + 0f, (float)(sign * z / length) + 0f, (float)(sign * w / length) + 0f);
     }
 
     /// <summary>A pointer field's value is usable: zero, or a long-aligned address inside the file.</summary>
@@ -464,7 +915,7 @@ public static class Dragons
         }
 
         long[] t = { product[3] - seat.X, product[7] - seat.Y, product[11] - seat.Z };
-        return new ModelPart(string.Create(CultureInfo.InvariantCulture, $"node{index:D2}"), ToGltf(t[0], t[1], t[2]), quads);
+        return new ModelPart(PartName(index), ToGltf(t[0], t[1], t[2]), quads);
     }
 
     /// <summary>The material a polygon's CMDPMOD asks for, as the format notes' table says.</summary>

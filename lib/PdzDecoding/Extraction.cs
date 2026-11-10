@@ -154,8 +154,8 @@ public readonly record struct ExtractionProgress(ExtractionStage Stage, string? 
 /// </summary>
 public static class Extraction
 {
-    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.4</c>.</summary>
-    public const string Version = "0.4";
+    /// <summary>The library's version, as the manifest's <c>generator</c> gives it: <c>pdz-extract 0.5</c>.</summary>
+    public const string Version = "0.5";
 
     /// <summary>
     /// The staging folder inside the output folder, fixed by the asset contract: extraction writes

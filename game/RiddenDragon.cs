@@ -15,7 +15,7 @@ namespace PanzaDragoonVR;
 /// and scale; this node applies them as its global transform and keeps no arithmetic of its own.
 /// Its own shapes are the grey placeholder dragon for <see cref="AssetIds.DragonRide"/>, built in the same
 /// model axes so that a hand-made model tests the same convention; a model the asset folder supplies sits
-/// at the seat in their place.
+/// at the seat in their place, and loops its wing beat when it has one.
 /// </summary>
 public partial class RiddenDragon : Node3D
 {
@@ -67,6 +67,64 @@ public partial class RiddenDragon : Node3D
 
         AddChild(model);
         SetPlaceholderShown(false);
+        LoopAnimation(model);
+    }
+
+    /// <summary>
+    /// Loops a carried model's animation, the dragon's wing beat, which the engine's glTF import gives an
+    /// <see cref="AnimationPlayer"/> under the model. A model with none, such as the placeholder, a hand-made
+    /// model or an older extraction's, is shown still, as before. The beat's keys are stepped, one a frame:
+    /// the loop is made one frame longer than its last key, so the last frame is held as long as the others
+    /// before the first comes round again.
+    /// </summary>
+    private static void LoopAnimation(Node model)
+    {
+        if (FindPlayer(model) is not AnimationPlayer player)
+        {
+            return;
+        }
+
+        string[] names = player.GetAnimationList();
+        if (names.Length == 0)
+        {
+            return;
+        }
+
+        Animation animation = player.GetAnimation(names[0]);
+        animation.LoopMode = Animation.LoopModeEnum.Linear;
+
+        // Stepped, whatever the import chose: each frame is held until the next, never blended.
+        for (int track = 0; track < animation.GetTrackCount(); track++)
+        {
+            animation.TrackSetInterpolationType(track, Animation.InterpolationType.Nearest);
+        }
+
+        if (animation.GetTrackCount() > 0 && animation.TrackGetKeyCount(0) >= 2)
+        {
+            int last = animation.TrackGetKeyCount(0) - 1;
+            double frame = animation.TrackGetKeyTime(0, 1) - animation.TrackGetKeyTime(0, 0);
+            animation.Length = (float)(animation.TrackGetKeyTime(0, last) + frame);
+        }
+
+        player.Play(names[0]);
+    }
+
+    private static AnimationPlayer? FindPlayer(Node node)
+    {
+        if (node is AnimationPlayer player)
+        {
+            return player;
+        }
+
+        foreach (Node child in node.GetChildren())
+        {
+            if (FindPlayer(child) is AnimationPlayer found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private SeatPlacement Seat => _seat ?? throw new InvalidOperationException("the dragon's seat is used before the dragon is ready");

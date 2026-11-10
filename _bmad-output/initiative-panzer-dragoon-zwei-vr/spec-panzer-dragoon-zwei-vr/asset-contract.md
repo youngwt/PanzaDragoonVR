@@ -44,7 +44,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.4",
+  "generator": "pdz-extract 0.5",
   "source": { "product": "GS-9049", "version": "V1.001" },
   "assets": [
     {
@@ -144,6 +144,7 @@ The extractor writes the ten dragon forms as `model` assets, one for each `DRA` 
 - Each holds the form's body tree only: no shadow, no extra wing frames, no rider. Each mesh-bearing node is one part, named `node` and its two-digit depth-first index (`node13`), with its origin at the translation of its matrices' product. The root node is named `form01` and so on.
 - Each model's origin is the seat: the rider's offset for that form, read from the table in `1ST_READ` on the disc in hand and subtracted before the conversion to glTF. The table is found by searching `1ST_READ` for the ten forms' body roots in the game's order, so it is found on any disc that holds it, not looked up by disc.
 - A polygon whose texture cannot be decoded from its `.CGB` alone is drawn in flat grey, and the count is in the extractor's line. A flat polygon takes its colour from CMDCOLR.
+- Each carries its form's wing beat, motion slot 0 of its `.MTB`, as one animation named `wing_beat` (see Structure and naming). The motion table is found `0xA0` before the body roots in `1ST_READ`, so on any disc that holds it. The root's own motion is left out, so the dragon as a whole stays at the seat and only its parts move. A disc whose motion cannot be read (no motion table there, a form's `.MTB` missing, a pointer outside it, a body tree that is not 27 nodes, or the motion cannot otherwise be read) still has its dragons written, all of them still, as before, and the extractor's line ends `, no wing beat: <reason>`; with the beat it says `wing beats from 0x... of 1ST_READ.PRG`.
 - They are an addition, as the floor and canopy are, and all or nothing: a disc with a form's `.MDB` or `.CGB` missing, no table, malformed geometry or a model the writer rejects writes no model and still has its other assets written, and the extractor gives a one-line notice, `no dragons: <reason>`. An earlier run's models stay in the folder, unlisted.
 - The game asks only for `dragon.ride`, so as the table under What the game does at launch says, the others change nothing it shows. To look at one in the headset, list it under `dragon.ride` in a folder of your own.
 
@@ -181,12 +182,12 @@ The game extracts the assets on the headset at launch, and the PC command does t
 - Extraction writes into a staging folder, `extracting/` inside the asset folder, which it empties first. Only when every file is written without error does it move the new files into place, the new `manifest.json` last, and then remove the staging folder. A failure before that leaves the previous files and manifest in place; a leftover `extracting/` folder is emptied by the next extraction.
 - It writes its own `manifest.json`, replacing any manifest in the folder. Files it did not write are left in place but are no longer listed.
 - `generator` is `pdz-extract` followed by the decoding library's version, the same on the PC and the headset. `source` is the product and version from the disc's Saturn header.
-- For identical output: entries are sorted by `id` in ordinal order; every entry has `sha256`; the JSON puts every object and array member on a line of its own, indented two spaces per level, with `": "` after each key, `\n` line ends and a final newline, and keys in the order of the example below; PNGs and models come from one deterministic encoder each, and a model's positions from integer arithmetic with one conversion to `float` at the end.
+- For identical output: entries are sorted by `id` in ordinal order; every entry has `sha256`; the JSON puts every object and array member on a line of its own, indented two spaces per level, with `": "` after each key, `\n` line ends and a final newline, and keys in the order of the example below; PNGs and models come from one deterministic encoder each, and a model's positions from integer arithmetic with one conversion to `float` at the end. An animation's turns come from an integer sine table, and its quaternions use only `+ - * /` and the square root, each correctly rounded on every runtime.
 
 ```json
 {
   "format": 1,
-  "generator": "pdz-extract 0.4",
+  "generator": "pdz-extract 0.5",
   "source": {
     "product": "GS-9049",
     "version": "V1.001"
@@ -251,7 +252,7 @@ These rules were checked against the extracted dragons, as far as the dragons us
 - A Saturn polygon with only three distinct corners is written the same way, with the repeated corner repeated.
 - Every material sets `doubleSided` to `true`, so a surface that is a single sheet shows from both sides. The corner-order rule above governs: the tool does not reorder corners, and the Saturn's corners go clockwise seen from outside, the opposite of glTF's front faces, so a reader must not cull by winding.
 - No normals. Every material uses the `KHR_materials_unlit` extension, listed in `extensionsUsed` and not in `extensionsRequired`: the Saturn's shading is in its textures and its colour tables, not in lights.
-- No vertex colours. `COLOR_0` is reserved for the Saturn's per-vertex shading, which the author chose to leave out for now (see `zwei-disc-formats.md`, Shading, and the backlog). In format 1 the game ignores `COLOR_0` if a file has it, as it ignores animations, so adding it later does not change `format`.
+- No vertex colours. `COLOR_0` is reserved for the Saturn's per-vertex shading, which the author chose to leave out for now (see `zwei-disc-formats.md`, Shading, and the backlog). In format 1 the game ignores `COLOR_0` if a file has it, so adding it later does not change `format`.
 - The file passes the Khronos glTF Validator with no errors.
 
 ### Transparency
@@ -276,7 +277,10 @@ A model has at most four materials per atlas. The material's name says how its p
 - Each mesh has one primitive per material.
 - Node and mesh names are lowercase letters, digits and underscores, and unique within their kind in the file: no two nodes share a name, and no two meshes do. A node and a mesh may share one, and a part node and its mesh do, as `body` and `body`. The root node is named after the last level of the asset ID: `flyer` for `e03.flyer`.
 - Material names are those in the Transparency table.
-- No animations, skins, cameras or lights in format 1. glTF can carry animation and the game's loader can read it, so the dragon's motion can be added later, in the model or as a kind of its own, without changing `format`. The game ignores any it finds until then.
+- No skins, cameras or lights in format 1. A model may carry one animation, of its parts, which a game built for format 1 before the wing beat ignores, so it did not change `format`:
+  - It moves the part nodes only, never a root above them, keeping the structure above; a model with one part has its root as its part, so its root carries the keys: one key a frame for each part it moves, a `rotation` and a `translation` channel each, which replace the part node's own while it plays. The rotation is the part's turn from its rest pose, its whole chain of turns combined, and the translation its origin at that frame; both are in the model's axes and metres, as the geometry is. A part it does not move has no channel and stays where it is.
+  - Every sampler is `STEP` and shares one input accessor of frame times, frame `f` at `f / 30` seconds, with its `min` and `max`. Rotations are `VEC4` unit quaternions, translations `VEC3`, all `FLOAT`.
+  - The dragons' is named `wing_beat`. The game loops the ridden dragon's at 30 frames a second, each frame shown for 1/30 s, the last as long as the others; it always plays it, and a model with none is shown still.
 - No extensions other than `KHR_materials_unlit`, and nothing in `extensionsRequired`.
 
 ### When a model is invalid

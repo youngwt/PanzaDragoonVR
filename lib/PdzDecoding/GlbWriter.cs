@@ -14,7 +14,7 @@ namespace PdzDecoding;
 /// Models section says: textures and flat colours packed into atlases (<see cref="Atlas"/>) stored as
 /// PNGs in the binary chunk, one nearest/clamp sampler, one material per drawing mode and atlas that
 /// some quad uses, each quad four vertices of its own and two triangles, no normals and no vertex
-/// colours, one scene with one root node, and no <c>uri</c> anywhere. The same model always gives the
+/// colours, one scene with one root node, its parts' stepped animation when it has one, and no <c>uri</c> anywhere. The same model always gives the
 /// same bytes, on every runtime: the PNGs come from <see cref="PngWriter"/>, numbers are written
 /// invariantly, and everything is written in the model's own order.
 /// </summary>
@@ -241,6 +241,54 @@ public static class GlbWriter
             imageJson.Append(a > 0 ? "," : "").Append("{\"bufferView\":").Append(Int(view)).Append(",\"mimeType\":\"image/png\"}");
         }
 
+        // The animation, after the atlases, so a model without one is written as it always was: one
+        // input of frame times shared by every sampler, then per channel its rotations and translations.
+        string? animationJson = null;
+        if (model.Animation is ModelAnimation animation)
+        {
+            int frames = animation.Channels[0].Rotations.Count;
+            var times = new byte[frames * 4];
+            for (int f = 0; f < frames; f++)
+            {
+                WriteFloat(times, f * 4, FrameTime(f, animation.FramesPerSecond));
+            }
+
+            int input = Accessor(View(times, null), Float, frames, "SCALAR",
+                "\"min\":[" + Num(FrameTime(0, animation.FramesPerSecond)) + "],\"max\":[" + Num(FrameTime(frames - 1, animation.FramesPerSecond)) + "]");
+            var samplers = new StringBuilder();
+            var channels = new StringBuilder();
+            for (int c = 0; c < animation.Channels.Count; c++)
+            {
+                ModelChannel channel = animation.Channels[c];
+                var rotations = new byte[frames * 16];
+                var translations = new byte[frames * 12];
+                for (int f = 0; f < frames; f++)
+                {
+                    Quaternion q = channel.Rotations[f];
+                    WriteFloat(rotations, f * 16, q.X);
+                    WriteFloat(rotations, f * 16 + 4, q.Y);
+                    WriteFloat(rotations, f * 16 + 8, q.Z);
+                    WriteFloat(rotations, f * 16 + 12, q.W);
+                    Vector3 t = channel.Translations[f];
+                    WriteFloat(translations, f * 12, t.X);
+                    WriteFloat(translations, f * 12 + 4, t.Y);
+                    WriteFloat(translations, f * 12 + 8, t.Z);
+                }
+
+                int rotation = Accessor(View(rotations, null), Float, frames, "VEC4");
+                int translation = Accessor(View(translations, null), Float, frames, "VEC3");
+                int node = PartNode(model, channel.Part);
+                samplers.Append(c > 0 ? "," : "")
+                    .Append("{\"input\":").Append(Int(input)).Append(",\"interpolation\":\"STEP\",\"output\":").Append(Int(rotation)).Append('}')
+                    .Append(",{\"input\":").Append(Int(input)).Append(",\"interpolation\":\"STEP\",\"output\":").Append(Int(translation)).Append('}');
+                channels.Append(c > 0 ? "," : "")
+                    .Append("{\"sampler\":").Append(Int(c * 2)).Append(",\"target\":{\"node\":").Append(Int(node)).Append(",\"path\":\"rotation\"}}")
+                    .Append(",{\"sampler\":").Append(Int(c * 2 + 1)).Append(",\"target\":{\"node\":").Append(Int(node)).Append(",\"path\":\"translation\"}}");
+            }
+
+            animationJson = "{\"name\":" + Manifest.Quote(animation.Name) + ",\"channels\":[" + channels + "],\"samplers\":[" + samplers + "]}";
+        }
+
         var json = new StringBuilder();
         json.Append("{\"asset\":{\"generator\":").Append(Manifest.Quote(Manifest.Generator)).Append(",\"version\":\"2.0\"}");
         json.Append(",\"extensionsUsed\":[\"KHR_materials_unlit\"]");
@@ -266,7 +314,13 @@ public static class GlbWriter
             }
         }
 
-        json.Append("],\"meshes\":[").Append(meshes).Append(']');
+        json.Append(']');
+        if (animationJson != null)
+        {
+            json.Append(",\"animations\":[").Append(animationJson).Append(']');
+        }
+
+        json.Append(",\"meshes\":[").Append(meshes).Append(']');
         json.Append(",\"materials\":[");
         for (int m = 0; m < materials.Count; m++)
         {
@@ -292,6 +346,28 @@ public static class GlbWriter
     private static int MaterialKey(int atlas, DrawingMode mode) => atlas * ModeNames.Length + (int)mode;
 
     private static string MeshName(Model model, int part) => model.Parts.Count == 1 ? model.Name : model.Parts[part].Name;
+
+    /// <summary>The node index of the part named <paramref name="name"/>: the root when it is the only part, else one after its place.</summary>
+    private static int PartNode(Model model, string name)
+    {
+        if (model.Parts.Count == 1)
+        {
+            return 0;
+        }
+
+        for (int p = 0; p < model.Parts.Count; p++)
+        {
+            if (model.Parts[p].Name == name)
+            {
+                return p + 1;
+            }
+        }
+
+        throw new InvalidOperationException("a channel's part was checked and is missing");
+    }
+
+    /// <summary>When frame <paramref name="frame"/> starts, in seconds: one division, so the same on every runtime.</summary>
+    private static float FrameTime(int frame, int framesPerSecond) => (float)(frame / (double)framesPerSecond);
 
     /// <summary>A material of the Transparency table: <c>opaque</c>, <c>cutout</c>, <c>half</c> or <c>mesh</c>, with <c>_2</c> and up for later atlases.</summary>
     private static string Material(int atlas, int mode)
@@ -407,6 +483,68 @@ public static class GlbWriter
                         throw Bad($"{at} has a {texture.Width} x {texture.Height} texture of {texture.Rgba?.Length ?? 0} bytes; it needs {expected}");
                     }
                 }
+            }
+        }
+
+        if (model.Animation is ModelAnimation animation)
+        {
+            ValidateAnimation(model, animation);
+        }
+    }
+
+    /// <summary>The largest distance from 1 a rotation's length may have and still be a unit quaternion.</summary>
+    private const float UnitTolerance = 1e-5f;
+
+    private static void ValidateAnimation(Model model, ModelAnimation animation)
+    {
+        CheckName(animation.Name, "the animation's name");
+        if (animation.FramesPerSecond < 1)
+        {
+            throw Bad($"the animation's frame rate is {animation.FramesPerSecond}; it must be at least 1");
+        }
+
+        if (animation.Channels == null || animation.Channels.Count == 0)
+        {
+            throw Bad("the animation has no channels");
+        }
+
+        int frames = animation.Channels[0]?.Rotations?.Count ?? 0;
+        if (frames == 0)
+        {
+            throw Bad("the animation has no frames");
+        }
+
+        var parts = new HashSet<string>(model.Parts.Select(p => p.Name), StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (int c = 0; c < animation.Channels.Count; c++)
+        {
+            ModelChannel channel = animation.Channels[c] ?? throw Bad($"the animation's channel {c} is missing");
+            if (channel.Part == null || !parts.Contains(channel.Part))
+            {
+                throw Bad($"the animation's channel {c} is for part '{channel.Part}', which the model does not have");
+            }
+
+            if (!seen.Add(channel.Part))
+            {
+                throw Bad($"the animation's channel {c} is for part '{channel.Part}', which an earlier channel moves");
+            }
+
+            string where = $"the animation's channel for part '{channel.Part}'";
+            int rotations = channel.Rotations?.Count ?? 0, translations = channel.Translations?.Count ?? 0;
+            if (rotations != frames || translations != frames)
+            {
+                throw Bad($"{where} has {rotations} rotations and {translations} translations; the animation has {frames} frames");
+            }
+
+            for (int f = 0; f < frames; f++)
+            {
+                Quaternion q = channel.Rotations![f];
+                if (!float.IsFinite(q.X) || !float.IsFinite(q.Y) || !float.IsFinite(q.Z) || !float.IsFinite(q.W) || MathF.Abs(q.Length() - 1) > UnitTolerance)
+                {
+                    throw Bad($"{where} has a rotation at frame {f} that is not a unit quaternion");
+                }
+
+                CheckFinite(channel.Translations![f], $"the animation's translation of part '{channel.Part}' at frame {f}");
             }
         }
     }

@@ -197,6 +197,168 @@ internal static class SyntheticDragon
         return data;
     }
 
+    // ------------------------------------------------------------ bodies of 27 nodes and their motion
+
+    /// <summary>The body nodes with a mesh: 0 and 1 the beat leaves still, the rest it moves.</summary>
+    public static readonly int[] BodyMeshes = { 0, 1, 5, 11, 13, 20, 23, 26 };
+
+    /// <summary>The body nodes with a mesh that the beat moves.</summary>
+    public static readonly string[] MovedParts = { "node05", "node11", "node13", "node20", "node23", "node26" };
+
+    /// <summary>
+    /// The rest translation of body node <paramref name="node"/> of form <paramref name="form"/>, in whole
+    /// units, each a multiple of 16 so a <c>.MTB</c> record can hold it.
+    /// </summary>
+    public static (int X, int Y, int Z) RestMove(int form, int node) => (node * 160 - 2000 + form * 16, 320 - node * 16, node % 3 * 480 - 480);
+
+    /// <summary>Whether body node <paramref name="node"/>'s rest matrix holds a quarter turn about Y, so the rest is not all straight.</summary>
+    public static bool RestTurned(int node) => node is 11 or 21;
+
+    /// <summary>The rest matrix of a body node.</summary>
+    public static int[] RestMatrix(int form, int node)
+    {
+        (int x, int y, int z) = RestMove(form, node);
+        return RestTurned(node) ? QuarterTurnY(x, y, z) : Move(x, y, z);
+    }
+
+    /// <summary>
+    /// A body tree of <see cref="Dragons.BodyNodes"/> nodes in the shape of the format notes: 0 root; 1 to 5
+    /// and 6 to 10 a chain each; 11 under the root, with 12 (and 13 under it), 14, the chains 15 to 20, 21
+    /// to 23 and 24 to 26 under it. <paramref name="matrix"/> gives each node's local matrix, and the nodes of
+    /// <see cref="BodyMeshes"/> hold a square.
+    /// </summary>
+    public static TestNode Body(Func<int, int[]> matrix)
+    {
+        TestNode Node(int i, params TestNode[] children) => new(matrix(i), BodyMeshes.Contains(i) ? SquareMesh() : null, children);
+        TestNode Chain(int first, int last) => first == last ? Node(first) : Node(first, Chain(first + 1, last));
+        return Node(0, Chain(1, 5), Chain(6, 10),
+            Node(11, Node(12, Node(13)), Node(14), Chain(15, 20), Chain(21, 23), Chain(24, 26)));
+    }
+
+    /// <summary>Form <paramref name="index"/>'s body at rest.</summary>
+    public static TestNode Body(int index) => Body(node => RestMatrix(index, node));
+
+    /// <summary>A pose record: <c>tx ty tz</c> in units of 16, then <c>rx ry rz</c>, 4,096 to a turn.</summary>
+    public readonly record struct TestRecord(short Tx, short Ty, short Tz, short Rx, short Ry, short Rz);
+
+    /// <summary>The record that rebuilds body node <paramref name="node"/>'s rest matrix exactly.</summary>
+    public static TestRecord RestRecord(int form, int node)
+    {
+        (int x, int y, int z) = RestMove(form, node);
+        return new TestRecord((short)(x / 16), (short)(y / 16), (short)(z / 16), 0, (short)(RestTurned(node) ? 1024 : 0), 0);
+    }
+
+    /// <summary>
+    /// A beat for tests: from the rest, the wing roots 21 and 24 roll a quarter turn more each frame, the tail's
+    /// 15 pitches a quarter turn and moves, the trunk turns about X and Y at frame 1, and the root bobs and turns,
+    /// which must not show.
+    /// </summary>
+    public static TestRecord BeatRecord(int form, int frame, int node)
+    {
+        TestRecord r = RestRecord(form, node);
+        return node switch
+        {
+            0 => r with { Ty = (short)(r.Ty + frame * 50), Ry = (short)(frame * 512), Rx = (short)(frame * 300) },
+            21 or 24 => r with { Rz = (short)(frame * (node == 21 ? 1024 : -1024)) },
+            15 => r with { Rx = (short)(frame * 1024), Tz = (short)(r.Tz + frame * 10) },
+            11 when frame == 1 => r with { Rx = 1024, Ry = 1024 + 1024 },
+            _ => r,
+        };
+    }
+
+    /// <summary>
+    /// A <c>.MTB</c> of one motion of <paramref name="frames"/> frames as the format notes lay it out: every
+    /// frame's part A, then every B, then every C, then the pointer table of n A, n B and n C pointers.
+    /// Returns the file and the slot pointing at it.
+    /// </summary>
+    public static (byte[] Mtb, MotionSlot Slot) Mtb(int frames, Func<int, int, TestRecord> record)
+    {
+        var file = new List<byte>();
+        int[][] parts = { new[] { 12, 13, 15, 16, 17, 18, 19, 20 }, new[] { 0, 2, 3, 4, 5, 7, 8, 9, 10, 11 }, new[] { 21, 22, 23, 24, 25, 26 } };
+        var pointers = new List<uint>();
+        foreach (int[] part in parts)
+        {
+            for (int f = 0; f < frames; f++)
+            {
+                pointers.Add(Dragons.MotionLoadAddress + (uint)file.Count);
+                foreach (int node in part)
+                {
+                    TestRecord r = record(f, node);
+                    foreach (short w in new[] { r.Tx, r.Ty, r.Tz, r.Rx, r.Ry, r.Rz })
+                    {
+                        Word(file, (ushort)w);
+                    }
+                }
+            }
+        }
+
+        uint table = Dragons.MotionLoadAddress + (uint)file.Count;
+        foreach (uint p in pointers)
+        {
+            Long(file, p);
+        }
+
+        return (file.ToArray(), new MotionSlot(table, table + (uint)frames * 4, table + (uint)frames * 8, frames));
+    }
+
+    /// <summary>Form <paramref name="index"/>'s <c>.MTB</c> holding <see cref="BeatRecord"/> for <paramref name="frames"/> frames.</summary>
+    public static (byte[] Mtb, MotionSlot Slot) BeatMtb(int index, int frames = BeatFrames) => Mtb(frames, (f, node) => BeatRecord(index, f, node));
+
+    /// <summary>The frames of the test beat.</summary>
+    public const int BeatFrames = 3;
+
+    /// <summary>
+    /// <see cref="FirstRead"/> with, <see cref="Dragons.MotionTableGap"/> before the body roots, the motion
+    /// table: a pointer per form, in the game's order, to its 12 slots after the seat table, slot 0 from
+    /// <paramref name="slots"/> (in <see cref="Dragons.FormFiles"/>' order) and the rest zeros.
+    /// </summary>
+    public static byte[] FirstRead(IReadOnlyList<uint> roots, IReadOnlyList<MotionSlot> slots, int lead = 0x123)
+    {
+        byte[] head = FirstRead(roots, lead);
+        int blocks = (head.Length + 3) / 4 * 4;
+        var data = new byte[blocks + 10 * 0xC0];
+        head.CopyTo(data, 0);
+        for (int i = 0; i < 10; i++)
+        {
+            int form = Dragons.GameOrder[i];
+            int at = blocks + i * 0xC0;
+            BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(lead - Dragons.MotionTableGap + i * 4), Dragons.FirstReadLoadAddress + (uint)at);
+            MotionSlot s = slots[form];
+            BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(at), s.A);
+            BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(at + 4), s.B);
+            BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(at + 8), s.C);
+            BinaryPrimitives.WriteUInt32BigEndian(data.AsSpan(at + 12), (uint)s.Frames << 16);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// Adds ten forms of <see cref="Body(int)"/> (or <paramref name="body"/>), each with its beat's <c>.MTB</c>,
+    /// and a <c>1ST_READ</c> with the seat and motion tables, leaving out the file named <paramref name="without"/>.
+    /// <paramref name="slot"/> may change a form's slot 0.
+    /// </summary>
+    public static SyntheticDisc WithBeatingForms(SyntheticDisc disc, Func<int, TestNode>? body = null, Func<int, MotionSlot, MotionSlot>? slot = null, string? without = null)
+    {
+        string[] absent = without == null ? Array.Empty<string>() : new[] { without };
+        var roots = new List<uint>();
+        var slots = new List<MotionSlot>();
+        for (int i = 0; i < Dragons.FormFiles.Count; i++)
+        {
+            string name = Dragons.FormFiles[i];
+            TestNode form = body?.Invoke(i) ?? Body(i);
+            roots.Add(RootAddress(form, Padding(i)));
+            (byte[] mtb, MotionSlot s) = BeatMtb(i);
+            slots.Add(slot?.Invoke(i, s) ?? s);
+            Add(disc, name + ".MDB", Mdb(form, Padding(i)), absent);
+            Add(disc, name + ".CGB", SyntheticTextures.Cgb(), absent);
+            Add(disc, name + ".MTB", mtb, absent);
+        }
+
+        Add(disc, Dragons.SeatFile, FirstRead(roots, slots), absent);
+        return disc;
+    }
+
     /// <summary>Adds all ten forms and their <c>1ST_READ</c> to a disc, leaving out any file named in <paramref name="without"/>.</summary>
     public static SyntheticDisc WithForms(SyntheticDisc disc, params string[] without)
     {
