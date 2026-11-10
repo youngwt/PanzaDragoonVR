@@ -3,7 +3,7 @@ title: "Where the dragon's wing animation comes from"
 type: 'chore'
 ticket: '18'
 created: '2026-11-09'
-status: 'built'
+status: done
 baseline_revision: 'c9265a947ed592e6673699b2302fdbffc4b83964'
 route: 'full'
 route_source: 'auto'
