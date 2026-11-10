@@ -64,4 +64,4 @@ The forest's sides. Watching the game in Mednafen, the forest closes in with wal
 
 ---
 
-*I'm building this with Claude Code doing much of the typing and the reverse engineering alongside me. Nothing from the disc goes in the repository: the animation above was made from my own disc's extraction and lives only beside this post, not in the code.*
+*I'm building this with Claude Code doing much of the typing and the reverse engineering alongside me. Nothing extracted from the disc goes in the repository; the animation above is the game's own render of my own disc's extraction, kept with this post.*

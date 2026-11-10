@@ -9,6 +9,7 @@ This is a hard rule. Never commit the disc image, anything extracted or decoded 
 - The APK must hold no disc data: the game extracts on the headset into its asset folder, which is outside the APK. After a build, `unzip -l game/build/PanzaDragoonVR.apk` should list `PdzDecoding.dll` and no disc data: no `.cue`, no track `.bin` from the disc (`assets/.godot/uid_cache.bin` is Godot's own and always there), and nothing under `disc/` or `images/e03/`.
 - Before any commit, check the staged file list for game data.
 - What stays out is the disc's content: images, meshes and sound, as files or embedded in code, tests or notes. Simple values measured from the disc, such as offsets, sizes, counts and positions, are fine in code, tests and notes, as are layouts and where to look (author, 2026-11-09).
+- One exception, for the dev diary: screenshots and recordings of the game's own render, captured in the engine for a post, may be committed under `devlog/media/` (author, 2026-11-10). Raw extracted files, renders from other tools such as F3D or the throwaway spike drawings, and any image the disc's content can be lifted from whole stay out, and are named `*-from-disc.*` so `.gitignore` keeps them beside the posts.
 - Tool source code, format notes, and test files the project generates itself (such as `tests/fixtures/asset-rules/`) are fine to commit.
 
 ## Conventions

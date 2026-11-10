@@ -2,7 +2,8 @@
 /rom/
 # Anything extracted or decoded from the disc: copyrighted, never commit
 /extracted/
-# Dev diary media made from the disc's own assets: kept beside the posts locally, never committed
+# Dev diary media from the disc's own assets other than the game's own render: kept beside the posts locally,
+# never committed. In-engine captures for a post are named without this suffix and may be committed (AGENTS.md).
 /devlog/media/*-from-disc.*
 __pycache__/
 # Local emulator install, with firmware links and save states
