@@ -3,7 +3,7 @@ title: 'The dragon beats its wings'
 type: 'feature'
 ticket: '22'
 created: '2026-11-10'
-status: 'built'
+status: done
 baseline_revision: '2790eface837a9395efa57cdc90f483d893960c3'
 route: 'full'
 route_source: 'auto'
