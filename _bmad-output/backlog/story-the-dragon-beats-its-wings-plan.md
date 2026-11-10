@@ -110,3 +110,5 @@ The rest rotation of a part, `R_rest`, is its `.MDB` chain product. If that prod
 **Manual checks (if no CLI):**
 - Criterion 2: the author poses `dragon_ride.glb` at frames 9 and 26 in a glTF viewer.
 - Criterion 5: the author rides the dragon in the headset.
+
+Author, 2026-11-10: in the headset with this build, "it works in headset", one word for criterion 5's items (the beat looping, the dragon under the player facing the way of flight, 90 Hz); the log's frame-rate line read 90 Hz on target. In F3D, criterion 2: "works in f3d", posed at 0.3 s (frame 9) and 0.867 s (frame 26) of `dragon_ride.glb`. `tools/compare-headset.sh` after the review's patches: identical.
