@@ -14,10 +14,10 @@ namespace PanzaDragoonVR;
 /// 90 Hz and tells the frame-rate readout the rate it is running at. A disc image in the folder is
 /// extracted behind the scene, its progress on the same board, and the folder is read again when it ends.
 /// The floor and canopy scroll past as though the player were flying forwards, placed and paced by the
-/// asset folder's <c>tuning.json</c> or the built-in values.
+/// asset folder's <c>tuning.json</c> or the built-in values. In VR, a reticle shows where the left controller aims.
 /// This file holds the scene and its assets; the other jobs are in the <c>Main.*.cs</c> files beside it:
-/// extraction, the board, the OpenXR session, the refresh rate, the scroll, the tuning and the development
-/// mode's tuning list.
+/// extraction, the board, the OpenXR session, the refresh rate, the scroll, the tuning, the development
+/// mode's tuning list and the reticle.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -31,6 +31,12 @@ public partial class Main : Node3D
     private MeshInstance3D Sky => GetNode<MeshInstance3D>("Sky");
 
     private RiddenDragon Dragon => GetNode<RiddenDragon>("Dragon");
+
+    private XRCamera3D Camera => GetNode<XRCamera3D>("XROrigin3D/XRCamera3D");
+
+    private XRController3D LeftHand => GetNode<XRController3D>("XROrigin3D/LeftHand");
+
+    private XRController3D RightHand => GetNode<XRController3D>("XROrigin3D/RightHand");
 
     public override void _Ready()
     {
@@ -57,12 +63,13 @@ public partial class Main : Node3D
         }
 
         ConnectOpenXr(_openXr);
+        StartReticle();
     }
 
     /// <summary>
     /// Tries each frame to place the board and the dragon's seat until both are placed, the board waiting while the
-    /// head looks straight up or down, watches extraction while it runs, drives the development mode's tuning list
-    /// and scrolls the floor and canopy.
+    /// head looks straight up or down, watches extraction while it runs, drives the development mode's tuning list,
+    /// scrolls the floor and canopy and, in VR, places the reticle.
     /// </summary>
     public override void _Process(double delta)
     {
@@ -74,6 +81,7 @@ public partial class Main : Node3D
         WatchExtraction();
         DriveTuningMenu(delta);
         Scroll(delta);
+        PlaceReticle();
     }
 
     /// <summary>

@@ -6,8 +6,8 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The development mode's tuning list: only when the asset folder holds the <c>development</c> marker, adds both
-/// controllers and a label above the left one, feeds the right one's readings to <see cref="TuningMenu"/>, moves
+/// The development mode's tuning list: only when the asset folder holds the <c>development</c> marker, adds a
+/// label above the scene's left controller, feeds the right one's readings to <see cref="TuningMenu"/>, moves
 /// the scene as the values change and saves <c>tuning.json</c> on the press of A. In release mode none of it exists.
 /// </summary>
 public partial class Main
@@ -25,11 +25,7 @@ public partial class Main
         }
 
         _tuningMenu = new TuningMenu(_tuning);
-        var origin = GetNode<XROrigin3D>("XROrigin3D");
-        var left = new XRController3D { Tracker = "left_hand" };
-        origin.AddChild(left);
-        _tuningHand = new XRController3D { Tracker = "right_hand" };
-        origin.AddChild(_tuningHand);
+        _tuningHand = RightHand;
         _tuningList = new Label3D
         {
             Position = new Vector3(0, 0.12f, -0.05f),
@@ -45,7 +41,7 @@ public partial class Main
             Width = 800,
             Visible = false,
         };
-        left.AddChild(_tuningList);
+        LeftHand.AddChild(_tuningList);
         GD.Print($"{AssetFolder.LogTag} development mode: B on the right controller shows the tuning list");
     }
 
