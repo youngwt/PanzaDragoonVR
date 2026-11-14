@@ -11,7 +11,7 @@ Out of scope for the demo (milestones 0 to 7). Recorded so they are not rebuilt 
 | Handedness | Aiming hand selectable, left or right |
 | Radar | Kept as the one HUD element; revisit its form in the headset |
 | Music | A soundtrack MP3 supplied by the player |
-| Sound effects | Extracted from the disc if possible: gun firing, dragon hit, target hit. Each plays from its source: the gun in hand, the dragon beneath, the target's position |
+| Sound effects | Extracted from the disc if possible: dragon hit, target hit, the lock-on lasers. (The gun firing moved into the demo, epic Aim and shoot, author 2026-11-14.) Each plays from its source: the gun in hand, the dragon beneath, the target's position |
 | Enemy motion | Real flight paths in place of corkscrews |
 | Enemies | Giant centipedes, then the final boss |
 | Release | The APK on its own. The player sideloads it, copies their disc image to the headset with SideQuest, and the game extracts on first launch |

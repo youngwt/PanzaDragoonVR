@@ -43,10 +43,10 @@ The work runs on two tracks. The **pipeline** track is a C# library that turns t
   - **success:** The reticle follows the hand at a fixed distance around the player and changes colour over a target.
 - **CAP-7: Gun in hand**
   - **intent:** The player sees a gun where the aiming hand is.
-  - **success:** A gun model tracks the controller. The Quest controller model satisfies this; a bone-like Panzer Dragoon gun is the later form.
+  - **success:** A gun model tracks the controller: the gun the rider holds, extracted from the player's disc, with a grey gun of the game's own until then (author, 2026-11-11).
 - **CAP-8: Shooting**
   - **intent:** The player destroys targets with rapid shots or lock-on lasers.
-  - **success:** Grey cubes corkscrew around the player. The top trigger fires rapid shots. Holding a face button locks up to four targets, each marked by a cloned reticle; releasing it fires homing lasers that destroy them.
+  - **success:** Grey cubes corkscrew around the player. The top trigger fires rapid shots. Holding a face button locks up to four targets, each marked by a cloned reticle; releasing it fires homing lasers that destroy them. A shot sounds from the gun: the disc's gunshot, or a royalty-free one until it is extracted (author, 2026-11-14).
 - **CAP-9: Real enemies**
   - **intent:** The targets are the Episode 3 flying enemies extracted from the disc.
   - **success:** The CAP-8 lock-on volley destroys four extracted Zwei enemies in the headset.
@@ -75,7 +75,7 @@ Build order and track for each capability are in `milestones.md`.
 ## Non-goals
 
 - Any episode other than Episode 3.
-- Everything in `later-ideas.md`: health, berserk, steering, view turns, building the radar, sound, real enemy flight paths, centipedes, the boss, a bundled release.
+- Everything in `later-ideas.md`: health, berserk, steering, view turns, building the radar, sound other than the gunshot, real enemy flight paths, centipedes, the boss, a bundled release.
 - A custom asset viewer. The file explorer is the viewer.
 - Compressed disc images such as CHD.
 - Dates for individual milestones.

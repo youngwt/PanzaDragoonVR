@@ -1,0 +1,124 @@
+# The stories of this epic in build order. tickets.py reads this.
+
+[[entry]]
+id = 1
+type = "story"
+title = "The left controller aims a reticle"
+description = "Tracer bullet: both controllers are in the scene in every mode, and the development mode's tuning list (backlog 21, `Main.TuningMenu.cs`) uses those two in place of making its own; a reticle sprite sits at a fixed, built-in distance from the player along the left controller's aim, as if on a sphere around them, toward CAP-6."
+verify = "In the headset the reticle follows the left controller as the author sweeps it across the forest, the dragon and the circling cube, at a constant distance, at 90 Hz, and the tuning list still works in development mode; the author records milestone 4's clip of the sweep."
+covers = ["CAP-6"]
+after = ["1.3"]
+hitl = true                 # headset check and the clip
+risk = "low"
+
+[[entry]]
+id = 2
+type = "story"
+title = "A gun in the left hand"
+description = "The game asks for the gun by a new ID, `rider.gun`, in `game/AssetIds.cs` and the asset contract (a new `rider.` prefix in the IDs table, five IDs asked for, a placeholder line, and a Models rule that a gun's origin is its grip, its barrel along +Z, in metres), and holds the folder's model in the left hand when it supplies one, else a grey gun built in code, turned so the barrel points along the aim, without hiding the tuning list's label in development mode, toward CAP-7."
+verify = "In the headset the grey gun tracks the left controller and points at the reticle; a hand-made .glb pushed under `rider.gun` that follows the contract's rule replaces it, pointing the same way."
+covers = ["CAP-7"]
+after = [1]
+hitl = true                 # headset check
+risk = "low"
+
+[[entry]]
+id = 3
+type = "story"
+title = "The extractor writes the rider's gun"
+description = "First the author picks, from a drawing kept under `extracted/`, which parts of the rider in `COMMON.MDB` make the gun (it may share a part with his hand); then the decoding library writes them as `models/rider_gun.glb`, root node `gun`, under `rider.gun`, posed to the contract's gun rule, byte-identical on the PC and the headset, with the contract's What-extraction-writes table and the extractor's version risen in every place AGENTS.md lists; a disc whose gun cannot be read still extracts, ending the extractor's line with `no gun: <reason>` and adding a launch-table row and board line as the floor and canopy and the dragons have, and the game shows the grey gun, toward CAP-7."
+verify = "pdz-extract on both discs writes `rider_gun.glb`, which validate-gltf.sh passes and the author recognises in a glTF viewer; a test disc with no readable gun extracts with the notice; compare-headset.sh reports identical; in the headset the rider's gun is in the left hand pointing at the reticle, and the author records milestone 5's close-up clip."
+covers = ["CAP-7"]
+after = [2, "4.3", "4.5"]
+hitl = true                 # the author picks the parts, checks the gun and records the clip
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Six grey cubes corkscrew around the player"
+description = "Six cubes, each carrying `e03.flyer` when the folder supplies it, fly corkscrew paths spread around the player in place of the one circling cube; each can be destroyed, when it disappears, and returns to its path a few seconds later, with the paths and the return in `game/Logic/` and tested, toward CAP-8."
+verify = "GameLogic.Tests cover the paths, a destroyed cube's absence and its return; in the headset six cubes corkscrew around the author at 90 Hz."
+covers = ["CAP-8"]
+after = [2, "1.7"]          # 2: both change the scene's asset loading in Main.cs
+hitl = true                 # headset check
+risk = "low"
+
+[[entry]]
+id = 5
+type = "story"
+title = "The reticle changes colour over a cube"
+description = "An engine-free aim test in `game/Logic/` picks the cube under the reticle (the nearest within a small, built-in angle of the aim, Rez-like in its generosity), and the reticle changes colour while one is there, toward CAP-6."
+verify = "GameLogic.Tests cover the angle, the nearest pick and no cube; in the headset the reticle changes colour as it crosses each of the six cubes and changes back off them."
+covers = ["CAP-6"]
+after = [1, 4]
+hitl = true                 # headset check
+risk = "low"
+
+[[entry]]
+id = 6
+type = "story"
+title = "The top trigger fires rapid shots"
+description = "Holding the left controller's top (index) trigger fires fast, visible bolts from the gun's grip along the aim, a few a second; the first cube a bolt touches is destroyed and returns later, with the fire rate and the bolt's hit engine-free in `game/Logic/` and tested, not Godot physics, toward CAP-8."
+verify = "GameLogic.Tests cover the fire rate and a bolt's hit and miss; in the headset holding the trigger streams bolts at the reticle and destroys the cubes they reach, at 90 Hz."
+covers = ["CAP-8"]
+after = [2, 4, 5]           # 5: both change the per-frame aim and input code in Main*.cs
+hitl = true                 # headset check
+risk = "medium"
+
+[[entry]]
+id = 7
+type = "story"
+title = "A held button locks four cubes and releases homing lasers"
+description = "Holding X on the left controller locks each cube the reticle crosses, up to four, each marked by a clone of the reticle that follows it; releasing X fires one homing laser at each lock that destroys it, with the lock-on rules in `game/Logic/` and tested, toward CAP-8."
+verify = "GameLogic.Tests cover locking up to four, no double lock, a lock lost when its cube is destroyed, and the release; in the headset a full volley destroys four cubes at 90 Hz, recorded as milestone 6's clip with whatever gun and flyer the folder holds."
+covers = ["CAP-8"]
+after = [5, 6]              # 6: both change the per-frame input and destroy code in Main*.cs
+hitl = true                 # headset check and the clip
+risk = "medium"
+
+[[entry]]
+id = 9
+type = "story"
+title = "Shots sound from the gun"
+description = "Each bolt plays a gunshot from the gun's position in 3D. A new `sound` kind, `.wav`, joins both asset rule sets (`tools/manifest.py` and `game/Logic/`) with a contents check and shared cases in `tests/fixtures/asset-rules/`, and the contract's Kinds table with the WAV subset it accepts (uncompressed PCM, its bit depths, channels and rates) and a rule for an invalid sound; the game asks for a new ID, `rider.gun_shot` in `game/AssetIds.cs` (six IDs asked for), plays the folder's sound when it supplies one, else a built-in royalty-free (CC0) gunshot under `game/` with its source and licence noted beside it; AGENTS.md and the contract's Placeholders rule change to allow that one off-the-shelf placeholder, on the author's word of 2026-11-14, toward CAP-8."
+verify = "The asset-rule fixtures pass in both suites; in the headset every bolt sounds from the left hand, the built-in gunshot by default; a WAV in the contract's subset pushed under `rider.gun_shot` replaces it; holding the trigger keeps 90 Hz; the APK holds the built-in sound and no disc data."
+covers = ["CAP-8"]
+after = [3, 6, 7]           # 3: both edit AssetIds.cs and the contract's IDs; 7: both change the fire and input code in Main*.cs
+hitl = true                 # headset listen
+risk = "low"
+
+[[entry]]
+id = 10
+type = "spike"
+title = "Where the gunshot sound is on the disc"
+description = "Finds how a `.SND` file holds its sounds (likely `COMMON.SND`, beside the rider), their sample format and rate, and which one is the gun's shot, by reading the files and, if needed, the game's code in Mednafen and Ghidra; the answer, with evidence, goes in zwei-disc-formats.md, toward CAP-8."
+verify = "zwei-disc-formats.md describes the layout in a section of its own, each point marked confirmed or lead with evidence, and says whether the shot is a plain sample or a sound-driver voice (pitch, envelope) that would need the sound chip emulated, and so whether entry 11 is feasible as written; a throwaway script decodes the candidate to a WAV under `extracted/` and the author confirms by ear that it is the gun; entry 11's `unknown` is replaced by the answer."
+covers = ["CAP-8"]
+after = []
+hitl = true                 # reverse engineering with the author; the author confirms by ear
+risk = "high"
+references = ["../spec-panzer-dragoon-zwei-vr/zwei-disc-formats.md"]
+
+[[entry]]
+id = 11
+type = "story"
+title = "The extractor writes the gunshot"
+description = "The decoding library decodes the gun's shot from the player's disc as `sounds/rider_gun_shot.wav` under `rider.gun_shot`, as uncompressed PCM within the contract's WAV subset, decoded with integer arithmetic only and no floating-point resampling so it is byte-identical on the PC and the headset, with the contract's What-extraction-writes table and the extractor's version risen in every place AGENTS.md lists; a disc whose sound cannot be read still extracts, ending the extractor's line with `no gunshot: <reason>`, and the game plays the built-in one, with a launch-table row and board line as the gun's in entry 3 has, toward CAP-8."
+verify = "pdz-extract on both discs writes the WAV, which the author recognises by ear; Decoding.Tests build their own small `.SND` and check the decoded bytes and the failure notice; compare-headset.sh reports identical; in the headset the bolts sound with the disc's gunshot."
+covers = ["CAP-8"]
+after = [3, 9, 10]          # 3: both raise the extractor version and add rows to the contract's What-extraction-writes table
+hitl = true                 # the author listens in the headset
+risk = "medium"
+unknown = "The `.SND` layout and the gunshot's place in it, which spike 10 settles."
+
+[[entry]]
+id = 8
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only across the epic's code, scoped when it starts from the plans and deferred review findings."
+verify = "The epic's Done when checks still pass on the headset after the cleanup."
+covers = ["CAP-6", "CAP-7", "CAP-8"]
+after = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11]
+hitl = true                 # headset check
+risk = "low"

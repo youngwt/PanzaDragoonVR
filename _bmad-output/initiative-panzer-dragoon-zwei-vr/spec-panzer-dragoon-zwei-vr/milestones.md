@@ -9,7 +9,7 @@ Build order. Each ends in a fifteen-second clip. No dates are set.
 | 2 | Ground and canopy in VR | Both | CAP-4 | Floor and canopy planes | Flying through the forest with nothing else in it |
 | 3 | The dragon in VR | Both | CAP-5 | Dragon model and textures | Looking down and around at the dragon |
 | 4 | The reticle | Flight | CAP-6 | Nothing | Sweeping the reticle across the scene |
-| 5 | Hand-tracked gun | Flight | CAP-7 | Nothing | Close-up of the gun in hand |
+| 5 | Hand-tracked gun | Both | CAP-7 | The rider's gun and the gunshot sound (grey gun and a royalty-free shot until then) | Close-up of the gun in hand |
 | 6 | Shooting down flying cubes | Flight | CAP-8 | Nothing | A full lock-on volley destroying four cubes |
 | 7 | Real models in the game | Both | CAP-9 | Enemy models and textures | The same volley against real Zwei enemies |
 

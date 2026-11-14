@@ -32,7 +32,7 @@ id = 5
 slug = "epic-aim-and-shoot"
 title = "Aim and shoot"
 covers = ["CAP-6", "CAP-7", "CAP-8"]
-after = [{ epic = 1, needs = "the VR scene with tracked controllers" }]
+after = [{ epic = 1, needs = "the VR scene with tracked controllers" }, { epic = 4, needs = "the model decoder and the .glb writer, for the rider's gun" }]
 
 [[epic]]
 id = 6
