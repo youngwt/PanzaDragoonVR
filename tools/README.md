@@ -363,7 +363,7 @@ To go back to the built-ins, run `tools/push-tuning.sh --remove`, or push `tools
 
 #### Changing the values in the headset
 
-In development mode (an empty `development` file at the top of the asset folder; see the asset contract's "Development and release modes", and remember it extracts on every launch) a list of all nine settings, each to three decimals as the built-ins are given, can be shown above the left controller. Without the marker there is no list, and nothing on the controllers does anything. All the controls are on the right controller:
+In development mode (an empty `development` file at the top of the asset folder; see the asset contract's "Development and release modes", and remember it extracts on every launch) a list of all nine settings, each to three decimals as the built-ins are given, can be shown above the right controller. Without the marker there is no list, and nothing on the controllers does anything. All the controls are on the right controller:
 
 | Control | Does |
 |---------|------|

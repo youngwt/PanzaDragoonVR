@@ -90,6 +90,8 @@ context:
 
 ## Plan Change Log
 
+- 2026-11-15, after the author's checks: on the author's word ("can you move the tuning list onto the right hand"), the tuning list's label hangs from the right controller, the one that drives it, leaving the left hand to the reticle and the gun. This goes against the frozen Always "its label above the left controller"; it is its own commit, and the asset contract and `tools/README.md` say so.
+
 ## Review Triage Log
 
 Quick lens, one pass: 1 low patched; 1 low rejected; 1 maybe-false deferred to the headset look; 1 not a code finding.

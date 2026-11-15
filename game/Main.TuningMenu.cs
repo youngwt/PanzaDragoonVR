@@ -7,7 +7,7 @@ namespace PanzaDragoonVR;
 
 /// <summary>
 /// The development mode's tuning list: only when the asset folder holds the <c>development</c> marker, adds a
-/// label above the scene's left controller, feeds the right one's readings to <see cref="TuningMenu"/>, moves
+/// label above the scene's right controller, feeds that controller's readings to <see cref="TuningMenu"/>, moves
 /// the scene as the values change and saves <c>tuning.json</c> on the press of A. In release mode none of it exists.
 /// </summary>
 public partial class Main
@@ -41,7 +41,7 @@ public partial class Main
             Width = 800,
             Visible = false,
         };
-        LeftHand.AddChild(_tuningList);
+        RightHand.AddChild(_tuningList);
         GD.Print($"{AssetFolder.LogTag} development mode: B on the right controller shows the tuning list");
     }
 
