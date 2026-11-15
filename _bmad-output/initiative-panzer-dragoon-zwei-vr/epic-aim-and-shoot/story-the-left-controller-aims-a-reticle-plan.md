@@ -85,7 +85,8 @@ context:
 - The shader could not be compiled in the builder's environment. Compiled and drawn afterwards on the desktop build of Godot 4.7.2 in a throwaway scene under `extracted/`: the ring renders over a box in front of it.
 - Verification 2026-11-14: `tools/test.sh` all pass (105 Python, 362 GameLogic, 294 Decoding); `dotnet build game/PanzaDragoonVR.csproj` 0 warnings, 0 errors; `tools/build-quest.sh --no-install` built, the APK lists `PdzDecoding.dll` and no disc data.
 
-Not yet checked: the author's headset look (the sweep at 90 Hz, hiding out of tracking, the tuning list in development mode) and the milestone 4 clip.
+- Headset, 2026-11-15: the first install showed no reticle. Godot names the OpenXR action `aim_pose`'s pose `aim` on the tracker (a temporary log line showed the tracker's poses `default`, `aim`, `grip` and `palm_pose`, all tracked, while the node with `pose = aim_pose` reported no tracking), so both controllers in `Main.tscn` now use `aim`. That also put the tuning list's label back on the controller.
+- Author, 2026-11-15, with the fixed build: "they all look good", one word for the four items asked: the sweep across the forest, the dragon and the cube at a constant distance and 90 Hz; the reticle hiding with the controller put down out of view; the tuning list in development mode; and the milestone 4 clip. The log showed 90 Hz on target.
 
 ## Plan Change Log
 
