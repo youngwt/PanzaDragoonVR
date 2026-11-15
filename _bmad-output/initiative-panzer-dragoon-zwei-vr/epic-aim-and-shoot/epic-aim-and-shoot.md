@@ -20,7 +20,7 @@ The game is fun to play before any Zwei asset is in it, shown by a full lock-on 
 
 ## Done when
 
-1. The reticle follows the aiming hand at a fixed distance around the player and changes colour over a target.
+1. The reticle, the game's own graphic, follows the aiming hand at a fixed distance around the player and changes colour over a target.
 2. A gun model tracks the controller.
 3. The top trigger fires rapid shots that destroy cubes.
 4. Holding a face button locks up to four cubes, each marked by a cloned reticle; releasing it fires homing lasers that destroy them.
@@ -42,6 +42,7 @@ Aiming, the gun, targets and both fire modes. Rez Infinite is the reference for 
 - Decision (author, 2026-11-14): the rapid shots sound from the gun, the game's own gunshot extracted from the disc where possible, else a royalty-free (CC0) one kept in the repo. This replaces "no sound" for the gunshot only; the lock-on lasers stay silent.
 - Decision (author, 2026-11-14): lock-on is held on X of the left controller; the development tuning list keeps the right controller's A, B and stick.
 - Decision (author, 2026-11-14): each milestone's clip is recorded by the story that finishes it: milestone 4 by entry 1, 5 by entry 3, 6 by entry 7.
+- Decision (author, 2026-11-15): the reticle is the game's own graphic, a round white ring shaped like bone, extracted from the disc (spike 12, story 13); the ring the game draws stays as its placeholder. The tuning list hangs from the right controller (5.1's Plan Change Log).
 - Decision (author, 2026-11-11): the feel values (the reticle's distance, the fire rate, the lock-on, the lasers' speed) are built-in constants, not tuning settings.
 
 ## References

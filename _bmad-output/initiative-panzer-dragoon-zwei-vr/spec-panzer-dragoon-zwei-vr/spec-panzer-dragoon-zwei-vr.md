@@ -40,7 +40,7 @@ The work runs on two tracks. The **pipeline** track is a C# library that turns t
   - **success:** In the headset the wings are on either side, the head in front and the tail behind.
 - **CAP-6: Reticle**
   - **intent:** The player aims a reticle by pointing the aiming-hand controller.
-  - **success:** The reticle follows the hand at a fixed distance around the player and changes colour over a target.
+  - **success:** The reticle follows the hand at a fixed distance around the player and changes colour over a target. It is the game's own reticle graphic, extracted from the player's disc, with a ring of the game's own drawing until then (author, 2026-11-15).
 - **CAP-7: Gun in hand**
   - **intent:** The player sees a gun where the aiming hand is.
   - **success:** A gun model tracks the controller: the gun the rider holds, extracted from the player's disc, with a grey gun of the game's own until then (author, 2026-11-11).
