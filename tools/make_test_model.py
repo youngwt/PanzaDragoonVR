@@ -2,6 +2,7 @@
 """Write a small self-contained test model, a .glb, for trying model loading in the headset.
 
     python3 tools/make_test_model.py my-assets/models/e03.flyer.glb
+    python3 tools/make_test_model.py --gun my-assets/models/gun.glb
 
 The model is a four-sided pyramid about 0.5 m across, made here and owing nothing to the disc.
 Each face is a different colour of one embedded 16 x 16 PNG: the four sides red, yellow, green and
@@ -9,7 +10,10 @@ white, the base orange. It follows the asset contract's Models section: one file
 texture inside it, nearest filtering, unlit, double-sided, one material named "opaque", the root
 node named "flyer". It also carries vertex colours (COLOR_0) of pure blue, to show that a file
 with them is accepted. Godot 4.7.2 does not apply them on its own, so this model cannot show
-whether the game ignores them. Standard library only.
+whether the game ignores them. With --gun it is a test gun instead: the same pyramid made long and
+thin, about 6 cm across, its tip 0.3 m along +Z and its orange base 5 cm behind the origin, with its
+root node named "gun", for trying the asset contract's gun rule: the origin is the grip and the barrel
+points along +Z. Standard library only.
 See tools/README.md.
 """
 import argparse
@@ -53,9 +57,9 @@ def block_uv(block, inset=1):
     return [(left / SIZE, top / SIZE), (right / SIZE, top / SIZE), (right / SIZE, bottom / SIZE), (left / SIZE, bottom / SIZE)]
 
 
-def geometry():
-    """Positions, UVs and indices of the pyramid; each face has its own vertices."""
-    h, base, apex = 0.25, -0.2, 0.35
+def geometry(gun=False):
+    """Positions, UVs and indices of the pyramid, or of the test gun; each face has its own vertices."""
+    h, base, apex = (0.03, -0.05, 0.3) if gun else (0.25, -0.2, 0.35)
     corners = [(-h, base, h), (h, base, h), (h, base, -h), (-h, base, -h)]  # front-left, front-right, back-right, back-left
     top = (0.0, apex, 0.0)
     positions, uvs, indices = [], [], []
@@ -71,6 +75,9 @@ def geometry():
     positions += [corners[3], corners[2], corners[1], corners[0]]
     uvs += [(10.5 / SIZE, 10.5 / SIZE), (13.5 / SIZE, 10.5 / SIZE), (13.5 / SIZE, 13.5 / SIZE), (10.5 / SIZE, 13.5 / SIZE)]
     indices += [start, start + 1, start + 2, start, start + 2, start + 3]
+    if gun:
+        # A quarter-turn about X, so the tip that pointed up (+Y) points along +Z.
+        positions = [(x, -z, y) for x, y, z in positions]
     return positions, uvs, indices
 
 
@@ -78,9 +85,10 @@ def pad(data, fill):
     return data + fill * (-len(data) % 4)
 
 
-def build():
-    """The whole .glb file, as bytes."""
-    positions, uvs, indices = geometry()
+def build(gun=False):
+    """The whole .glb file, as bytes: the pyramid, or with gun the test gun."""
+    name = "gun" if gun else "flyer"
+    positions, uvs, indices = geometry(gun)
     count = len(positions)
     views = []
     binary = b""
@@ -106,8 +114,8 @@ def build():
         "asset": {"version": "2.0", "generator": "make_test_model.py"},
         "scene": 0,
         "scenes": [{"nodes": [0]}],
-        "nodes": [{"name": "flyer", "mesh": 0}],
-        "meshes": [{"name": "flyer", "primitives": [{
+        "nodes": [{"name": name, "mesh": 0}],
+        "meshes": [{"name": name, "primitives": [{
             "attributes": {"POSITION": 0, "TEXCOORD_0": 1, "COLOR_0": 2},
             "indices": 3, "material": 0, "mode": 4}]}],
         "materials": [{
@@ -141,13 +149,15 @@ def build():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Write a small self-contained test model (.glb).")
+    parser.add_argument("--gun", action="store_true",
+                        help="write the test gun, a long pyramid with its tip along +Z, instead of the pyramid")
     parser.add_argument("output", help="the .glb file to write, such as my-assets/models/e03.flyer.glb")
     args = parser.parse_args(argv)
     if not args.output.endswith(".glb"):
         print("make_test_model: error: the output file's name must end in .glb", file=sys.stderr)
         return 1
 
-    data = build()
+    data = build(args.gun)
     folder = os.path.dirname(args.output)
     if folder:
         os.makedirs(folder, exist_ok=True)

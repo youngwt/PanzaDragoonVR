@@ -85,6 +85,35 @@ class MakeTestModelTest(unittest.TestCase):
         self.assertIn("KHR_materials_unlit", material["extensions"])
         self.assertEqual(self.gltf["samplers"][0], {"magFilter": 9728, "minFilter": 9728, "wrapS": 33071, "wrapT": 33071})
 
+    def test_gun_is_a_glb_the_manifest_writer_accepts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "gun.glb"
+            self.assertEqual(make_test_model.main(["--gun", str(path)]), 0)
+            self.assertEqual(path.read_bytes(), make_test_model.build(gun=True))
+            self.assertIsNone(manifest.contents_problem(str(path), "model"))
+
+    def test_gun_points_its_tip_along_plus_z_from_behind_the_origin(self):
+        gltf, binary = chunks(make_test_model.build(gun=True))
+        position = gltf["accessors"][gltf["meshes"][0]["primitives"][0]["attributes"]["POSITION"]]
+        view = gltf["bufferViews"][position["bufferView"]]
+        raw = binary[view["byteOffset"]:view["byteOffset"] + view["byteLength"]]
+        points = [struct.unpack_from("<3f", raw, 12 * i) for i in range(position["count"])]
+        tip = max(points, key=lambda p: p[2])
+        self.assertAlmostEqual(tip[0], 0.0)
+        self.assertAlmostEqual(tip[1], 0.0)
+        self.assertAlmostEqual(tip[2], 0.3, places=6)
+        self.assertLess(min(p[2] for p in points), 0.0)
+        # Long and thin: far longer along Z than it is across.
+        across = max(max(abs(p[0]), abs(p[1])) for p in points)
+        self.assertLess(across * 4, tip[2])
+        self.assertEqual([round(v, 6) for v in position["max"]], [round(max(p[i] for p in points), 6) for i in range(3)])
+
+    def test_gun_root_node_and_mesh_are_named_gun(self):
+        gltf, _ = chunks(make_test_model.build(gun=True))
+        self.assertEqual(gltf["scenes"][0]["nodes"], [0])
+        self.assertEqual(gltf["nodes"][0]["name"], "gun")
+        self.assertEqual(gltf["meshes"][0]["name"], "gun")
+
     def test_refuses_a_name_not_ending_in_glb(self):
         with tempfile.TemporaryDirectory() as folder:
             self.assertEqual(make_test_model.main([str(Path(folder) / "model.gltf")]), 1)

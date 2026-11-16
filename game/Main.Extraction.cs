@@ -42,11 +42,11 @@ public partial class Main
             string? problem = _extraction.Problem;
             IReadOnlyList<string> leftOut = _extraction.LeftOut;
             _extraction = null;
-            (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, LaunchReport report) = LoadAssets();
+            (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, Node3D? gun, LaunchReport report) = LoadAssets();
             report = problem != null ? report.WithExtractionProblem(problem) : report.WithExtractionLeftOut(leftOut);
 
             AssetFolder.LogReport(report);
-            ShowAssets(floor, canopy, flyer, dragon, report);
+            ShowAssets(floor, canopy, flyer, dragon, gun, report);
         }
         catch (Exception e)
         {

@@ -6,10 +6,11 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The scene: a floor, a canopy, a flyer circling the player, to look all around at, and the dragon the
-/// player sits on. Loads what the asset folder supplies for them, dressing the floor and canopy in its
-/// images, flying its model in place of the grey cube and seating the player on its dragon in place of the
-/// grey one, with each one's placeholder for whatever it does not supply; shows what the
+/// The scene: a floor, a canopy, a flyer circling the player, to look all around at, the dragon the
+/// player sits on and the gun in the left hand. Loads what the asset folder supplies for them, dressing the
+/// floor and canopy in its images, flying its model in place of the grey cube, seating the player on its
+/// dragon in place of the grey one and putting its gun in the left hand in place of the grey gun, with each
+/// one's placeholder for whatever it does not supply; shows what the
 /// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
 /// 90 Hz and tells the frame-rate readout the rate it is running at. A disc image in the folder is
 /// extracted behind the scene, its progress on the same board, and the folder is read again when it ends.
@@ -32,6 +33,8 @@ public partial class Main : Node3D
 
     private RiddenDragon Dragon => GetNode<RiddenDragon>("Dragon");
 
+    private HeldGun Gun => GetNode<HeldGun>("XROrigin3D/LeftHand/Gun");
+
     private XRCamera3D Camera => GetNode<XRCamera3D>("XROrigin3D/XRCamera3D");
 
     private XRController3D LeftHand => GetNode<XRController3D>("XROrigin3D/LeftHand");
@@ -44,10 +47,10 @@ public partial class Main : Node3D
 
         _tiling = new Shader { Code = TilingShader };
         // The scene starts on what the folder already holds; extraction, if any, runs behind it.
-        (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, LaunchReport report) = LoadAssets();
+        (ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, Node3D? gun, LaunchReport report) = LoadAssets();
         _extraction = StartExtraction(ref report);
         AssetFolder.LogReport(report);
-        ShowAssets(floor, canopy, flyer, dragon, report);
+        ShowAssets(floor, canopy, flyer, dragon, gun, report);
         if (_extraction != null)
         {
             ShowProgress(_extraction.Board);
@@ -86,10 +89,10 @@ public partial class Main : Node3D
 
     /// <summary>
     /// Shows the launch report on the board, dresses the floor and canopy in their images or placeholders,
-    /// flies the model or the grey cube and seats the player on the dragon's model or the grey dragon: at
-    /// launch, and again when the folder is read after extraction.
+    /// flies the model or the grey cube, seats the player on the dragon's model or the grey dragon and puts the
+    /// gun's model or the grey gun in the left hand: at launch, and again when the folder is read after extraction.
     /// </summary>
-    private void ShowAssets(ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, LaunchReport report)
+    private void ShowAssets(ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, Node3D? gun, LaunchReport report)
     {
         _report = report;
         // What the launch check found, readable in the headset; it stays for as long as the app runs.
@@ -105,6 +108,7 @@ public partial class Main : Node3D
         var cube = GetNode<FlyingCube>("Cube");
         CarryOrPlaceholder(AssetIds.E03Flyer, "flown", flyer, cube.Carry);
         CarryOrPlaceholder(AssetIds.DragonRide, "shown", dragon, Dragon.Carry);
+        CarryOrPlaceholder(AssetIds.RiderGun, "held", gun, Gun.Carry);
     }
 
     /// <summary>
@@ -136,13 +140,14 @@ public partial class Main : Node3D
     /// Whatever goes wrong in loading, the scene and OpenXR still start: everything is a placeholder
     /// and the report says loading failed.
     /// </summary>
-    private (ImageTexture? Floor, ImageTexture? Canopy, Node3D? Flyer, Node3D? Dragon, LaunchReport Report) LoadAssets()
+    private (ImageTexture? Floor, ImageTexture? Canopy, Node3D? Flyer, Node3D? Dragon, Node3D? Gun, LaunchReport Report) LoadAssets()
     {
         AssetFolder? assets = null;
         ImageTexture? floor = null;
         ImageTexture? canopy = null;
         Node3D? flyer = null;
         Node3D? dragon = null;
+        Node3D? gun = null;
         LaunchReport report;
         try
         {
@@ -157,6 +162,7 @@ public partial class Main : Node3D
             canopy = assets.Image(AssetIds.E03Canopy);
             flyer = assets.Model(AssetIds.E03Flyer);
             dragon = assets.Model(AssetIds.DragonRide);
+            gun = assets.Model(AssetIds.RiderGun);
             assets.LogSummary();
             report = assets.Report();
         }
@@ -168,6 +174,8 @@ public partial class Main : Node3D
             flyer = null;
             dragon?.Free();
             dragon = null;
+            gun?.Free();
+            gun = null;
             string reason = DiscExtraction.Reason(e);
             GD.PushWarning($"{AssetFolder.LogTag} loading the asset folder failed ({reason}); running on placeholders");
             report = FailedReport(assets, reason);
@@ -176,7 +184,7 @@ public partial class Main : Node3D
         // The tuning is read once, from the folder found above (or none); its problems join every report.
         ReadTuning();
         report = report.WithTuningProblems(_tuningProblems);
-        return (floor, canopy, flyer, dragon, report);
+        return (floor, canopy, flyer, dragon, gun, report);
     }
 
     /// <summary>

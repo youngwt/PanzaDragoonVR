@@ -33,7 +33,7 @@ files/                 the asset folder (the output folder's contents on the PC)
 ```
 
 - There is one `manifest.json`, at the top level.
-- The game asks for four IDs so far: the images `e03.floor` and `e03.canopy` and the models `e03.flyer` and `dragon.ride`. Any it does not find shows its placeholder (see IDs).
+- The game asks for five IDs so far: the images `e03.floor` and `e03.canopy` and the models `e03.flyer`, `dragon.ride` and `rider.gun`. Any it does not find shows its placeholder (see IDs).
 - Everything else is the tool's choice. The game finds assets only through the manifest and must not assume any file name or subfolder for them. The only fixed names besides `manifest.json` are `disc/` and `development`, which Extraction defines, and `tuning.json`, which Tuning defines. The manifest does not list `tuning.json`.
 - Files in the folder that the manifest does not list are ignored.
 
@@ -99,11 +99,13 @@ files/                 the asset folder (the output folder's contents on the PC)
 |--------|----------|
 | `e03.` | Episode 3, such as `e03.floor` and `e03.canopy`, and its enemies, such as `e03.flyer`. |
 | `dragon.` | The dragon, such as `dragon.ride`, the dragon the player rides, and the extracted forms, `dragon.form01` to `dragon.form10`. |
+| `rider.` | The rider, such as `rider.gun`, the gun the player holds in the left hand. |
 
 - The table lists the prefixes in use. A new one is added here when it is first needed.
 - The engine spike's ground and sky are the placeholders for `e03.floor` and `e03.canopy`. There are no separate test IDs: the author proves external loading by supplying their own images under the real IDs.
 - The engine spike's flying grey cube is the placeholder for `e03.flyer`, a model: the Episode 3 flying enemy that the grey cubes later become. As with the ground and sky, there is no separate test ID.
 - The grey placeholder dragon, of the author's own boxes with a paler head, is the placeholder for `dragon.ride`, a model: the dragon the player sits on. The game holds it fixed under the player at a built-in seat, the top of its back 0.4 m above the play area's floor and directly below the head, placed when the head is first tracked and again after a recentre, and not following the head between. The game uses OpenXR's local floor space, so a recentre also turns the way of flight to where the head faces. A model's origin is put at that seat (see Models). The tuning file's `seat_forward`, `seat_height` and `dragon_scale` adjust this (see Tuning). There is no separate test ID.
+- The grey placeholder gun, of the author's own boxes with a paler muzzle, is the placeholder for `rider.gun`, a model: the rider's gun, held in the left hand. The game puts a model's origin at the left controller's aim point, so the gun goes with the controller, pointing along the aim at the reticle (see Models). It has no tuning setting. There is no separate test ID.
 - An ID is a promise. Once the game asks for an ID, the tool keeps writing it. The file behind it may move or be renamed freely.
 
 #### Extracted textures
@@ -245,6 +247,7 @@ These rules were checked against the extracted dragons, as far as the dragons us
 
 - Axes are glTF's: right-handed, +Y up, the model's front facing +Z. The tool converts from the Saturn's axes; the game never sees them. Godot loads glTF axes as they are. The game flies towards -Z, so it turns `dragon.ride` 180° about Y to face the flight.
 - The origin of `dragon.ride` is the seat: the point where the game places its rider on that form. The game puts the origin at its built-in seat, moved by the tuning file's seat settings.
+- A gun, such as `rider.gun`, has its origin at its grip, the point the hand holds, and its barrel pointing along +Z, in metres and glTF's axes as any model. The game puts the origin at the left controller's aim point and turns the model 180° about Y, so +Z points along the aim, as `dragon.ride` is turned to face the flight.
 - Positions are in metres, as glTF requires. The tool divides Saturn coordinates by one fixed number, the same for every model, so models keep their sizes relative to each other. That number is 4,000, which began as the spike's lead from a rider assumed to be 1.7 m tall; the author confirmed it in the headset (2026-10-30).
 - The conversion from the Saturn's axes (+Y up, head towards -Z) is `(x, y, z)` to `(-x, y, -z)`, a half-turn about Y and so not a mirror, before the division.
 - Triangles only (primitive mode 4), indexed. glTF has no quads.

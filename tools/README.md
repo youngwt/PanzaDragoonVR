@@ -117,7 +117,7 @@ If the script says no headset was found, check the cable and developer mode. If 
 - OpenXR needs Godot's Gradle build, so the prebuilt export template is not used. The build includes the Meta part of the OpenXR vendors plugin, which `setup-toolchain.sh` installs.
 - The APK is signed with Godot's debug keystore, which Godot creates in its `editor_data` folder. It is not a release build.
 - The headset no longer holds the launch back with a "controller required" prompt, because the app declares hand tracking as optional (the app itself does nothing with hands). So `build-quest.sh` can launch the app with nobody wearing the headset. When the app has not started within 10 seconds, usually because the headset is asleep, the script says so and exits with status 2.
-- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`), a grey cube flying in a circle right around you (or the model the folder supplies for `e03.flyer`; see [Your own model in the headset](#your-own-model-in-the-headset)) and a grey dragon under you, its paler head in front where the floor comes from (or the model the folder supplies for `dragon.ride`; see [Your own dragon](#your-own-dragon)). A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
+- In the headset you should see a green chequered ground underfoot (or the image the asset folder supplies for `e03.floor`; see [Your own images in the headset](#your-own-images-in-the-headset)), a blue chequered sky overhead (or `e03.canopy`), a grey cube flying in a circle right around you (or the model the folder supplies for `e03.flyer`; see [Your own model in the headset](#your-own-model-in-the-headset)), a grey dragon under you, its paler head in front where the floor comes from (or the model the folder supplies for `dragon.ride`; see [Your own dragon](#your-own-dragon)) and a grey gun in your left hand, its paler muzzle pointing at the reticle (or the model the folder supplies for `rider.gun`; see [Your own gun](#your-own-gun)). A frame-rate readout stays in front of you as you turn; see [Reading the frame rate](#reading-the-frame-rate).
 - The ground and sky images are tiled by a small shader in `game/Main.cs` that wraps the texture coordinates itself. On the Quest 3 a texture set to repeat came out clamped to its edge on these planes, so each showed one flat colour; the same scene tiled correctly on a desktop. The cause was not found.
 - Inside the VS Code Flatpak sandbox there is no USB access, so the script runs `adb` on the host through `flatpak-spawn --host`. Outside a sandbox it runs `adb` directly.
 - `game/.godot/`, `game/build/` and `game/android/` are generated and git-ignored.
@@ -317,7 +317,7 @@ PDZ_ASSETS=my-assets "$GODOT" --path game --xr-mode off
 
 ### What the game uses
 
-For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and two models, `e03.flyer` and `dragon.ride` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each image is tiled at the tuning's tile size, by default one copy per 24 metres of ground and one per about 60 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, any such model as its grey one, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
+For now the game uses two images, `e03.floor` on the ground and `e03.canopy` on the sky, and three models, `e03.flyer`, `dragon.ride` and `rider.gun` (see [Your own model in the headset](#your-own-model-in-the-headset)). Each image is tiled at the tuning's tile size, by default one copy per 24 metres of ground and one per about 60 metres of sky (see [Tuning the scene](#tuning-the-scene)). Any image the folder does not supply, or supplies with a problem, is shown as its chequered placeholder instead, any such model as its grey one, and the board in front of you says why (see [The launch report in the headset](#the-launch-report-in-the-headset)); the game never stops for a bad file. The manifest's `sha256` is not read in the headset, only the size, so run `write_manifest.py --check` before copying.
 
 ### Copying a folder to the headset
 
@@ -463,9 +463,21 @@ tools/push-assets.sh my-assets
 
 Then start the app: the pyramid sits under you in place of the grey dragon, and the log's `PDZ-ASSETS supplied: ...` line lists `dragon.ride`. A rejected dragon reads as the flyer's lines below, with `dragon.ride` as the ID, and keeps the grey dragon. If the model loads but cannot be placed, the log reads `PDZ-ASSETS dragon.ride: the model could not be shown (<error>); using the placeholder`.
 
+### Your own gun
+
+The grey gun in your left hand is the placeholder for `rider.gun`, a model: boxes for a barrel about 0.25 m long ending in a paler muzzle, and a handle below. It is held at the left controller's aim point and goes wherever the controller goes, its muzzle pointing along the aim, at the reticle. A `.glb` the folder lists as `rider.gun` is held there in its place. Build it in glTF's axes, barrel along +Z, with its origin at the grip, the point the hand holds: the game puts the origin at the aim point and turns the model 180 degrees about Y to point the barrel along the aim. It has no tuning setting. To try it with the test gun, a long thin pyramid with its tip 0.3 m along +Z and its orange base just behind the grip:
+
+```sh
+python3 tools/make_test_model.py --gun my-assets/models/gun.glb
+python3 tools/write_manifest.py my-assets rider.gun=models/gun.glb
+tools/push-assets.sh my-assets
+```
+
+Then start the app: the long pyramid is in your hand in place of the grey gun, its tip pointing at the reticle, and the log's `PDZ-ASSETS supplied: ...` line lists `rider.gun`. A rejected gun reads as the flyer's lines below, with `rider.gun` as the ID, and keeps the grey gun. If the model loads but cannot be held, the log reads `PDZ-ASSETS rider.gun: the model could not be held (<error>); using the placeholder`.
+
 ### When a model is rejected
 
-The game reads the file's header and its JSON before the engine sees it, and never opens a file the model names. Any problem keeps the model's placeholder (the grey cube for `e03.flyer`, the grey dragon for `dragon.ride`), and the board and the log say why, with one line starting with the ID:
+The game reads the file's header and its JSON before the engine sees it, and never opens a file the model names. Any problem keeps the model's placeholder (the grey cube for `e03.flyer`, the grey dragon for `dragon.ride`, the grey gun for `rider.gun`), and the board and the log say why, with one line starting with the ID:
 
 | Line | Meaning |
 |------|---------|
@@ -524,7 +536,7 @@ The textures of the nine Episode 3 files the asset contract names (`E03CMN`, `E0
 
 **The PNGs** are 8-bit RGBA, and their data is stored without compression. .NET's own compressor gives different bytes on the PC and on the headset (zlib-ng in .NET 9 and 10 on the PC, in two versions, and Android's system zlib in the APK), while stored data is the same everywhere. The cost is size: the PNGs take several times the room they would compressed.
 
-The game's scene uses none of the extracted texture IDs. It asks for `e03.floor`, `e03.canopy`, `e03.flyer` and `dragon.ride`, and shows a placeholder for each the folder lacks; extraction supplies all but `e03.flyer`. The built-in tuning (a 512-pixel floor page covering 24 m, the canopy's about 60 m) was set by the author in the headset for the extracted planes, so the placeholders' chequers look large.
+The game's scene uses none of the extracted texture IDs. It asks for `e03.floor`, `e03.canopy`, `e03.flyer`, `dragon.ride` and `rider.gun`, and shows a placeholder for each the folder lacks; extraction supplies all but `e03.flyer` and `rider.gun`. The built-in tuning (a 512-pixel floor page covering 24 m, the canopy's about 60 m) was set by the author in the headset for the extracted planes, so the placeholders' chequers look large.
 
 ### On the PC
 

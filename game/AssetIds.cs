@@ -20,4 +20,7 @@ public static class AssetIds
 
     /// <summary>The dragon the player rides; its placeholder is the grey dragon built in <see cref="RiddenDragon"/>.</summary>
     public const string DragonRide = Dragons.RideId;
+
+    /// <summary>The rider's gun, held in the left hand; its placeholder is the grey gun built in <see cref="HeldGun"/>.</summary>
+    public const string RiderGun = "rider.gun";
 }

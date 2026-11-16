@@ -1,10 +1,11 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://Main.cs" id="1_main"]
 [ext_resource type="Script" path="res://FlyingCube.cs" id="2_cube"]
 [ext_resource type="Script" path="res://FrameRateReadout.cs" id="3_readout"]
 [ext_resource type="Script" path="res://LaunchReportPanel.cs" id="4_report"]
 [ext_resource type="Script" path="res://RiddenDragon.cs" id="5_dragon"]
+[ext_resource type="Script" path="res://HeldGun.cs" id="6_gun"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
@@ -57,6 +58,9 @@ script = ExtResource("3_readout")
 [node name="LeftHand" type="XRController3D" parent="XROrigin3D"]
 tracker = &"left_hand"
 pose = &"aim"
+
+[node name="Gun" type="Node3D" parent="XROrigin3D/LeftHand"]
+script = ExtResource("6_gun")
 
 [node name="RightHand" type="XRController3D" parent="XROrigin3D"]
 tracker = &"right_hand"
