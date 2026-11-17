@@ -52,11 +52,15 @@ public partial class Main
         GD.Print($"{AssetFolder.LogTag} tuning ({source}): {_tuning.Describe()}");
     }
 
-    /// <summary>Puts the floor plane <see cref="Tuning.FloorDepth"/> below the play area's floor and the canopy plane <see cref="Tuning.CanopyHeight"/> above it, and adjusts the dragon's seat.</summary>
+    /// <summary>
+    /// Puts the floor plane <see cref="Tuning.FloorDepth"/> below the play area's floor and the canopy plane <see cref="Tuning.CanopyHeight"/>
+    /// above it, adjusts the dragon's seat and pitches the gun in the hand.
+    /// </summary>
     private void PlacePlanesAndSeat()
     {
         Ground.Position = new Vector3(0, -_tuning.FloorDepth, 0);
         Sky.Position = new Vector3(0, _tuning.CanopyHeight, 0);
         Dragon.Adjust(_tuning.SeatForward, _tuning.SeatHeight, _tuning.DragonScale);
+        Gun.Pitch(_tuning.GunPitch);
     }
 }

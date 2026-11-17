@@ -269,6 +269,7 @@ public sealed class TuningMenuTests
         Assert.Equal("  floor_depth  8.999", lines[0]);
         Assert.Equal("> canopy_height  10.000", lines[1]);
         Assert.Equal("  dragon_scale  0.997", lines[8]);
-        Assert.Equal(10, lines.Length);
+        Assert.Equal("  gun_pitch  0.000", lines[9]);
+        Assert.Equal(11, lines.Length);
     }
 }

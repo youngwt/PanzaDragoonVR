@@ -97,6 +97,8 @@ context:
 
 ## Plan Change Log
 
+- 2026-11-17, the author's word after the first look in the headset: "the gun's pitch is a bit off, can you add a tuning variable?". A tenth tuning setting, `gun_pitch`, in degrees from -90 to 90, built-in 0, tilts the gun about its grip from the controller's aim; positive raises the muzzle. The reticle's ray now follows the gun's barrel, so the gun still points at it and the first criterion holds at any pitch. The Never forbids a setting for the gun's position or size; a pitch is neither, but it is close enough that it goes in its own commit naming this decision. Changed in all four places the built-ins are kept, and in the tuning list, which lists every setting.
+
 ## Review Triage Log
 
 Quick lens, one pass: 2 low patched; 1 not a code finding.

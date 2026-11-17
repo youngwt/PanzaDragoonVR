@@ -5,8 +5,9 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The aiming reticle, in VR only: a ring the game draws itself, where the left controller's aim ray leaves a
-/// sphere of <see cref="ReticlePlacement.Radius"/> around the head, facing the head and drawn over the scene.
+/// The aiming reticle, in VR only: a ring the game draws itself, where the ray from the left controller's aim point
+/// along the held gun's barrel leaves a sphere of <see cref="ReticlePlacement.Radius"/> around the head, facing the
+/// head and drawn over the scene.
 /// It hides while the left controller is not tracked.
 /// </summary>
 public partial class Main
@@ -65,7 +66,8 @@ public partial class Main
         }
 
         Transform3D aim = hand.GlobalTransform;
-        Vector3 forward = -aim.Basis.Z;
+        // Along the gun's barrel, which is the aim tilted by gun_pitch, so the gun always points at the reticle.
+        Vector3 forward = Gun.Barrel;
         Transform3D camera = Camera.GlobalTransform;
         Vector3 head = camera.Origin;
         ReticlePoint? point = ReticlePlacement.OnSphere(

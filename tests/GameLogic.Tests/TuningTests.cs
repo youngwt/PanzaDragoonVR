@@ -60,12 +60,12 @@ public sealed class TuningTests : IDisposable
         Write("""
             { "floor_depth": 10, "canopy_height": 60.5, "flight_speed": 8,
               "canopy_speed_scale": 0.5, "floor_tile": 5, "canopy_tile": 30,
-              "seat_forward": -1.5, "seat_height": 0.25, "dragon_scale": 2 }
+              "seat_forward": -1.5, "seat_height": 0.25, "dragon_scale": 2, "gun_pitch": -35 }
             """);
 
         TuningRead read = Tuning.Load(_folder);
 
-        Assert.Equal(new Tuning(10f, 60.5f, 8f, 0.5f, 5f, 30f, -1.5f, 0.25f, 2f), read.Tuning);
+        Assert.Equal(new Tuning(10f, 60.5f, 8f, 0.5f, 5f, 30f, -1.5f, 0.25f, 2f, -35f), read.Tuning);
         Assert.Empty(read.Problems);
         Assert.True(read.Found);
     }
@@ -165,6 +165,7 @@ public sealed class TuningTests : IDisposable
     [InlineData("seat_forward", -20, 20)]
     [InlineData("seat_height", -3, 3)]
     [InlineData("dragon_scale", 0.1, 5)]
+    [InlineData("gun_pitch", -90, 90)]
     public void RangeEnds_AreAllowedAndJustBeyondAreNot(string name, double min, double max)
     {
         string Shown(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -204,7 +205,7 @@ public sealed class TuningTests : IDisposable
     public void Describe_NamesEverySettingAsTheFileDoes()
     {
         Assert.Equal(
-            "floor_depth 8.999, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997",
+            "floor_depth 8.999, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997, gun_pitch 0",
             Tuning.BuiltIn.Describe());
     }
 
@@ -213,7 +214,7 @@ public sealed class TuningTests : IDisposable
     [Fact]
     public void Write_ReadsBackAsTheSameValuesWithNoProblems()
     {
-        var tuning = new Tuning(7.1234567f, 99.99999f, 0.1f, 1.9999999f, 4.0000005f, 123.45678f, -1.2E-05f, 2.9999998f, 0.33333334f);
+        var tuning = new Tuning(7.1234567f, 99.99999f, 0.1f, 1.9999999f, 4.0000005f, 123.45678f, -1.2E-05f, 2.9999998f, 0.33333334f, -89.99999f);
 
         TuningRead read = Tuning.Parse(tuning.Write());
 
@@ -247,7 +248,7 @@ public sealed class TuningTests : IDisposable
             var tuning = new Tuning(
                 3 + (47 * random.NextSingle()), 4 + (96 * random.NextSingle()), 30 * random.NextSingle(),
                 2 * random.NextSingle(), 4 + (496 * random.NextSingle()), 8 + (492 * random.NextSingle()),
-                (40 * random.NextSingle()) - 20, (6 * random.NextSingle()) - 3, 0.1f + (4.9f * random.NextSingle()));
+                (40 * random.NextSingle()) - 20, (6 * random.NextSingle()) - 3, 0.1f + (4.9f * random.NextSingle()), (180 * random.NextSingle()) - 90);
 
             TuningRead read = Tuning.Parse(tuning.Write());
 
@@ -318,7 +319,7 @@ public sealed class TuningTests : IDisposable
         Assert.Equal(Tuning.BuiltIn, read.Tuning);
         Assert.Empty(read.Problems);
         using JsonDocument json = JsonDocument.Parse(text);
-        Assert.Equal(9, json.RootElement.EnumerateObject().Select(field => field.Name).Distinct().Count());
+        Assert.Equal(Tuning.Settings.Count, json.RootElement.EnumerateObject().Select(field => field.Name).Distinct().Count());
     }
 
     /// <summary><c>tools/tuning.example.json</c>.</summary>

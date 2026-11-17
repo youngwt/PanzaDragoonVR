@@ -344,7 +344,7 @@ A tuning problem alone puts the board up, as an asset problem does; with other p
 
 ## Tuning
 
-The floor's depth, the canopy's height, how fast they scroll, how much of each one copy of its image covers and the player's seat on the dragon and its size belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change to the file from outside is seen when the app is started again.
+The floor's depth, the canopy's height, how fast they scroll, how much of each one copy of its image covers, the player's seat on the dragon and its size, and the tilt of the gun in the hand belong to the game, not to the extracted assets. Each has a built-in value. An optional `tuning.json` at the top of the asset folder replaces any of them, so the author can try a new look by editing the file on the PC and pushing it (`tools/push-tuning.sh`) without a rebuild. The game reads it once, at launch; a change to the file from outside is seen when the app is started again.
 
 In development mode only (see Development and release modes), the file can also change in the headset. A list of every setting, hidden until asked for and shown above the right controller, changes the values live with that controller, each within its range, and saves on the press of A. A save replaces `tuning.json` with every setting, written so it reads back as the same values under the rules below; if it fails, the old file stays. Nothing else writes the file, extraction leaves it alone, and `tools/pull-tuning.sh` copies it to the PC. In release mode there is no list. The spec's no-HUD rule is unaffected: the list is on the controller, and for development only.
 
@@ -360,7 +360,8 @@ In development mode only (see Development and release modes), the file can also 
   "canopy_tile": 60.146,
   "seat_forward": -0.633,
   "seat_height": -0.146,
-  "dragon_scale": 0.997
+  "dragon_scale": 0.997,
+  "gun_pitch": 0
 }
 ```
 
@@ -375,6 +376,7 @@ In development mode only (see Development and release modes), the file can also 
 | `seat_forward` | -20 to 20 | -0.633 | Metres the player is moved towards the dragon's head from the seat, by moving the dragon back; negative is towards the tail. An offset, so the built-in holds no value from the disc. |
 | `seat_height` | -3 to 3 | -0.146 | Metres the player is raised from the seat, by lowering the dragon; negative lowers the player. An offset, likewise. |
 | `dragon_scale` | 0.1 to 5 | 0.997 | How many times its size the ridden dragon is drawn, about the seat, on top of the model's own metres. |
+| `gun_pitch` | -90 to 90 | 0 | Degrees the gun held in the left hand (`rider.gun`) is tilted about its grip from the left controller's aim; positive raises the muzzle. The reticle is placed along the barrel, so the gun always points at it. |
 
 Ranges include their ends, and are narrow enough that each allowed value gives a sane picture at 90 Hz on the game's 2000 m planes with the other settings at their built-ins, as do all settings at their low ends together and all at their high ends together (backlog 17, 2026-10-27). This does not cover the seat settings, which came later: their ranges allow for the largest form, so a large `seat_forward` can leave the player clear of a smaller dragon. Mixing ends can still break the picture: a high canopy, a shallow floor, the top speed, the top canopy speed scale and a small canopy image move the canopy's image more than a tile a frame. At the top `canopy_height` the canopy's edge shows about 6 degrees above the horizon. A setting that is out of range or not a number keeps its built-in value and is reported; the others are still used. A field that is not a setting is reported and ignored. The game never refuses to run because of the file.
 

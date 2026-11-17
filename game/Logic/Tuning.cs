@@ -11,9 +11,10 @@ namespace PanzaDragoonVR.Logic;
 
 /// <summary>
 /// The scene's tuning: how deep the floor is, how high the canopy, how fast they scroll, how much of
-/// each plane one copy of its image covers, and the player's seat on the dragon and its size. Each setting has a built-in value; an optional
+/// each plane one copy of its image covers, the player's seat on the dragon and its size, and the pitch of the gun in the hand. Each setting has a built-in value; an optional
 /// <c>tuning.json</c> at the top of the asset folder replaces any of them, as the asset contract's
-/// "Tuning" section defines. The planes' heights are in metres from the play area's floor, the seat's offsets in metres from the seat, speeds in metres a second.
+/// "Tuning" section defines. The planes' heights are in metres from the play area's floor, the seat's offsets in metres from the seat, speeds in metres a second,
+/// the gun's pitch in degrees.
 /// Nothing here uses the engine, so it is tested on the PC; the game reads the file once at launch. In development mode the
 /// headset's tuning list (<see cref="TuningMenu"/>) changes the values live and <see cref="Save"/> writes the file back;
 /// <see cref="Parse"/> stays the one reader, and <see cref="Write"/> gives only what it accepts.
@@ -27,7 +28,8 @@ public sealed record Tuning(
     float CanopyTile,
     float SeatForward,
     float SeatHeight,
-    float DragonScale)
+    float DragonScale,
+    float GunPitch)
 {
     public const string FileName = "tuning.json";
 
@@ -36,9 +38,10 @@ public sealed record Tuning(
 
     /// <summary>
     /// Every setting at its built-in value, set by the author in the headset on 2026-11-01 with the tuning list,
-    /// riding the chosen dragon over the extracted planes. The seat's are offsets from the model's origin.
+    /// riding the chosen dragon over the extracted planes. The seat's are offsets from the model's origin. The gun's
+    /// pitch, added later, starts at 0: the barrel along the controller's aim.
     /// </summary>
-    public static Tuning BuiltIn { get; } = new(8.999f, 10f, 10.676f, 0.995f, 24f, 60.146f, -0.633f, -0.146f, 0.997f);
+    public static Tuning BuiltIn { get; } = new(8.999f, 10f, 10.676f, 0.995f, 24f, 60.146f, -0.633f, -0.146f, 0.997f, 0f);
 
     /// <summary>
     /// Each setting the file can give: its name in the file, its allowed range (inclusive), how fast the tuning list
@@ -56,6 +59,7 @@ public sealed record Tuning(
         new("seat_forward", -20, 20, 1, t => t.SeatForward, (t, v) => t with { SeatForward = v }),
         new("seat_height", -3, 3, 0.25, t => t.SeatHeight, (t, v) => t with { SeatHeight = v }),
         new("dragon_scale", 0.1, 5, 0.25, t => t.DragonScale, (t, v) => t with { DragonScale = v }),
+        new("gun_pitch", -90, 90, 30, t => t.GunPitch, (t, v) => t with { GunPitch = v }),
     };
 
     /// <summary>

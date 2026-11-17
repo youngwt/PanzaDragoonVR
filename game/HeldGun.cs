@@ -11,6 +11,7 @@ namespace PanzaDragoonVR;
 /// model's barrel along the aim, at the reticle, as <see cref="RiddenDragon"/> turns the dragon to face the flight.
 /// Its own shapes are the grey placeholder gun for <see cref="AssetIds.RiderGun"/>, built in the same model axes so
 /// that a hand-made model tests the same convention; a model the asset folder supplies is held in their place.
+/// The tuning file's <c>gun_pitch</c> tilts it about the grip (<see cref="Pitch"/>), and the reticle follows its barrel.
 /// </summary>
 public partial class HeldGun : Node3D
 {
@@ -24,10 +25,20 @@ public partial class HeldGun : Node3D
 
     public override void _Ready()
     {
-        Transform = new Transform3D(new Basis(Vector3.Up, Mathf.Pi), Vector3.Zero);
+        Pitch(0);
         _placeholder = Placeholder();
         AddChild(_placeholder);
     }
+
+    /// <summary>
+    /// Tilts the gun about its grip by <paramref name="degrees"/> from the controller's aim, positive raising the muzzle,
+    /// on top of the half turn about Y. A turn about the model's +X lowers +Z, so the muzzle rises for a negative one.
+    /// </summary>
+    public void Pitch(float degrees) =>
+        Transform = new Transform3D(new Basis(Vector3.Up, Mathf.Pi) * new Basis(Vector3.Right, -Mathf.DegToRad(degrees)), Vector3.Zero);
+
+    /// <summary>The way the barrel points, in the scene: the model's +Z.</summary>
+    public Vector3 Barrel => GlobalBasis.Z.Normalized();
 
     /// <summary>
     /// Holds <paramref name="model"/> in place of the placeholder gun, which is no longer drawn; or, with null,
