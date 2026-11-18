@@ -30,8 +30,8 @@ public sealed class CubeFlight
     /// <summary>How many times the corkscrew turns round the circle in one lap: whole, so the path closes.</summary>
     public const int TwistsPerLap = 3;
 
-    /// <summary>Each cube's circle's radius about the player's origin, in metres: 4 m and 5 m in turn.</summary>
-    private static readonly float[] Radii = { 4f, 5f, 4f, 5f, 4f, 5f };
+    /// <summary>Each cube's circle's radius about the player's origin, in metres: 6 m and 8 m in turn, widened by the author after the first look.</summary>
+    private static readonly float[] Radii = { 6f, 8f, 6f, 8f, 6f, 8f };
 
     /// <summary>
     /// The height of each cube's circle above the floor, in metres: 1.8 m and 2.4 m in turn, so that no cube goes

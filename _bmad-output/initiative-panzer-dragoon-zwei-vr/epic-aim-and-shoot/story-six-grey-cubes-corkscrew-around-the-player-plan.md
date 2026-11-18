@@ -91,6 +91,8 @@ context:
 
 ## Plan Change Log
 
+- 2026-11-18, the author's word after the first look in the headset: "make the orbits wider". The circles are now 6 m and 8 m in turn, not 4 m and 5 m, so the cubes fly 5.5 m to 8.5 m out. This goes against the frozen Always that kept them between 3.5 m and 5.5 m, inside the reticle's 6 m sphere: the reticle now sits among the paths and is still drawn over the cubes, as it has no depth test. Its own commit names the decision. The bounds test follows the new range; the heights and the rest are unchanged.
+
 ## Review Triage Log
 
 Quick lens, one pass: 1 medium patched, 1 low patched.

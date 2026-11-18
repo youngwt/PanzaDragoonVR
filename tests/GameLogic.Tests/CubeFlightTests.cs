@@ -37,7 +37,7 @@ public sealed class CubeFlightTests
             for (int cube = 0; cube < CubeFlight.Count; cube++)
             {
                 CubePoint point = flight.Position(cube);
-                Assert.InRange(Horizontal(point), 3.5f - Tolerance, 5.5f + Tolerance);
+                Assert.InRange(Horizontal(point), 5.5f - Tolerance, 8.5f + Tolerance);
                 Assert.InRange(point.Y, 0.5f, 3.5f);
             }
 
