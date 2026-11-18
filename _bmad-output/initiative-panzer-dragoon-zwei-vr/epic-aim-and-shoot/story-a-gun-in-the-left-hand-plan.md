@@ -117,7 +117,7 @@ Results (2026-11-16, implementation):
 - `make_test_model.py --gun extracted/test-gun/models/gun.glb`, then `tools/validate-gltf.sh` on it: 0 errors, 0 warnings.
 - `tools/build-quest.sh`: built, installed and started (exit 0). The APK lists `PdzDecoding.dll` and no disc data. The log read `PDZ-ASSETS supplied: e03.floor, e03.canopy, dragon.ride; placeholders: e03.flyer, rider.gun` and `PDZ-FPS target=90 avg=90.0`.
 - 2026-11-18, the author in the headset, criterion 1: the grey gun in the left hand, tuned with `gun_pitch`: "pitch -10 looks good". -10 is now the built-in, in all four places. The log read `PDZ-FPS target=90 avg=90.0`.
-- Not yet made: criterion 2, the test gun under `rider.gun`.
+- 2026-11-18, the author in the headset, criterion 2: `make_test_model.py --gun`'s pyramid listed as `rider.gun` (the disc image moved aside for that one launch, then put back), the log reading `rider.gun: using .../models/test_gun.glb`: "tip points at the reticle". Looking straight down the barrel the reticle sits slightly above the tip. That is parallax, and expected: the eye is above the barrel's line, and along that line a point 6 m away appears higher than one 0.3 m away. Sights on the gun would line the two up.
 
 **Commands:**
 - `tools/test.sh` -- expected: all pass
