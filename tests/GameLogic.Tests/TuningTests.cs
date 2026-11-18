@@ -205,7 +205,7 @@ public sealed class TuningTests : IDisposable
     public void Describe_NamesEverySettingAsTheFileDoes()
     {
         Assert.Equal(
-            "floor_depth 8.999, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997, gun_pitch 0",
+            "floor_depth 8.999, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997, gun_pitch -10",
             Tuning.BuiltIn.Describe());
     }
 

@@ -348,7 +348,7 @@ How deep the floor is, how high the canopy, how fast they scroll, their tile siz
 | `seat_forward` | metres to move you towards the dragon's head from the seat; negative is towards the tail | -0.633 | -20 to 20 |
 | `seat_height` | metres to raise you from the seat; negative lowers you | -0.146 | -3 to 3 |
 | `dragon_scale` | how many times its size the dragon is drawn, turning about the seat | 0.997 | 0.1 to 5 |
-| `gun_pitch` | degrees the gun in your left hand is tilted about its grip from the controller's aim; positive raises the muzzle. The reticle follows the barrel | 0 | -90 to 90 |
+| `gun_pitch` | degrees the gun in your left hand is tilted about its grip from the controller's aim; positive raises the muzzle. The reticle follows the barrel | -10 | -90 to 90 |
 
 The asset contract's "Tuning" section is the full definition. To try new values:
 
@@ -380,7 +380,7 @@ To keep a saved file on the PC, run `tools/pull-tuning.sh my-tuning.json`. It fa
 The game logs what it uses at launch, for example:
 
 ```
-PDZ-ASSETS tuning (from tuning.json and the built-ins): floor_depth 8, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997, gun_pitch 0
+PDZ-ASSETS tuning (from tuning.json and the built-ins): floor_depth 8, canopy_height 10, flight_speed 10.676, canopy_speed_scale 0.995, floor_tile 24, canopy_tile 60.146, seat_forward -0.633, seat_height -0.146, dragon_scale 0.997, gun_pitch -10
 ```
 
 or `tuning (built-in, no tuning.json): ...` when there is no file. A setting that is out of range or not a number, a field that is not a setting (a misspelt name, say) and a file that cannot be read each give a `PDZ-ASSETS tuning.json: ...` warning and a line on the board. The rules are in `game/Logic/Tuning.cs`.

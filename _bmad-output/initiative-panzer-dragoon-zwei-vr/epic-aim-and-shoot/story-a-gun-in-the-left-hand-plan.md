@@ -116,7 +116,8 @@ Results (2026-11-16, implementation):
 - `dotnet build game/PanzaDragoonVR.csproj`: 0 warnings, 0 errors.
 - `make_test_model.py --gun extracted/test-gun/models/gun.glb`, then `tools/validate-gltf.sh` on it: 0 errors, 0 warnings.
 - `tools/build-quest.sh`: built, installed and started (exit 0). The APK lists `PdzDecoding.dll` and no disc data. The log read `PDZ-ASSETS supplied: e03.floor, e03.canopy, dragon.ride; placeholders: e03.flyer, rider.gun` and `PDZ-FPS target=90 avg=90.0`.
-- Not yet made: the author's look in the headset at the grey gun and at the test gun under `rider.gun`.
+- 2026-11-18, the author in the headset, criterion 1: the grey gun in the left hand, tuned with `gun_pitch`: "pitch -10 looks good". -10 is now the built-in, in all four places. The log read `PDZ-FPS target=90 avg=90.0`.
+- Not yet made: criterion 2, the test gun under `rider.gun`.
 
 **Commands:**
 - `tools/test.sh` -- expected: all pass

@@ -39,9 +39,9 @@ public sealed record Tuning(
     /// <summary>
     /// Every setting at its built-in value, set by the author in the headset on 2026-11-01 with the tuning list,
     /// riding the chosen dragon over the extracted planes. The seat's are offsets from the model's origin. The gun's
-    /// pitch, added later, starts at 0: the barrel along the controller's aim.
+    /// pitch, added later, was set by the author in the headset on 2026-11-18, the muzzle a little below the aim.
     /// </summary>
-    public static Tuning BuiltIn { get; } = new(8.999f, 10f, 10.676f, 0.995f, 24f, 60.146f, -0.633f, -0.146f, 0.997f, 0f);
+    public static Tuning BuiltIn { get; } = new(8.999f, 10f, 10.676f, 0.995f, 24f, 60.146f, -0.633f, -0.146f, 0.997f, -10f);
 
     /// <summary>
     /// Each setting the file can give: its name in the file, its allowed range (inclusive), how fast the tuning list
