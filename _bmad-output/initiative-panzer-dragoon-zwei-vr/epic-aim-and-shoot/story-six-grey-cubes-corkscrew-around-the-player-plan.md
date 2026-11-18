@@ -115,3 +115,4 @@ A path, for cube i, at lap angle θ (θ = 2π·t/lap + i·2π/6): its circle's c
 
 **Manual checks (if no CLI):**
 - Headset (the author): six grey cubes corkscrew around, spread all round; 90 Hz.
+- 2026-11-18, the author in the headset, with the wider orbits (`eedb6ac`): "lgtm". The log read `PDZ-FPS target=90 avg=89.9`. `e03.flyer` was a placeholder, so the six copies of a supplied model were not looked at in the headset.
