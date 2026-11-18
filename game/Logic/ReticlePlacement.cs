@@ -13,7 +13,7 @@ public readonly record struct ReticlePoint(float X, float Y, float Z);
 /// </summary>
 public static class ReticlePlacement
 {
-    /// <summary>Metres from the head to the reticle: beyond the board (2.2 m) and the cube's path (4 m).</summary>
+    /// <summary>Metres from the head to the reticle: beyond the board (2.2 m) and the cubes' paths (3.5 m to 5.5 m out).</summary>
     public const float Radius = 6f;
 
     /// <summary>The reticle's width in metres, about 2.4 degrees across at <see cref="Radius"/>.</summary>

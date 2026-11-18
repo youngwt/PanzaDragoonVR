@@ -6,9 +6,9 @@ using PanzaDragoonVR.Logic;
 namespace PanzaDragoonVR;
 
 /// <summary>
-/// The scene: a floor, a canopy, a flyer circling the player, to look all around at, the dragon the
+/// The scene: a floor, a canopy, six flyers corkscrewing round the player, to look all around at, the dragon the
 /// player sits on and the gun in the left hand. Loads what the asset folder supplies for them, dressing the
-/// floor and canopy in its images, flying its model in place of the grey cube, seating the player on its
+/// floor and canopy in its images, flying copies of its model in place of the grey cubes, seating the player on its
 /// dragon in place of the grey one and putting its gun in the left hand in place of the grey gun, with each
 /// one's placeholder for whatever it does not supply; shows what the
 /// launch check found on a board in front of the starting view; starts OpenXR, asks the headset for
@@ -89,7 +89,7 @@ public partial class Main : Node3D
 
     /// <summary>
     /// Shows the launch report on the board, dresses the floor and canopy in their images or placeholders,
-    /// flies the model or the grey cube, seats the player on the dragon's model or the grey dragon and puts the
+    /// flies copies of the model or the grey cubes, seats the player on the dragon's model or the grey dragon and puts the
     /// gun's model or the grey gun in the left hand: at launch, and again when the folder is read after extraction.
     /// </summary>
     private void ShowAssets(ImageTexture? floor, ImageTexture? canopy, Node3D? flyer, Node3D? dragon, Node3D? gun, LaunchReport report)
@@ -105,8 +105,8 @@ public partial class Main : Node3D
         // The new images carry on from where the old ones had scrolled to.
         ApplyScroll();
         // Whichever fails, its placeholder shows instead and everything else keeps what it loaded.
-        var cube = GetNode<FlyingCube>("Cube");
-        CarryOrPlaceholder(AssetIds.E03Flyer, "flown", flyer, cube.Carry);
+        var cubes = GetNode<CubeFlock>("Cubes");
+        CarryOrPlaceholder(AssetIds.E03Flyer, "flown", flyer, cubes.Carry);
         CarryOrPlaceholder(AssetIds.DragonRide, "shown", dragon, Dragon.Carry);
         CarryOrPlaceholder(AssetIds.RiderGun, "held", gun, Gun.Carry);
     }

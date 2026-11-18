@@ -15,7 +15,7 @@ public partial class Main
     private MeshInstance3D? _reticle;
 
     /// <summary>
-    /// A ring on a quad, unlit and drawn without a depth test so the forest, the dragon and the cube never hide it.
+    /// A ring on a quad, unlit and drawn without a depth test so the forest, the dragon and the cubes never hide it.
     /// The frame-rate readout and the tuning list draw over it.
     /// </summary>
     private const string ReticleShader = """

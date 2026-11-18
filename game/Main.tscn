@@ -1,7 +1,7 @@
 [gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://Main.cs" id="1_main"]
-[ext_resource type="Script" path="res://FlyingCube.cs" id="2_cube"]
+[ext_resource type="Script" path="res://CubeFlock.cs" id="2_cubes"]
 [ext_resource type="Script" path="res://FrameRateReadout.cs" id="3_readout"]
 [ext_resource type="Script" path="res://LaunchReportPanel.cs" id="4_report"]
 [ext_resource type="Script" path="res://RiddenDragon.cs" id="5_dragon"]
@@ -76,11 +76,10 @@ mesh = SubResource("PlaneMesh_ground")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 mesh = SubResource("PlaneMesh_sky")
 
-[node name="Cube" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -4)
-mesh = SubResource("BoxMesh_cube")
-surface_material_override/0 = SubResource("Material_cube")
-script = ExtResource("2_cube")
+[node name="Cubes" type="Node3D" parent="."]
+script = ExtResource("2_cubes")
+CubeMesh = SubResource("BoxMesh_cube")
+CubeMaterial = SubResource("Material_cube")
 
 [node name="Dragon" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)

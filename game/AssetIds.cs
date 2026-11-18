@@ -15,7 +15,7 @@ public static class AssetIds
     /// <summary>Episode 3's canopy; its placeholder is the blue chequer.</summary>
     public const string E03Canopy = Planes.CanopyId;
 
-    /// <summary>Episode 3's flying enemy; its placeholder is the grey cube.</summary>
+    /// <summary>Episode 3's flying enemy; its placeholder is the grey cube, six of which fly round the player.</summary>
     public const string E03Flyer = "e03.flyer";
 
     /// <summary>The dragon the player rides; its placeholder is the grey dragon built in <see cref="RiddenDragon"/>.</summary>
